@@ -1,0 +1,11 @@
+Package: FastReg
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Author: Deepak Mav, Shail Choksi, Matt Wheeler, John House
+Maintainer: Deepak Mav<deepak.mav@sciome.com>
+Description: Efficiently perform large scale simple linear and logistic regression analysis
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: data.table, BEDMatrix, hdf5r, parallel,foreach
