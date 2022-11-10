@@ -1,0 +1,26 @@
+{
+    "id": "1DB256B3",
+    "path": "~/data/Projects/NIEHS_Biostat/Alison-Motsinger/FastReg/Packages/FastReg/R/linear.R",
+    "project_path": "R/linear.R",
+    "type": "r_source",
+    "hash": "462463324",
+    "contents": "",
+    "dirty": false,
+    "created": 1665589740549.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "91,0",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1667781002,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1667781002700,
+    "read_only": false,
+    "read_only_alternatives": []
+}
