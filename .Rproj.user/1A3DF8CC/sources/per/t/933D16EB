@@ -1,0 +1,26 @@
+{
+    "id": "933D16EB",
+    "path": "~/data/Projects/NIEHS_Biostat/Alison-Motsinger/FastReg/Packages/FastReg/R/logistic.R",
+    "project_path": "R/logistic.R",
+    "type": "r_source",
+    "hash": "2636188490",
+    "contents": "",
+    "dirty": false,
+    "created": 1665626232512.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "1,172",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1667614783,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1667614783303,
+    "read_only": false,
+    "read_only_alternatives": []
+}
