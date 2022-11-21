@@ -1,5 +1,5 @@
-# performs logistic regression
-logisticRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filter.fun=NULL, G.transform.args=NULL, G.filter.args=NULL, no.intercept=FALSE, max.iter=6) {
+
+logisticRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filter.fun=NULL, G.transform.args=NULL, G.filter.args=NULL, no.intercept=FALSE, max.iter=6, ...) {
   if(is.null(Z)) Z <- matrix(1, nrow=nrow(Y), ncol=1,dimnames=list(rownames(Y),"POI"));
 
   if(is.null(X)) {

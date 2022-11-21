@@ -12,12 +12,19 @@ covar.file <- "example.covar.txt";
 num.pheno.file <- "example.num.pheno.txt";
 bin.pheno.file <- "example.bin.pheno.txt";
 poi.file <- "example.poi.h5";
+poi.subset.file <- "example.poi.subset.txt"
+subject.subset.file <- "example.sample.subset.txt"
 
 
 set.seed(seed);
 
 ind.id <- paste0("IND", formatC(1:num.ind, format="d", flag="0", digits=floor(log10(num.ind))));
-poi.id <- paste0("r", formatC(1000000*runif(num.poi), format="d", flag="0", digits=8));
+poi.id <- unique(paste0("rs", formatC(10000000*runif(2*num.poi), format="d", flag="0", digits=8)))[1:num.poi];
+
+
+write.table(data.frame("ind"=sort(sample(ind.id, size=400, replace=FALSE)), stringsAsFactors=FALSE), file=subject.subset.file, quote=FALSE, na="", row.names=FALSE, col.names=TRUE);
+write.table(data.frame("rsID"=sort(sample(poi.id, size=40000, replace=FALSE)), stringsAsFactors=FALSE), file=poi.subset.file, quote=FALSE, na="", row.names=FALSE, col.names=TRUE);
+
 
 covar.df <- data.frame("ind"=ind.id,  "age" = as.integer(rnorm(num.ind, 50, 7)),
                           "sex"=c("M","F")[ceiling(2*runif(num.ind))],

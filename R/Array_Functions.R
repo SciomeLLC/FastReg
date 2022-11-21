@@ -61,7 +61,6 @@ ginv <- function (X, tol = sqrt(.Machine$double.eps))  {
                                                t(Xsvd$u[, Positive, drop = FALSE]))
 }
 
-
 gsolve3D <- function(a,b=NULL) {
   p <- dim(a)[3];
   if(!is.null(b)) {

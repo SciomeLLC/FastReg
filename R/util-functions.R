@@ -38,7 +38,7 @@ POI.transform <- function(G, effect.type="additive") {
 }
 
 
-add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NULL, ref.level=NULL, colinearity.rsq=0.99) {
+add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NULL, ref.level=NULL, colinearity.rsq=0.99, verbose=1) {
   nS <- nrow(df);
   if(is.null(X.mat)) X.mat <- matrix(0.0, nrow=nS, ncol=0, dimnames=list(rownames(df), NULL));
   if(nrow(X.mat)!=nS) stop("number of rows for X.mat and df argument do not match")
@@ -47,8 +47,8 @@ add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NUL
     stop(paste(cv,  "is not present in df"));
   }
 
-  if(!cv.type %in% c("numeric", "categorical", "ordinal")) {
-    stop("cv.type must be either numeric, categorical or ordinal");
+  if(!cv.type %in% c("numeric", "categorical")) {
+    stop("cv.type must be either numeric, categorical");
   }
 
   if((cv.type == "numeric") & inherits(df[,cv], "character")) {
@@ -67,12 +67,13 @@ add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NUL
       if(ncol(X.mat)==0) levels <- c(ref.level,levels);
 
       nl <- length(levels);
-      if(cv.type=="categorical") {
-        for(lev in levels) candidate.cols[[lev]] <- 1*(df[,cv] == lev);
+      for(lev in levels) candidate.cols[[lev]] <- 1*(df[,cv] == lev);
+
+      if(ncol(X.mat)==0) {
+        names(candidate.cols) <- paste0(cv, "(", names(candidate.cols),")");
       } else {
-        for(d in 1:nl) candidate.cols[[levels[d]]] <- 1*(df[,cv] %in% levels[1:d]);
+        names(candidate.cols) <- paste0(cv, "(", names(candidate.cols), " vs. ", ref.level,")");
       }
-      names(candidate.cols) <- paste0(cv, "(", names(candidate.cols),")");
       if(standardize) stop("standardization of non-numeric variable not permitted")
   }
 
@@ -103,7 +104,11 @@ add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NUL
     sse<- sum((y-Z%*%ginv(t(Z)%*%Z)%*%(t(Z)%*%y))^2);
     rsquared <- 1-sse/ssa;
     remove(list=c("y","Z","w"))
-    if(rsquared<=colinearity.rsq) retain[d] <- TRUE;
+    if(rsquared<=colinearity.rsq) {
+        retain[d] <- TRUE;
+    } else {
+      cat(candidate.cols[d], "was not added to design matrix due to potential of colinearity\n");
+    }
   }
 
   candidate.cols <- candidate.cols[which(retain)];
@@ -114,7 +119,7 @@ add.covar <- function(df, cv, cv.type, standardize=FALSE, X.mat=NULL, levels=NUL
 }
 
 
-createDesignMatrix <- function(df, covariates=NULL, covariate.type=NULL, covariate.standardize=NULL, no.intercept=FALSE, covariate.levels=NULL, covariate.ref.level=NULL, colinearity.rsq=0.99) {
+createDesignMatrix <- function(df, covariates=NULL, covariate.type=NULL, covariate.standardize=NULL, no.intercept=FALSE, covariate.levels=NULL, covariate.ref.level=NULL, colinearity.rsq=0.99, verbose=1) {
   if(no.intercept!=1) {
       X.mat <- matrix(1, nrow=nrow(df), ncol=1, dimnames=list(rownames(df), "Intercept"));
   } else {
@@ -130,9 +135,9 @@ createDesignMatrix <- function(df, covariates=NULL, covariate.type=NULL, covaria
   }
 
   if(!identical(names(covariate.type), covariates)) stop("covariate.type names do not match covariates");
-  if(!all(covariate.type %in% c("numeric", "categorical", "ordinal", "count"))) stop("invalid covariate.type");
+  if(!all(covariate.type %in% c("numeric", "categorical",  "count"))) stop("invalid covariate.type");
 
-  ccov <- covariates[covariate.type %in% c("categorical", "ordinal")];
+  ccov <- covariates[covariate.type %in% c("categorical")];
 
 
   if(is.null(covariate.levels)) {
@@ -167,6 +172,7 @@ createDesignMatrix <- function(df, covariates=NULL, covariate.type=NULL, covaria
   }
 
   for(cv in covariates) {
+    if(verbose>0) cat("adding", cv, "to design matrix\n")
     X.mat <- add.covar(df=df, cv=cv, cv.type=covariate.type[cv], standardize=covariate.standardize[cv], X.mat=X.mat, levels=covariate.levels[[cv]], ref.level=covariate.ref.level[[cv]], colinearity.rsq=colinearity.rsq);
   }
 
