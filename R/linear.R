@@ -1,5 +1,5 @@
-# performs linear regression
-linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filter.fun=NULL, G.transform.args=NULL, G.filter.args=NULL, no.intercept=FALSE) {
+
+linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filter.fun=NULL, G.transform.args=NULL, G.filter.args=NULL, no.intercept=FALSE, ...) {
   if(is.null(Z)) Z <- matrix(1, nrow=nrow(Y), ncol=1,dimnames=list(rownames(Y),"Intercept"));
 
   if(is.null(X)) {
@@ -32,7 +32,6 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
   }
 
 
-
   if(is.null(G.transform.args)) {
     G.transform.args <- list(effect.type="dosage");
   }
@@ -40,7 +39,6 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
   if(!is.null(G.transform.fun)) {
     G <- do.call(G.transform.fun, c(list(G=G), G.transform.args));
   }
-
 
   xy.na <- which(rowSums(is.na(X))>0 |  rowSums(is.na(Z))>0 | is.na(Y));
   if(length(xy.na)>0) {
@@ -90,9 +88,7 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
 
   Y <- Y%*%One.V;
 
-
-
-    ################ Using custom written function because 3D array multiplication is not available in R
+  ################ Using custom written function because 3D array multiplication is not available in R
 
 
 	  XtX[1:nX,1:nX,] <- matmult3D(f_t, X);
@@ -111,7 +107,6 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
 		XtX <- gsolve3D(a=XtX);
 
     beta <- matmultSolve(a=XtX, b=XtY);
-
 
 		mu <- X%*%beta[1:nX, , drop=FALSE]; ## NUM_SUBJECTS x NUM_VARIANT
 		for(j in 1:nZ) mu <- mu + G*(Z[,j,drop=FALSE]%*%beta[nX + j,,drop=FALSE]);

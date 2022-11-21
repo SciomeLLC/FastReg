@@ -36,7 +36,7 @@ parseConfigFile <- function(file, delim="\t", comment.char="#", protected.args=N
       ival <- lapply(ival, FUN=function(x) unlist(strsplit(x, split=",")))
     }
 
-    if(iname %in% c("POI.file.delim","pheno.file.delim", "covar.file.delim")) {
+    if(iname %in% c("POI.file.delim","pheno.file.delim", "covar.file.delim", "POI.subset.file.delim", "subject.subset.file.delim")) {
       if(ival == "tab") {
         ival <- "\t";
       } else if(ival=="comma") {
@@ -46,6 +46,9 @@ parseConfigFile <- function(file, delim="\t", comment.char="#", protected.args=N
       }
     }
 
+    na.ival <- (ival=="NA")
+    if(any(na.ival)) ival[na.ival] <- NA;
+
 
     if(!(iname %in% protected.args)) args[[iname]] <- ival;
   }
@@ -53,7 +56,6 @@ parseConfigFile <- function(file, delim="\t", comment.char="#", protected.args=N
   invisible(args);
 }
 
-# change default behavior for standardization
 assign.default.values <- function(args) {
   if(!is.null(args)) {
     protected.args <- names(args);
@@ -80,9 +82,10 @@ assign.default.values <- function(args) {
   if(!("outputfile.format" %in% protected.args)) args[["outputfile.format"]] <-"long";
   if(!("output.exclude.covar" %in% protected.args)) args[["output.exclude.covar"]] <- 0;
   if(!("poi.block.size" %in% protected.args)) args[["poi.block.size"]] <- 0;
-  if(!("num.cores" %in% protected.args)) args[["num.cores"]] <- parallel::detectCores();
+  if(!("num.cores" %in% protected.args)) args[["num.cores"]] <- 1;
 
   if(!("covariate.terms" %in% protected.args)) args[["covariate.terms"]] <- NULL;
+  if(!("max.iter" %in% protected.args)) args[["max.iter"]] <- 6;
 
 
   if(!("POI.effect.type" %in% protected.args))   args[["POI.effect.type"]] <- ifelse(args[["POI.type"]]=="genotypes", "additive", "dosage");
@@ -100,6 +103,14 @@ validate.args <- function(args) {
   if(!file.exists(args[["pheno.file"]])) stop("pheno.file does not exist");
   if(!file.exists(args[["covar.file"]])) stop("covar.file does not exist");
   if(!file.exists(args[["POI.file"]])) stop("POI.file does not exist");
+  if(!is.null(args[["POI.subset.file"]])) {
+    if(!file.exists(args[["POI.subset.file"]])) stop("POI.subset.file does not exist")
+  }
+
+  if(!is.null(args[["subject.subset.file"]])) {
+    if(!file.exists(args[["subject.subset.file"]])) stop("subject.subset.file does not exist")
+  }
+
   if(!dir.exists(args[["output.dir"]])) {
       if(!dir.create(args[["output.dir"]], recursive=TRUE, showWarnings=FALSE)) stop("output.dir does  could not be created")
   }
