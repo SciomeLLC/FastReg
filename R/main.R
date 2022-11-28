@@ -148,7 +148,6 @@ FastReg <- function(config.file=NULL, ...) {
   if(args[["poi.block.size"]]==0) {
     ### place holder function to compute poi.block.size
     if(args[["verbose"]]>0) cat("Estimating POI block size\n")
-
     args[["poi.block.size"]] <- estimate.poi.block.size(num.poi=num.POI, num.ind=length(common.ind), poi.type=args[["poi.type"]], num.cores=args[["num.cores"]])
   }
 

@@ -1,103 +1,68 @@
-FROM centos:centos7
+FROM ubuntu
 
-# Setup EPEL
-RUN yum -y install epel-release && yum -y update
+RUN apt-get update && apt-get install -y build-essential 
 
-# set locales
-RUN echo "LANG=en_US.utf8" >> /etc/locale.conf \
-    && localedef -c -f UTF-8 -i en_US en_US.UTF-8 \
-    && export LC_ALL=en_US.UTF-8
 
-RUN yum makecache && yum -y install \
-    which \
-    libgfortran \
-    gcc-gfortran \
-    gcc \
-    gcc-c++ \
-    libatlas-base-dev \
-    bzip2-devel \
-    cairo \
-    libcurl4-openssl-dev \
-    libcurl-devel \
+ENV DEBIAN_FRONTEND=noninteractive 
+RUN apt-get -y install \
+    gfortran \
+    bzip2 \
+    libcairo2-dev \
+    libssl-dev \
     libgsl-dev \
     libicu-dev \
-    xz-devel \
-    nlopt-devel \
-    nlopt \
-    pango \
-    pcre2-devel \
-    pcre-devel \
+    libnlopt-dev \
+    libpcre3 \
+    libpcre3-dev \
+    libpcre2-dev \
     libssl-dev \
-    libtcl8.6 \
-    libtiff-devel \
-    tk-8.6.8 \
-    libxml2-devel \
-    locales \
-    tzdata \
-    zlib-devel \
+    tk \
+    pandoc \
     wget \
     make \
-    pandoc \
-    openssl-devel \
-    java \
     perl \
-    hdf5-devel \
-    # BLAS libraries
-    openblas-devel \
-    lapack-devel \
-    scalapack-common \
-    openmpi-devel \
-    openmpi \
-    scalapack-openmpi-devel \
-    scalapack-openmpi \
-    scalapack-openmpi-static 
+    libhdf5-serial-dev \
+    libopenblas-dev \
+    libblas-dev \
+    liblapack-dev \
+    openmpi-bin \
+    libopenmpi-dev \
+    cmake \
+    fakeroot \
+    default-jdk
 
+RUN apt-get -y install curl linux-tools-common libopenblas-openmp-dev libopenblas-serial-dev libopenblas64-openmp-dev libopenblas64-pthread-dev libopenblas64-serial-dev libblis-openmp-dev libblis-pthread-dev libblis-serial-dev libblis64-openmp-dev libblis64-pthread-dev libblis64-serial-dev libblas64-dev liblapack64-dev
 
-# install latest version of cmake
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.4/cmake-3.23.4.tar.gz \
-    && tar -zxvf cmake-3.23.4.tar.gz \
-    && cd cmake-3.23.4/ \
-    && ./bootstrap \
-    && make \
-    && make install \
-    && cd /
+# # install flexiblas
+# RUN curl -O https://csc.mpi-magdeburg.mpg.de/mpcsc/software/flexiblas/flexiblas-3.2.1.tar.gz \
+#     && tar -xzvf flexiblas-3.2.1.tar.gz \
+#     && cd flexiblas-3.2.1 \
+#     && fakeroot dpkg-buildpackage -us -uc \
+#     && dpkg -i ../libflexiblas-*.deb
 
-# install flexiblas
-RUN curl -O https://csc.mpi-magdeburg.mpg.de/mpcsc/software/flexiblas/flexiblas-3.2.1.tar.gz \
-    && tar -xzvf flexiblas-3.2.1.tar.gz \
-    && cd flexiblas-3.2.1 \
-    && mkdir build \
-    && cd build \
-    && cmake ../ \
-    && make \
-    && make install
+#     # && mkdir build \
+#     # && cd build \
+#     # && cmake ../ \
+#     # && make \
+#     # && make install
 
-RUN echo -e "\nLD_LIBRARY_PATH=/usr/local/lib64 \nexport LD_LIBRARY_PATH" >> ~/.bashrc && source ~/.bashrc
+# RUN echo -e "\nLD_LIBRARY_PATH=/usr/local/lib64 \nexport LD_LIBRARY_PATH" >> ~/.bashrc && source ~/.bashrc
 
-# install latest version of R
-RUN curl -O https://cran.rstudio.com/src/base/R-4/R-4.2.1.tar.gz \
-    && tar -xzvf R-4.2.1.tar.gz \
-    && cd R-4.2.1 \
-    && ./configure \
-    --prefix=/opt/R/4.2.1 \
-    --enable-memory-profiling \
-    --enable-R-shlib \
-    --enable-BLAS-shlib \
-    --with-blas=flexiblas \
-    --with-lapack \
-    --with-x=no \
-    --with-readline=no \
-    && make \
-    && make install \
-    && ln -s /opt/R/4.2.1/bin/R /usr/local/bin/R \
-    && ln -s /opt/R/4.2.1/bin/Rscript /usr/local/bin/Rscript \
-    && cd /
-
-RUN echo "options(repos=c('http://cran.us.r-project.org'))" >> ~/.Rprofile
-RUN Rscript -e "install.packages('flexiblas')"
-
-RUN mkdir R && mkdir data && mkdir tests
-COPY ./tests /tests
-COPY ./data /data
-COPY ./R /R
-CMD ["bash"]
+# # install latest version of R
+# RUN curl -O https://cran.rstudio.com/src/base/R-4/R-4.2.1.tar.gz \
+#     && tar -xzvf R-4.2.1.tar.gz \
+#     && cd R-4.2.1 \
+#     && ./configure \
+#     --prefix=/opt/R/4.2.1 \
+#     --enable-memory-profiling \
+#     --enable-R-shlib \
+#     --enable-BLAS-shlib \
+#     --with-blas=flexiblas \
+#     --with-lapack \
+#     --with-x=no \
+#     --with-readline=no \
+#     && make \
+#     && make install \
+#     && ln -s /opt/R/4.2.1/bin/R /usr/local/bin/R \
+#     && ln -s /opt/R/4.2.1/bin/Rscript /usr/local/bin/Rscript \
+#     && cd /
