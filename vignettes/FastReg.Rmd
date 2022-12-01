@@ -1,0 +1,69 @@
+---
+title: "FastReg"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{FastReg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+---
+Pre-requisites: 
+- BLAS libraries installed
+- R compiled with flexiblas (optional but recommended) - see Dockerfile for an example
+---
+
+---
+Configuration file:
+- create a configuration file - see data/example.bin.config 
+File options:
+- pheno.file - relative path to phenotype file. Contains outcomes that will be modelled. 
+- phenotype - column name to be modelled from the phenotype file
+- pheno.file.delim - delimiter used in phenotype file - tab|space|comma
+- pheno.rownames.cols - column to be treated as the subject identifier when matching across files. Can be multiple columns.
+- subject.subset.rowname.cols - column to be treated as the subject identifier when matching across files
+- subject.subset.file (optional) - relative path to subset subject file 
+- subject.subset.delim - delimiter used in subject subset file - tab|space|comma
+- covar.file - relative path to covariates file
+- covar.rowname.cols - column to be treated as the subject identifier when matching across files
+- covar.file.delim - delimiter used in covariates file - tab|space|comma
+- POI.file - relative path to POI file 
+- POI.subset.file (optional) - relative path to subset POI file 
+- POI.subset.file.delim - delimiter used in POI subset file - tab|space|comma
+- POI.file.delim - delimiter used in POI file - tab|space|comma
+- POI.file.format - file format - text|h5
+- POI.subset.rowname.col - column to be treated as the subject identifier when matching across files
+- regression.type - logistic|linear
+- covariates	(optional) column names of the covariates file - comma separated
+- covariate.type	(optional) column data type for covariates file - comma separated (numeric|categorical) 
+- covariate.standardize	(optional) which covariate to be standardized (1|0 - comma separated) 
+- covariate.levels	(optional) how many unique values for categorical columns. (; separated for covariate, comma separated for each unique value) 
+- covariate.ref.level	(optional) First alphabetically sorted value (comma separated) 
+- output.dir - relative path to directory for output. Directory will be created if it doesn't exist
+- output.file.format - long|tall
+- output.exclude.covar - 0|1
+- hwe.threshold - 0.00-1.00
+- maf.threshold - 0.00-1.00
+- POI.type - genotypes|numerical (dosage value data type)
+- POI.effect.type - additive|dominant|recessive
+- no.intercept - 0|1 - to include the intercept term or not in the model
+- colinearity.rsq - r-squared threshold value to be used during the iterative addition of covariates (default - 0.99)
+- poi.block.size - (optional) block size 
+- max.iter - max iterations 
+- max.cores - (optional) max cores to use 
+- verbose - 0|1, for debugging
+---
+
+```{r setup}
+devtools::load_all()
+# Call FastReg() with path to config file
+FastReg(config.file = "data/example.bin.config")
+```
+
