@@ -4,25 +4,30 @@
 #' @return numeric denoting elapsed.time
 #' @export
 
-# 8 digit precision for results
+
 FastReg <- function(config.file=NULL, ...) {
   protected.args <- list(...);
-
+  # parse configuration file if exists
   if(!is.null(config.file)) args <- parseConfigFile(file=config.file, delim="\t", comment.char="#", protected.args=protected.args);
 
+  # Assign default values if not specified in configuration file
   args <- assign.default.values(args=args);
   if(args[["verbose"]]>0) cat("Completed configuration parsing\n")
 
-
+  # Set and combine covariate information
   names(args[["covariate.type"]]) <- names(args[["covariate.levels"]]) <- names(args[["covariate.ref.level"]]) <- names(args[["covariate.standardize"]]) <- args[["covariates"]]
 
+  # validate configuration file and args
   validate.args(args);
   if(args[["verbose"]]>0) cat("Completed configuration preliminary validation\n")
 
+  # load phenotype file as data frame
   pheno.df <-  as.data.frame(fread(file=args[["pheno.file"]], sep=args[["pheno.file.delim"]], header=TRUE),as.is=TRUE);
   if(!all(args[["pheno.rowname.cols"]]  %in% colnames(pheno.df))) stop("invalid pheno.row.name.cols");
   if(!(args[["phenotype"]] %in% colnames(pheno.df))) stop("invalid phenotype");
   pheno.df.rownames <- do.call(paste, c(lapply(args[["pheno.rowname.cols"]], function(x) pheno.df[[x]]), c("sep"="_")));
+  
+  # Get duplicates from phenotypes and subjects and filter them
   duplicate.subjects <- which(duplicated(pheno.df.rownames));
   num.duplicate.subjects <- length(duplicate.subjects);
   if(num.duplicate.subjects>0) {
@@ -37,9 +42,11 @@ FastReg <- function(config.file=NULL, ...) {
   }
   remove(list=c("pheno.df.rownames", "num.duplicate.subjects", "duplicate.subjects"));
 
+  # load covariates file as data frame
   covar.df <- as.data.frame(fread(file=args[["covar.file"]], sep=args[["covar.file.delim"]], header=TRUE),as.is=TRUE);
   if(!all(args[["covar.rowname.cols"]] %in% colnames(covar.df))) stop("invaild covar.rowname.cols");
   covar.df.rownames <- do.call(paste, c(lapply(args[["covar.rowname.cols"]], function(x) covar.df[[x]]), c("sep"="_")));
+  # Get duplicates from covariates and subjects and filter them
   duplicate.subjects <- which(duplicated(covar.df.rownames));
   num.duplicate.subjects <- length(duplicate.subjects);
   if(num.duplicate.subjects>0) {
@@ -68,6 +75,7 @@ FastReg <- function(config.file=NULL, ...) {
     args[["POI.file.format"]] <- "h5";
   }
 
+  # Get overlapping individuals and filter them
   POI.Individuals <- get.POI.individuals(type=args[["POI.file.format"]], file=args[["POI.file"]]);
   if(args[["verbose"]]>0) {
     cat("Discovered", length(POI.Individuals), "non-duplicate subjects in POI.file\n");
@@ -99,6 +107,7 @@ FastReg <- function(config.file=NULL, ...) {
     cat("Discovered", length(POI.names), "unique POIs in POI.file\n");
   }
 
+  # Filter POI according to subset file if specified in configuration
   subset.POI <- POI.names;
   if(!is.null(args[["POI.subset.file"]])) {
     if(args[["verbose"]]>0) cat("Parsing POI.subset.file\n")
@@ -145,8 +154,8 @@ FastReg <- function(config.file=NULL, ...) {
     remove(list=c("cZ"));
   }
 
+  # Get optimal block size if not specified in configuration. Checks for cores, multi-threading and memory and finds optimal block size
   if(args[["poi.block.size"]]==0) {
-    ### place holder function to compute poi.block.size
     if(args[["verbose"]]>0) cat("Estimating POI block size\n")
     args[["poi.block.size"]] <- estimate.poi.block.size(num.poi=num.POI, num.ind=length(common.ind), poi.type=args[["poi.type"]], num.cores=args[["num.cores"]])
   }
@@ -158,7 +167,7 @@ FastReg <- function(config.file=NULL, ...) {
   poi.parser <- get.POI.Matrix(type=args[["POI.file.format"]], file.object=POI.object, POI.names=POI.names, POI.individuals=POI.Individuals);
 
   elapsed.time <- 0;
-
+  # Output regression results to specified output file in chunks of specified block size
    for(block in 1:num.poi.blocks) {
      if(args[["verbose"]]>1) cat("Processing POIs block: ", block, "\n");
 

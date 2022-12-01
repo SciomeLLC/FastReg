@@ -89,7 +89,7 @@ assign.default.values <- function(args) {
 
 
   if(!("POI.effect.type" %in% protected.args))   args[["POI.effect.type"]] <- ifelse(args[["POI.type"]]=="genotypes", "additive", "dosage");
-
+  if(!("verbose" %in% protected.args)) args[["verbose"]] <- 0;
   invisible(args);
 }
 
