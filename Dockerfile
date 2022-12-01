@@ -33,18 +33,18 @@ RUN apt-get -y install \
 
 RUN apt-get -y install curl linux-tools-common libopenblas-openmp-dev libopenblas-serial-dev libopenblas64-openmp-dev libopenblas64-pthread-dev libopenblas64-serial-dev libblis-openmp-dev libblis-pthread-dev libblis-serial-dev libblis64-openmp-dev libblis64-pthread-dev libblis64-serial-dev libblas64-dev liblapack64-dev
 
-# # install flexiblas
-# RUN curl -O https://csc.mpi-magdeburg.mpg.de/mpcsc/software/flexiblas/flexiblas-3.2.1.tar.gz \
-#     && tar -xzvf flexiblas-3.2.1.tar.gz \
-#     && cd flexiblas-3.2.1 \
-#     && fakeroot dpkg-buildpackage -us -uc \
-#     && dpkg -i ../libflexiblas-*.deb
+# install flexiblas
+RUN curl -O https://csc.mpi-magdeburg.mpg.de/mpcsc/software/flexiblas/flexiblas-3.2.1.tar.gz \
+    && tar -xzvf flexiblas-3.2.1.tar.gz \
+    && cd flexiblas-3.2.1 \
+    && fakeroot dpkg-buildpackage -us -uc \
+    && dpkg -i ../libflexiblas-*.deb
 
-#     # && mkdir build \
-#     # && cd build \
-#     # && cmake ../ \
-#     # && make \
-#     # && make install
+# && mkdir build \
+# && cd build \
+# && cmake ../ \
+# && make \
+# && make install
 
 # RUN echo -e "\nLD_LIBRARY_PATH=/usr/local/lib64 \nexport LD_LIBRARY_PATH" >> ~/.bashrc && source ~/.bashrc
 

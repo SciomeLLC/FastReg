@@ -39,7 +39,7 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
   if(!is.null(G.transform.fun)) {
     G <- do.call(G.transform.fun, c(list(G=G), G.transform.args));
   }
-
+  # check for NaNs
   xy.na <- which(rowSums(is.na(X))>0 |  rowSums(is.na(Z))>0 | is.na(Y));
   if(length(xy.na)>0) {
     X <- X[-xy.na, ,drop=FALSE];
