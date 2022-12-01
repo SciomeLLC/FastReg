@@ -185,7 +185,7 @@ convertPOI.TxtToH5 <- function(file, outfile, ...) {
 
 open.POI.file <-function(type, file, n=NULL, p=NULL) {
   if(type=="h5") {
-    object <- H5Fopen(file);
+    object <- h5file(file, mode="r");
     # object <- h5file(file, mode="r");
   } else {
     object <- BEDMatrix(file, n=n, p=p)
