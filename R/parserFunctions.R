@@ -89,6 +89,7 @@ assign.default.values <- function(args) {
 
 
   if(!("POI.effect.type" %in% protected.args))   args[["POI.effect.type"]] <- ifelse(args[["POI.type"]]=="genotypes", "additive", "dosage");
+  if(!("Pvalue.type" %in% protected.args)) args[["Pvalue.type"]] <- "t.dist";
   if(!("verbose" %in% protected.args)) args[["verbose"]] <- 0;
   invisible(args);
 }
@@ -129,9 +130,8 @@ validate.args <- function(args) {
   if(args[["colinearity.rsq"]]<0.8 | args[["colinearity.rsq"]]> 1) stop("colinearity.rsq out off conventional bound")
   if(!(args[["outputfile.format"]] %in% c("long","wide","specific"))) stop("invalid output.file.format");
   if(!(args[["output.exclude.covar"]] %in% c(0,1))) stop("output.exclude.covar must be 0 or 1");
-
+  if(!(args[["Pvalue.type"]] %in% c("t.dist", "norm.dist")) stop("Pvalue.type must be t.dist or norm.dist");
 }
-
 
 
 
