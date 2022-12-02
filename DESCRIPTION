@@ -1,6 +1,6 @@
 Package: FastReg
 Type: Package
-Title: What the Package Does (Title Case)
+Title: This is easy to use package to perform high throughput logistic and linear regression (FastReg)
 Version: 0.1.0
 Author: Deepak Mav, Shail Choksi, Matt Wheeler, John House
 Maintainer: Deepak Mav<deepak.mav@sciome.com>
