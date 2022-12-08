@@ -119,11 +119,7 @@ linearRegression <- function(Y, G, X=NULL, Z=NULL, G.transform.fun=NULL, G.filte
 
 		se_beta <- sqrt(abs(diag3D(XtX)));
 
-		beta <- t(beta);
-		se_beta <- t(se_beta);
 
-    pvl <- 2*(1-pnorm(abs(beta/se_beta)));
-    pvl[pvl>1] <-1;
 
   end.time <- proc.time();
 
@@ -131,7 +127,7 @@ elapsed.time <- (end.time-start.time);
 
 #cat("Successful Execution Took with Elapsed Time:", elapsed.time, "\n");
 
-return(list("beta"=beta, "se_beta"=se_beta, "pvl"=pvl,"N"=N,"DF"=DF, "filter.out"=filter.out, "elapsed.time"=elapsed.time));
+return(list("beta"=beta, "se_beta"=se_beta, "N"=N,"DF"=DF, "filter.out"=filter.out, "elapsed.time"=elapsed.time));
 
 }
 

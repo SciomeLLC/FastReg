@@ -22,7 +22,7 @@ parseConfigFile <- function(file, delim="\t", comment.char="#", protected.args=N
     ival <- config.vals[i,"Value"];
     if(nchar(sub("^[.]", "", sub("^[-]", "", gsub("[0-9]","",ival))))==0) ival <- as.numeric(ival); #convert to number as necessary
     iname <- gsub(" ",".", config.vals[i,"Argument"]); #create valid varnames
-    if(iname %in% c("covariates" , "covariate.type", "covariate.ref.level", "POI.Covar.interactions", "covariate.standardize")) {
+    if(iname %in% c("covariates" , "covariate.type", "covariate.ref.level", "POI.Covar.interactions", "covariate.standardize", "Split.by")) {
       ival <- unlist(strsplit(ival, split=","));
     }
 
@@ -75,6 +75,7 @@ assign.default.values <- function(args) {
   if(!("subject.subset.file" %in% protected.args)) args[["subject.subset.file"]] <- NULL;
   if(!("POI.subset.file" %in% protected.args)) args[["POI.subset.file"]] <- NULL;
   if(!("POI.Covar.Interactions" %in% protected.args)) args[["POI.Covar.Interactions"]] <- NULL;
+  if(!("Split.by" %in% protected.args)) args[["Split.by"]] <- NULL;
   if(!("output.dir" %in% protected.args)) {
       args[["output.dir"]] <- paste0("./",gsub("[.]txt", "",basename(args[["pheno.file"]])));
       dir.create(args[["output.dir"]], showWarnings=FALSE, recursive=TRUE);
@@ -130,7 +131,7 @@ validate.args <- function(args) {
   if(args[["colinearity.rsq"]]<0.8 | args[["colinearity.rsq"]]> 1) stop("colinearity.rsq out off conventional bound")
   if(!(args[["outputfile.format"]] %in% c("long","wide","specific"))) stop("invalid output.file.format");
   if(!(args[["output.exclude.covar"]] %in% c(0,1))) stop("output.exclude.covar must be 0 or 1");
-  if(!(args[["Pvalue.type"]] %in% c("t.dist", "norm.dist")) stop("Pvalue.type must be t.dist or norm.dist");
+  if(!(args[["Pvalue.type"]] %in% c("t.dist", "norm.dist"))) stop("Pvalue.type must be t.dist or norm.dist");
 }
 
 

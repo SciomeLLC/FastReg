@@ -9,7 +9,6 @@ FastReg <- function(config.file=NULL, ...) {
   protected.args <- list(...);
   # parse configuration file if exists
   if(!is.null(config.file)) args <- parseConfigFile(file=config.file, delim="\t", comment.char="#", protected.args=protected.args);
-
   # Assign default values if not specified in configuration file
   args <- assign.default.values(args=args);
   if(args[["verbose"]]>0) cat("Completed configuration parsing\n")
@@ -26,7 +25,7 @@ FastReg <- function(config.file=NULL, ...) {
   if(!all(args[["pheno.rowname.cols"]]  %in% colnames(pheno.df))) stop("invalid pheno.row.name.cols");
   if(!(args[["phenotype"]] %in% colnames(pheno.df))) stop("invalid phenotype");
   pheno.df.rownames <- do.call(paste, c(lapply(args[["pheno.rowname.cols"]], function(x) pheno.df[[x]]), c("sep"="_")));
-  
+
   # Get duplicates from phenotypes and subjects and filter them
   duplicate.subjects <- which(duplicated(pheno.df.rownames));
   num.duplicate.subjects <- length(duplicate.subjects);
@@ -129,15 +128,46 @@ FastReg <- function(config.file=NULL, ...) {
 
 
   POI.object <- open.POI.file(file=args[["POI.file"]], type=args[["POI.file.format"]], n=length(POI.Individuals), p=num.POI);
+  poi.parser <- get.POI.Matrix(type=args[["POI.file.format"]], file.object=POI.object, POI.names=POI.names, POI.individuals=POI.Individuals);
 
-  pheno.df <- pheno.df[common.ind,,drop=FALSE];
-  covar.df <- covar.df[common.ind,,drop=FALSE];
-  Y <- as.matrix(pheno.df[,args[["phenotype"]],drop=FALSE]);
+
+  if(!is.null(args[["Split.by"]])) {
+    if(!all(args[["Split.by"]] %in% colnames(covar.df))) stop("invalid Split.by argument");
+
+    nsplit.vars <- length(args[["Split.by"]]);
+
+    strata <- as.data.frame(do.call(table, covar.df[common.ind,args[["Split.by"]],drop=FALSE]), stringsAsFactors=FALSE, check.names=FALSE);
+    colnames(strata) <- c(args[["Split.by"]], "Freq");
+    strata <- strata[strata$Freq>0,];
+    strata <- strata[do.call(order, strata[, args[["Split.by"]],drop=FALSE]),];
+    nstrata <- nrow(strata);
+    stratum.index.list <- list();
+    stratum.id <- character(nstrata);
+    for(stratum in 1:nstrata) {
+        stratum.id[stratum] <- paste0("_",paste0(sapply(args[["Split.by"]], FUN=function(x) paste0(x,"=", strata[stratum, x])), collapse="_"));
+        stratum.index.list[[stratum.id[stratum]]] <- common.ind[rowSums(do.call(cbind, lapply(args[["Split.by"]], FUN=function(x) covar.df[common.ind,x]==strata[stratum,x])))==nsplit.vars]
+    }
+  } else {
+      nstrata <- 1;
+      stratum.index.list <- list(common.ind);
+      stratum.id <- "";
+  }
+
+ for(stratum in 1:nstrata) {
+
+   outfile.Suffix <- stratum.id[stratum];
+
+   if(!is.null(args[["Split.by"]]) & args[["verbose"]]>0) cat("Processing stratum:", sub("^_", "",stratum.id[stratum]), "\n");
+
+
+  ind.set <- stratum.index.list[[stratum]];
+
+  Y <- as.matrix(pheno.df[ind.set,args[["phenotype"]],drop=FALSE]);
 
   ## construct design matrix that includes covariate effects
   if(args[["verbose"]]>0) cat("Constructing Design Matrix\n")
 
-  X <- createDesignMatrix(df=covar.df, covariates=args[["covariates"]],
+  X <- createDesignMatrix(df=covar.df[ind.set,,drop=FALSE], covariates=args[["covariates"]],
                         covariate.type=args[["covariate.type"]],
                         covariate.standardize=args[["covariate.standardize"]],
                         no.intercept=args[["no.intercept"]],
@@ -146,7 +176,7 @@ FastReg <- function(config.file=NULL, ...) {
                         colinearity.rsq=args[["colinearity.rsq"]], verbose=args[["verbose"]]);
 
   ### construct aux design matrix that includes main and interaction POI effects
-  Z <- matrix(1, nrow=nrow(X), ncol=1, dimnames=list(common.ind, "Intercept"));
+  Z <- matrix(1, nrow=nrow(X), ncol=1, dimnames=list(ind.set, "Intercept"));
 
   if(!is.null(args[["POI.Covar.interactions"]])) {
     cZ <- do.call(c, lapply(args[["POI.Covar.interactions"]], function(x) which(regexpr(x,colnames(X))>0)));
@@ -157,29 +187,32 @@ FastReg <- function(config.file=NULL, ...) {
   # Get optimal block size if not specified in configuration. Checks for cores, multi-threading and memory and finds optimal block size
   if(args[["poi.block.size"]]==0) {
     if(args[["verbose"]]>0) cat("Estimating POI block size\n")
-    args[["poi.block.size"]] <- estimate.poi.block.size(num.poi=num.POI, num.ind=length(common.ind), poi.type=args[["poi.type"]], num.cores=args[["num.cores"]])
+    poi.block.size <- estimate.poi.block.size(num.poi=num.POI, num.ind=length(ind.set), poi.type=args[["poi.type"]], num.cores=args[["num.cores"]])
+  } else {
+      poi.block.size <- args[["poi.block.size"]]
   }
 
-  num.poi.blocks <- ceiling(num.POI/args[["poi.block.size"]]);
+  num.poi.blocks <- ceiling(num.POI/poi.block.size);
   if(args[["verbose"]]>0) {
-    cat("POIs will be processed in ", num.poi.blocks, "blocks each of size", args[["poi.block.size"]], "\n");
+    cat("POIs will be processed in ", num.poi.blocks, "blocks each of size", poi.block.size, "\n");
   }
-  poi.parser <- get.POI.Matrix(type=args[["POI.file.format"]], file.object=POI.object, POI.names=POI.names, POI.individuals=POI.Individuals);
 
   elapsed.time <- 0;
   # Output regression results to specified output file in chunks of specified block size
    for(block in 1:num.poi.blocks) {
      if(args[["verbose"]]>1) cat("Processing POIs block: ", block, "\n");
 
-      poi.block <- subset.POI[(args[["poi.block.size"]]*(block-1)+1):min(args[["poi.block.size"]]*block, num.POI)];
-      G <- poi.parser(poi=poi.block, ind=common.ind);
+      poi.block <- subset.POI[(poi.block.size*(block-1)+1):min(poi.block.size*block, num.POI)];
+      G <- poi.parser(poi=poi.block, ind=ind.set);
 
       if(args[["POI.type"]]=="genotypes") {
         if(args[["verbose"]]>1) cat("Performing MAF and HWE filtering\n");
 
         filter.res <- POI.filter(G=G, maf.threshold=args[["maf.threshold"]], hwe.threshold=args[["hwe.threshold"]]);
 
-        fwrite(filter.res[filter.res$keep==0, setdiff(colnames(filter.res), "keep")], file=file.path(args[["output.dir"]], "Filtered-POI.tsv"), sep="\t", append=(block>1));
+        fwrite(filter.res,  file=file.path(args[["output.dir"]], paste0("POI-Summary", outfile.Suffix,".tsv")),
+                  sep="\t", append=(block>1));
+
         if(all(filter.res$keep==0)) {
           if(args[["verbose"]]>1) cat("no POI passed filtering\n");
           next;
@@ -203,37 +236,48 @@ FastReg <- function(config.file=NULL, ...) {
         res <- linearRegression(Y=Y, G=G, X=X, Z=Z);
       }
 
+      nP <- nrow(res$beta);
+      nR <- nrow(filter.res);
+
+      res$pvl <- matrix(NA, nrow=nrow(res$beta), ncol=ncol(res$beta), dimnames=dimnames(res$beta));
+
+      if(args[["Pvalue.type"]]=="t.dist") {
+        res$pvl[] <- 2*(1-pt(abs(c(res$beta)/c(res$se_beta)), df=rep(res$DF, each=nP)));
+      } else if(args[["Pvalue.type"]]=="norm.dist") {
+        res$pvl[] <- 2*(1-pnorm(abs(c(res$beta)/c(res$se_beta))));
+      }
+
+      res$pvl[res$pvl>1] <- 1;
       elapsed.time <- elapsed.time + res$elapsed.time;
 
-    nP <- ncol(res$beta);
-    nR <- nrow(filter.res);
 
     if(args[["output.exclude.covar"]]==1) {
-      rN <- which(regexpr("POI$",colnames(res[["beta"]]))>0);
-      res[c("beta","se_beta", "pvl")] <- lapply(res[c("beta","se_beta","pvl")], function(x) x[,rN,drop=FALSE]);
+      rN <- which(regexpr("POI$",rownames(res[["beta"]]))>0);
+      res[c("beta","se_beta", "pvl")] <- lapply(res[c("beta","se_beta")], function(x) x[rN,,drop=FALSE]);
     }
 
 
     if(args[["verbose"]]>1) cat("saving results\n");
 
     if(args[["output.file.format"]]=="long") {
-      res <- cbind(filter.res[rep(1:nR, each=ncol(res$beta)),],  N=rep(res$N, each=nP), DF=rep(res$DF, each=nP), "Effect"=rep(colnames(res$beta), nR), "Estimate"=c(t(res$beta)), "Std Error"=c(t(res$se_beta)), "P-value"=c(t(res$pvl)));
-      fwrite(res, file=file.path(args[["output.dir"]], "Results.tsv"), append=(block>1), sep="\t");
+      res <- cbind(filter.res[rep(1:nR, each=nP), "POI",drop=FALSE],  N=rep(res$N, each=nP), DF=rep(res$DF, each=nP), "Effect"=rep(rownames(res$beta), nR), "Estimate"=c(res$beta), "Std Error"=c(res$se_beta), "P-value"=c(res$pvl));
+      fwrite(res, file=file.path(args[["output.dir"]], paste0("Results", outfile.Suffix,".tsv")), append=(block>1), sep="\t");
     } else if(args[["output.file.format"]]=="wide") {
-      colnames(res$beta) <- paste(colnames(res$beta), "Estimate");
-      colnames(res$se_beta) <- paste(colnames(res$se_beta), "Std Error");
-      colnames(res$pvl) <- paste(colnames(res$pvl), "P-value");
+      rownames(res$beta) <- paste(rownames(res$beta), "Estimate");
+      rownames(res$se_beta) <- paste(rownames(res$se_beta), "Std Error");
+      rownames(res$pvl) <- paste(rownames(res$pvl), "P-value");
 
-      res <- cbind(filter.res,  N=res$N, DF=res$DF, "Estimate"=res$beta, "Std Error"=res$se_beta, "P-value"=res$pvl);
-      fwrite(res, file=file.path(args[["output.dir"]], "Results.tsv"), append=(block>1), sep="\t");
+      res <- cbind(filter.res[, "POI",drop=FALSE],  N=res$N, DF=res$DF, "Estimate"=t(res$beta), "Std Error"=t(res$se_beta), "P-value"=t(res$pvl));
+      fwrite(res, file=file.path(args[["output.dir"]], paste0("Results", outfile.Suffix, ".tsv")), append=(block>1), sep="\t");
     } else {
         for(en in colnames(res$beta)) {
-          fwrite(cbind(filter.res,  N=res$N, DF=res$DF, "Estimate"=res$beta[,en], "Std Error"=res$se_beta[,en], "P-value"=res$pvl[,en]),
-                    file=file.path(args[["outdir"]], paste0(en, ".tsv")), sep="\t", append=(block>1));
+          fwrite(cbind(filter.res[, "POI", drop=FALSE],  N=res$N, DF=res$DF, "Estimate"=res$beta[en,], "Std Error"=res$se_beta[en,], "P-value"=res$pvl[en,]),
+                    file=file.path(args[["outdir"]], paste0(en, outfile.Suffix, ".tsv")), sep="\t", append=(block>1));
         }
     }
 
    }
+  }
 
   ## close POI file connection
   close.POI.file(type=args[["POI.file.format"]], POI.object);
