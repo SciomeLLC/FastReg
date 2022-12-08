@@ -1,11 +1,9 @@
-library("rhdf5") # bioconductor
-library(parallel)
-library(memuse)
+#' @importFrom parallel detectCores
+#library(memuse)
 
-has_flexiblas = require(flexiblas)
 
 # pass arguments for max_cores to use
-estimate.poi.block.size <- function(num.poi, num.ind, poi.type, num.cores) {
+estimate.poi.block.size <- function(num.poi, num.ind, poi.type, num.cores, has_flexiblas=require(flexiblas)) {
   has_blas <- TRUE
   cores <- detectCores(logical = TRUE)
   os <- Sys.info()[["sysname"]]
