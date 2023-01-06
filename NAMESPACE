@@ -1,1 +1,6 @@
+import(memuse)
+import(data.table)
+import(foreach)
+import(hdf5r)
+import(parallel)
 exportPattern("^[[:alpha:]]+")

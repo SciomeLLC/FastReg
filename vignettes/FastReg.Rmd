@@ -17,7 +17,6 @@ knitr::opts_chunk$set(
 ---
 Pre-requisites: 
 - BLAS libraries installed
-- R compiled with flexiblas (optional but recommended) - see Dockerfile for an example
 ---
 
 ---
@@ -64,6 +63,5 @@ File options:
 ```{r setup}
 devtools::load_all()
 # Call FastReg() with path to config file
-FastReg(config.file = "data/example.bin.config")
+FastReg(config.file = "../data/vignette.example.config")
 ```
-
