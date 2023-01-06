@@ -83,7 +83,7 @@ assign.default.values <- function(args) {
   if(!("outputfile.format" %in% protected.args)) args[["outputfile.format"]] <-"long";
   if(!("output.exclude.covar" %in% protected.args)) args[["output.exclude.covar"]] <- 0;
   if(!("poi.block.size" %in% protected.args)) args[["poi.block.size"]] <- 0;
-  if(!("num.cores" %in% protected.args)) args[["num.cores"]] <- 1;
+  if(!("num.cores" %in% protected.args)) args[["num.cores"]] <- NULL;
 
   if(!("covariate.terms" %in% protected.args)) args[["covariate.terms"]] <- NULL;
   if(!("max.iter" %in% protected.args)) args[["max.iter"]] <- 6;

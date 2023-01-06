@@ -1,54 +1,37 @@
-#' @importFrom parallel detectCores
-#library(memuse)
-
-
-# pass arguments for max_cores to use
-estimate.poi.block.size <- function(num.poi, num.ind, poi.type, num.cores, has_flexiblas=require(flexiblas)) {
-  has_blas <- TRUE
-  cores <- detectCores(logical = TRUE)
+estimate.poi.block.size <- function(num.poi, num.ind, poi.type, max.cores = NULL) {
+  num_threads <- detectCores(logical = TRUE)
+  if (!is.null(max.cores) && num_threads > max.cores) {
+    num_threads <- max.cores
+  }
   os <- Sys.info()[["sysname"]]
-  # MacOS
-  if (os == "Darwin") {
+
+  if (os == "Windows") {
+    x <- system2("wmic", args = "OS get FreePhysicalMemory /Value", stdout = TRUE)
+    x <- x[grepl("FreePhysicalMemory", x)]
+    x <- gsub("FreePhysicalMemory=", "", x, fixed = TRUE)
+    x <- gsub("\r", "", x, fixed = TRUE)
+    memfree <- as.numeric(x) * 1024 # convert to bytes
+  } else if (os == "Darwin") { # MacOS
     memfree <- as.numeric(system("top -l1 -s0 | awk '/PhysMem/ {print $6+0}'", intern = TRUE)) * 1024 * 1024 # convert to bytes
-  } else {
+  } else { # Linux
     memfree <- as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", intern = TRUE)) * 1024 # convert to bytes
   }
-  if (has_flexiblas) {
-    # check for BLAS and multi-threading
-    if (flexiblas_avail()) {
-      blas_libs <- flexiblas_list()
-      has_blas <- length(blas_libs) > 0
-      num_threads <- flexiblas_get_num_threads()
-      idx <- flexiblas_load_backend(backends)
 
-      blas_lib_id <- 1
-
-      for (id in idx){
-        flexiblas_switch(id)
-        num_threads_temp <- flexiblas_get_num_threads()
-        if (num_threads_temp > num_threads){
-          num_threads = num_threads_temp
-          blas_lib_id <- id
-        }
-      }
-    }
-    # switch to blas library with highest threads capability
-    flexiblas_switch(blas_lib_id)
+  # keep one thread idle
+  if (num_threads > 1) {
+    num_threads <- num_threads - 1
   }
 
-  if (!is.null(num.cores) && num.cores *2 < num_threads) {
-    num_threads = num.cores * 2
-  }
+  matrix_size <- exp(log(num.poi) + log(num.ind))
+  float_size <- 8L # 8 bytes per number assuming 64-bit numbers
+  data_size <- exp(log(matrix_size) + log(as.numeric(float_size)) + log(40L))
+  master_thread_memory <- 524288000L # 500mb
 
-  float_size <- 8 # 8 bytes per number assuming 64-bit numbers
-  data_size <- num.poi * num.ind * float_size
-  # shave off 2 workers / 1 core
-  master_thread_memory <- 524288000 # 500mb
-  chunks <- data_size / ((memfree - master_thread_memory) * 0.8)
+  chunks <- (data_size + master_thread_memory) / ((memfree) * 0.8)
   chunked_dim1 <- floor(num.poi / chunks)
-  chunk_size <- list(chunked_dim1, num.ind)
-  chunked_parallel <- floor(chunked_dim1 / num_threads)
+  # chunk_size <- list(chunked_dim1, num.ind)
 
+  chunked_parallel <- floor(chunked_dim1 / num_threads)
+  # stop("No overlapping individuals found in POI, pheno, covar files");
   return(chunked_parallel)
 }
-
