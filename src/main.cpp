@@ -98,28 +98,16 @@ void FastRegCpp(const std::string config_file) {
         create_Z_matrix(covar_matrix, config.POI_covar_interactions, covar_poi_interaction_matrix); // n individuals x 1 or 1 + num interacting poi covars
 
         int num_threads, chunk_size;
-        if(config.poi_block_size == 0) {
-            std::vector<int> chunk_size_num_threads = estimate_poi_block_size(num_poi, ind_set.size(), config.POI_type, config.max_cores);
-            chunk_size = chunk_size_num_threads[0];
-            num_threads = chunk_size_num_threads[1];
-            if (chunk_size > num_poi) {
-                chunk_size = num_poi;
-            }
-        }
-        else {
-            chunk_size = config.poi_block_size;
-            if(config.max_cores > 0) {
-                num_threads = config.max_cores;
-            } else {
-                num_threads = 1;
-            }
-        }
+        std::vector<int> chunk_size_num_threads = estimate_poi_block_size(num_poi, ind_set.size(), config.POI_type, config.max_cores, config.poi_block_size);
+
+        chunk_size = chunk_size_num_threads[0];
+        num_threads = chunk_size_num_threads[1];
         Rcout << "POI block size: " << chunk_size << std::endl;
         Rcout << "threads: " << num_threads << std::endl;
+
         int num_poi_blocks = (int) std::ceil((double)num_poi/(double)chunk_size);
         Rcout << "POIs will be processed in " << num_poi_blocks << " blocks each of size " << chunk_size << std::endl;
 
-        
         std::vector<int> nan_idx; 
         std::vector<std::string> ind_set_filtered; 
         // identify missing values for covar, pheno matrix
@@ -209,9 +197,10 @@ void FastRegCpp(const std::string config_file) {
                 arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
                 std::unordered_map<std::string, int> filtered_keep = filtered.col_names;
                 std::vector<std::string> poi_col_names = poi_matrix.sort_map(false);
+
                 int cols_erased = 0;
                 for(unsigned int i = 0; i < poi_col_names.size(); i++) {
-                    if(filtered_col[cols_erased] == i) {
+                    if(filtered_col.n_elem > 0 && filtered_col[cols_erased] == i) {
                         poi_matrix.col_names.erase(poi_col_names[i]);
                         cols_erased++;
                     }
@@ -220,6 +209,7 @@ void FastRegCpp(const std::string config_file) {
                     }
                 }
                 poi_matrix.data.shed_cols(filtered_col);
+
                 Rcout << "transforming POI and writing statistics" << std::endl;
                 srt_cols_2 = poi_matrix.sort_map(false);
                 transform_poi(poi_matrix, config.POI_effect_type);
@@ -240,12 +230,12 @@ void FastRegCpp(const std::string config_file) {
             FRMatrix neglog10_pvl;
             neglog10_pvl.data = arma::mat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
 
-
             for (auto& col_name : covar_matrix.col_names) {
                 beta_est.row_names[col_name.first] = col_name.second;
                 se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];
                 neglog10_pvl.row_names[col_name.first] = beta_est.row_names[col_name.first];
             }
+
             for (auto& col_name : covar_poi_interaction_matrix.col_names) {
                 beta_est.row_names[col_name.first] = covar_matrix.col_names.size() + col_name.second;
                 se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];

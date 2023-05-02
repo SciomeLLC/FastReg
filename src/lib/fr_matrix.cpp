@@ -254,8 +254,8 @@ void FRMatrix::write_summary(std::string dir, std::string name, int stratum) {
         outfile << std::endl;
     }
     
-    outfile << std::fixed << std::setprecision(17);
     std::stringstream buffer;
+    buffer << std::fixed << std::setprecision(17);
     std::vector<std::string> ordered_col_names = sort_map(false);
     int row_idx = 0;
     for (const auto& col_name : ordered_col_names) {
@@ -301,10 +301,8 @@ void FRMatrix::write_results(
     std::vector<std::string> sorted_row_names = beta.sort_map(true);
     // create dir if it doesn't exist
     fs::create_directory(dir);
-    // Rcpp::Rcout << "Dir created or already exists" << std::endl;
     if (poi_names.size() != beta.data.n_cols) {
         Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
-        // return;
     }
 
     std::stringstream ss;
@@ -328,10 +326,9 @@ void FRMatrix::write_results(
         outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
         Rcpp::Rcout << "File created for writing." << std::endl;
     }
-
-    outfile << std::fixed << std::setprecision(17);
     
     std::stringstream buffer;
+    buffer << std::fixed << std::setprecision(17);
     for (int col = 0; col < (int)beta.data.n_cols; col++) {
         std::string poi_name = poi_names[col];
         arma::uvec w2_col = W2.col(col);

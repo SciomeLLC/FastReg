@@ -23,7 +23,7 @@ class Covariate {
         ref_level = cov_ref_level;
         standardize = cov_standardize > 0;
         levels = split(cov_levels, ",");
-
+        
         if(standardize && type != "numeric") {
             Rcpp::stop("Standardization of non-numeric variable not permitted");
         }
@@ -40,17 +40,13 @@ class Covariate {
             split_result.push_back(token);
             val.erase(0, pos + delim.length());
         }
-
         split_result.push_back(val);
 
         return split_result;
     }
 
-    // arma::vec standardize_col(const arma::vec& col) {
-    //     return (col - arma::mean(col, 0))/arma::stddev(col, 0);
-    // }
-
     void add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_rsq) {
+
         int cov_idx = df.col_names[name];
         int nS = df.data.n_rows;
         int num_cols = X_mat.data.n_cols;
@@ -114,7 +110,6 @@ class Covariate {
                 temp_col_names.push_back(col_name);
                 count++;
             }
-            // candidate_cols.data.print();
         }
 
         if (standardize) {
@@ -122,12 +117,9 @@ class Covariate {
                 arma::vec col = candidate_cols.data.col(i);
                 col = (col - arma::mean(col)) / arma::stddev(col);
                 candidate_cols.data.col(i) = col;
-
-                // Rcpp::Rcout << "standardized " << name << " " << candidate_cols.col_names[name] << std::endl;
             }
         }
         
-        // int nl = candidate_cols.data.n_cols;
         int temp_col_count = 0;
         std::unordered_map<std::string, int> retained_col_map;
         std::vector<std::string> retained_cols;
@@ -136,7 +128,6 @@ class Covariate {
                 retained_col_map[can_col_name] = candidate_cols.col_names[can_col_name] + num_cols;
                 retained_cols.push_back(can_col_name);
                 temp_col_count++;
-                // retain[col_idx] = true;
                 continue;
             }
             arma::mat y = arma::reshape(candidate_cols.data.col(candidate_cols.col_names[can_col_name]), nS, 1);
@@ -147,13 +138,8 @@ class Covariate {
             arma::uvec w = arma::uvec(nS, arma::fill::ones);
 
             for(int i = 0; i < nS; i++) {
-              if(y.row(i).has_nan()) {
+              if(y.row(i).has_nan() || Z.row(i).has_nan()) {
                 w[i] = 0;
-                continue;
-              }
-              if(Z.row(i).has_nan()) {
-                w[i] = 0;
-                continue;
               }
             }
 
@@ -161,7 +147,6 @@ class Covariate {
             y = arma::mat(y.rows(find(w > 0)));
 
             double ssa = arma::accu(arma::square(y));
-
             arma::mat zty = Z.t()*y;
             arma::mat g = arma::pinv(Z.t()*Z);
             double sse = arma::accu(arma::square(y - Z * g * zty));
@@ -170,12 +155,10 @@ class Covariate {
             if (rsquared <= colinearity_rsq) {
                 retained_col_map[can_col_name] = temp_col_count + num_cols;
                 retained_cols.push_back(can_col_name);
+                temp_col_count++;
             } else {
-                Rcpp::Rcout << "Candidate column " << name << " was not added to design matrix due to potential of colinearity." << std::endl;
+                Rcpp::Rcout << "Candidate column " << can_col_name << " was not added to design matrix due to potential of colinearity." << std::endl;
             }
-            temp_col_count++;
-            //Rcpp::Rcout << "join horiz Z covar" << std::endl;
-            // Z = arma::join_horiz(Z, candidate_cols.data.col(can_col_name.second));
         }
         
         for (auto retained_col : retained_cols) {

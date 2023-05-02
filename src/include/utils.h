@@ -35,7 +35,6 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
     res.row_names = {
         {"Freq (a)", 0}, {"Freq (b)", 1}, {"MAF", 2}, {"HWE Chisq", 3}, {"HWE Pvalue", 4}, {"keep", 5}};
     res.data = arma::mat(res.row_names.size(), G.data.n_cols, arma::fill::ones);
-    
     umat isnan_mat = umat(G.data.n_rows, G.data.n_cols, arma::fill::zeros);
     for (uword col = 0; col < G.data.n_cols; ++col) {
       uvec nonfinite_indices = arma::find_nonfinite(G.data.col(col));
@@ -48,13 +47,11 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
     G_copy.data.replace(datum::nan, 0);
     
     rowvec nS = conv_to<rowvec>::from(G.data.n_rows - arma::sum(isnan_mat, 0));
-    // Rcpp::Rcout << nS << " G n_cols: " << G_copy.data.n_cols << std::endl;
     rowvec nS_2 = 2 * nS;
     rowvec a_freq = arma::sum(G_copy.data, 0) / (nS_2);
     rowvec b_freq = 1 - a_freq;
 
     rowvec maf_freq = min(a_freq, b_freq);
-    // Rcpp::Rcout << " maf_freq: " << maf_freq << std::endl;
     rowvec aa_of = conv_to<rowvec>::from(arma::sum(G.data == 0, 0));
     rowvec ab_of = conv_to<rowvec>::from(arma::sum(G_copy.data == 1, 0));
     rowvec bb_of = conv_to<rowvec>::from(arma::sum(G_copy.data == 2, 0));
@@ -67,7 +64,6 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
     rowvec HWE_chisq = (square(aa_of - aa_ef) / aa_ef) + (square(ab_of - ab_ef) / ab_ef) + (square(bb_of - bb_ef) / bb_ef);
     rowvec HWE_pval = 1 - (Rcpp::pchisq(Rcpp::as<Rcpp::NumericVector>(Rcpp::wrap(HWE_chisq)), 1, true, false));
     rowvec keep = conv_to<rowvec>::from((maf_freq >= maf_threshold) % (HWE_pval >= hwe_threshold));
-    
     res.data.row(0) = a_freq;
     res.data.row(1) = b_freq;
     res.data.row(2) = maf_freq;
@@ -75,8 +71,6 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
     res.data.row(4) = HWE_pval;
     res.data.row(5) = keep;
     
-    // Rcpp::Rcout << "calculated res: " << std::endl;
-    // res.data.print();
     return res;
 }
 
@@ -195,7 +189,6 @@ FRMatrix create_design_matrix(
     if (covariates.empty()) return X;
 
     for(auto &cv : covariates) {
-      // Rcpp::Rcout << "adding " << cv.name << " to design matrix" << std::endl;
       cv.add_to_matrix(df, X, colinearity_rsq);
     }
     Rcpp::Rcout << "Created design matrix" << std::endl;
