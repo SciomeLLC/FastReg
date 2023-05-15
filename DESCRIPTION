@@ -1,15 +1,34 @@
 Package: FastReg
 Type: Package
 Title: This is easy to use package to perform high throughput logistic and linear regression (FastReg)
-Version: 0.1.0
-Author: Deepak Mav, Shail Choksi, Matt Wheeler, John House
+Version: 0.4.7
+Authors@R:
+    c(
+    person(given = "Shail",
+           family = "Choksi",
+           role = c("aut", "cre"),
+           email = "shail.choksi@sciome.com"),
+    person(given = "Matt",
+           family = "Wheeler",
+           role = "aut"),
+    person(given = "Deepak",
+           family = "Mav",
+           role = "aut"),
+    person(given = "John",
+           family = "House",
+            role="ctb"),
+    person(given = "Adam",
+           family = "Burkholder",
+           role = "ctb")
+    )
 Maintainer: Deepak Mav<deepak.mav@sciome.com>
 Description: Efficiently perform large scale simple linear and logistic regression analysis
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Imports: data.table, BEDMatrix, hdf5r, parallel, foreach, memuse
-Suggests: 
-    knitr,
-    rmarkdown
-VignetteBuilder: knitr
+Depends: R (>= 4.0), RcppArmadillo
+biocViews:
+Imports: RcppArmadillo, rhdf5, Rcpp
+LinkingTo: Rcpp, RcppArmadillo
+NeedsCompilation: yes
+RoxygenNote: 7.2.3
