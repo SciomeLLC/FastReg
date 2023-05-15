@@ -13,7 +13,8 @@ Authors@R:
            role = "aut"),
     person(given = "Deepak",
            family = "Mav",
-           role = "aut"),
+           role = "aut",
+           email = "deepak.mav@sciome.com"),
     person(given = "John",
            family = "House",
             role="ctb"),
@@ -21,7 +22,7 @@ Authors@R:
            family = "Burkholder",
            role = "ctb")
     )
-Maintainer: Deepak Mav<deepak.mav@sciome.com>
+Maintainer: Deepak Mav<software.support@sciome.com>
 Description: Efficiently perform large scale simple linear and logistic regression analysis
 License: What license is it under?
 Encoding: UTF-8
