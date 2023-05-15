@@ -233,18 +233,20 @@ void FastRegCpp(const std::string config_file) {
 
             if (config.POI_type == "genotypes") {
                 Rcout << "Filtering MAF and HWE" << std::endl;
-                FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
 
-                if (all(filtered.data.row(5) == 0)) {
+                FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
+                arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
+
+                if (filtered.data.n_cols == 0 || filtered_col.n_elem == 0) {
                     Rcout << "no POI passed filtering" << std::endl;
                     continue;
                 }
-                arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
-                std::unordered_map<std::string, int> filtered_keep = filtered.col_names;
-                std::vector<std::string> poi_col_names = poi_matrix.sort_map(false);
+                
+                std::vector<std::string> poi_col_names = filtered.sort_map(false);
                 int cols_erased = 0;
+
                 for(unsigned int i = 0; i < poi_col_names.size(); i++) {
-                    if(filtered_col[cols_erased] == i) {
+                    if (cols_erased < filtered_col.n_elem && filtered_col[cols_erased] == i) {
                         poi_matrix.col_names.erase(poi_col_names[i]);
                         cols_erased++;
                     }
@@ -252,7 +254,9 @@ void FastRegCpp(const std::string config_file) {
                         poi_matrix.col_names[poi_col_names[i]] = poi_matrix.col_names[poi_col_names[i]] - cols_erased;
                     }
                 }
+
                 poi_matrix.data.shed_cols(filtered_col);
+
                 Rcout << "transforming POI and writing statistics" << std::endl;
                 srt_cols_2 = poi_matrix.sort_map(false);
                 transform_poi(poi_matrix, config.POI_effect_type);
@@ -311,33 +315,10 @@ void FastRegCpp(const std::string config_file) {
             if (config.regression_type == "logistic") {
                 Rcout << "Started logistic regression" << std::endl;
                 regression.reset(new LogisticRegression());
-                // logistic_regression(
-                //     covar_matrix, 
-                //     pheno_matrix, 
-                //     poi_matrix, 
-                //     covar_poi_interaction_matrix, 
-                //     W2, 
-                //     beta_est, 
-                //     se_beta, 
-                //     neglog10_pvl, 
-                //     config.max_iter, 
-                //     config.p_value_type == "t.dist"
-                // );
             }
             else {
                 Rcout << "Started linear regression" << std::endl;
                 regression.reset(new LinearRegression ());
-                // linear_regression(
-                //     covar_matrix, 
-                //     pheno_matrix, 
-                //     poi_matrix, 
-                //     covar_poi_interaction_matrix, 
-                //     W2, 
-                //     beta_est, 
-                //     se_beta,
-                //     neglog10_pvl,
-                //     config.p_value_type == "t.dist"
-                // );
             }
             regression->run(
                 covar_matrix, 
