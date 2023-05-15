@@ -1,0 +1,19 @@
+PKG_CXXFLAGS =  -I./lib/ -I./include/ $(SHLIB_OPENMP_CXXFLAGS) -DR_COMPILATION -O3 -Wall $(RHDF5_CFLAGS) -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_USE_HDF5 -DARMA_64BIT_WORD 
+PKG_LIBS = $(LAPACK_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@ 
+
+MAIN         = $(wildcard *.cpp)
+MAIN_CODE    = $(wildcard lib/*.cpp)
+OBJECTS      = $(MAIN:.cpp=.o) $(MAIN_CODE:.cpp=.o)
+
+# Include all C++ files in src/ and its subdirectories
+# SOURCES=@SRC_SOURCES@ 
+
+# Obtain the object files
+# OBJECTS=$(SOURCES:.cpp=.o) 
+
+# Make the shared object
+all: $(SHLIB)
+
+# Provide recipe to remove all objects
+clean:
+	@rm -f $(OBJECTS)
