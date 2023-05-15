@@ -21,6 +21,35 @@
 using namespace Rcpp;
 using namespace arma;
 
+#ifndef __has_include
+static_assert(false, "__has_include not supported");
+#else
+#  if __cplusplus >= 201703L && __has_include(<filesystem>)
+#    include <filesystem>
+namespace fs = std::filesystem;
+#  elif __has_include(<experimental/filesystem>)
+#    include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#  endif
+#endif
+
+bool dir_exists(const std::string& path) {
+    fs::path directory(path);
+    return fs::is_directory(directory);
+}
+
+void delete_dir(const std::string& path) {
+    fs::path directory(path);
+    
+    if (fs::exists(directory) && fs::is_directory(directory)) {
+        fs::remove_all(directory);
+        std::cout << "Directory deleted: " << path << std::endl;
+    }
+    else {
+        std::cout << "Directory does not exist: " << path << std::endl;
+    }
+}
+
 template<typename T, typename U>
 bool isin(const T& value, const U& container) {
     return std::find(std::begin(container), std::end(container), value) != std::end(container);
@@ -46,6 +75,10 @@ void FastRegCpp(const std::string config_file) {
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
     H5File poi(config.POI_file);
 
+    // Clean up previous run 
+    if(dir_exists(config.output_dir)) {
+        delete_dir(config.output_dir);
+    }
     // Find common individuals
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
