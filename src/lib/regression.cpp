@@ -11,7 +11,7 @@
 #include <covariate.h>
 #include <stats.hpp>
 #include <regression.h>
-#pragma once
+
 #undef pnorm
 using namespace arma;
 
