@@ -65,8 +65,9 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     }
 
     double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
+    int max_num_matrix = 6;
     int float_size = 8; // 8 bytes per number assuming 64-bit numbers
-    double data_size = std::exp(std::log(matrix_size) + std::log(float_size)); // + std::log(40.0));
+    double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
     unsigned long long master_thread_memory = 524288000ULL; // 500mb
     double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(num_poi / chunks);
