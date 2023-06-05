@@ -139,7 +139,7 @@ Create a configuration file. All available configuration options are listed belo
 
 Change the path below to where you have downloaded the tar.gz package.
 
-install.packages(\"../../FastReg_0.4.2.tar.gz\", repos = NULL, type = \"source\");
+install.packages(\"../../FastReg_0.4.10.tar.gz\", repos = NULL, type = \"source\");
 
 library(\"FastReg\");
 
