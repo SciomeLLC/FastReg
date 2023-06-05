@@ -53,7 +53,14 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     #else
     os = "Linux";
     #endif
-
+    if (os == "Darwin") {
+        Rcpp::warning("**********\n " \
+                    "This installation of FastReg has detected a Mac which does not support OpenMP.\n" \
+                    "It should still work but in single-threaded mode.\n" \
+                    "This warning message should not occur on Windows or Linux.\n"\
+                    "**********");
+        num_threads = 1;
+    }
     unsigned long long memfree = getTotalSystemMemory();
     
     Rcpp::Rcout << "Free memory: " << memfree/(1024*1024*1024) << "GB" << std::endl;
