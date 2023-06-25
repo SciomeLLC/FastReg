@@ -45,8 +45,17 @@ public:
         arma::umat& W2, 
         std::vector<std::string> poi_names, 
         std::string dir, 
-        std::string file_name, 
+        std::string file_name,
         int stratum,
         bool exclude_covars
     );
+    static void write_convergence_results(
+        FRMatrix& beta, 
+        std::vector<std::string> poi_names, 
+        std::string dir, 
+        std::string file_name, 
+        arma::colvec& rel_err,
+        arma::colvec& abs_err,
+        int stratum
+    ); 
 };

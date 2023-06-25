@@ -23,6 +23,10 @@ arma::colvec RegressionBase::norm_dist(arma::colvec abs_z, int df, bool log_form
     return -1*(arma::log_normpdf(abs_z) + log(2))/log(10);
 }
 
+arma::colvec pmean(arma::colvec a, arma::colvec b) {
+    return (a + b)/2;
+}
+
 void LogisticRegression::run(
     FRMatrix& cov, 
     FRMatrix& pheno, 
@@ -32,6 +36,8 @@ void LogisticRegression::run(
     FRMatrix& beta_est,
     FRMatrix& se_beta,
     FRMatrix& neglog10_pvl,
+    arma::colvec& beta_rel_errs,
+    arma::colvec& beta_abs_errs,
     int max_iter, 
     bool is_t_dist) {
     arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
@@ -47,6 +53,7 @@ void LogisticRegression::run(
 
         // Initialize beta
         arma::colvec beta(n_parms, arma::fill::zeros);
+        arma::colvec beta_old = arma::colvec(beta);
         arma::mat cov_w_mat = cov.data;
         arma::mat int_w_mat = interactions.data; 
         arma::ucolvec w2_col = W2.col(poi_col);
@@ -58,7 +65,6 @@ void LogisticRegression::run(
         arma::span first = arma::span(0, first_chunk);
         arma::span second = arma::span(first_chunk + 1, second_chunk);
         // arma::span col_1 = arma::span(0,0);
-
         
         for (int iter = 0; iter < max_iter; iter++) {
             arma::mat eta(cov.data.n_rows, 1, arma::fill::zeros);
@@ -86,13 +92,18 @@ void LogisticRegression::run(
             arma::mat B = arma::mat(n_parms, 1, arma::fill::zeros);
             B.submat(first, arma::span(0, 0)) = cov_w_mat.t()*z;
             B.submat(second, arma::span(0, 0)) = int_w_mat.t()*z;
-
-            beta = beta + arma::solve(A, B);
+            if (iter == max_iter - 2) {
+                beta_old = beta;
+            }
+            beta = beta + arma::solve(A, B, arma::solve_opts::fast);
         }
+
+        arma::colvec beta_diff = arma::abs(beta-beta_old);
+        beta_abs_errs.at(poi_col) = beta_diff.max();
+        beta_rel_errs.at(poi_col) = (beta_diff / beta).max();
         
         int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
         arma::colvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A))));
-
         beta_est.data.col(poi_col) = beta;
         se_beta.data.col(poi_col) = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A))));
         neglog10_pvl.data.col(poi_col) = (*dist_func)(arma::abs(beta/temp_se), df, true);
@@ -108,6 +119,8 @@ void LinearRegression::run(
     FRMatrix& beta_est,
     FRMatrix& se_beta,
     FRMatrix& neglog10_pvl,
+    arma::colvec& beta_rel_errs,
+    arma::colvec& beta_abs_errs,
     int max_iter, 
     bool is_t_dist) {
 
@@ -146,7 +159,7 @@ void LinearRegression::run(
         arma::mat B = arma::mat(n_parms, 1, arma::fill::zeros);
         B.submat(first, col_1) = cov_w_mat.t()*z;
         B.submat(second, col_1) = int_w_mat.t()*z;
-        beta = arma::solve(A, B);
+        beta = arma::solve(A, B, arma::solve_opts::fast);
 
         beta_est.data.col(poi_col) = beta;
         arma::mat eta(cov.data.n_rows, 1, arma::fill::zeros);

@@ -243,7 +243,12 @@ void H5File::get_POI_matrix(
     } else {
         H5Dread(dataset_id, H5T_NATIVE_DOUBLE, memspace_id, dataspace_id, H5P_DEFAULT, G.data.memptr());
     }
-    G.data.replace(-2.1475e+09, arma::datum::nan);
+    // arma::uvec indices = arma::find(G.data, -2147483648);
+    // Rcpp::Rcout << indices.size() << std::endl;
+    G.data.replace(-2147483648, arma::datum::nan);
+    // indices = arma::find(G.data, arma::datum::nan);
+    // Rcpp::Rcout << indices.size() << std::endl;
+    // Rcpp::Rcout << G.data.size() << std::endl;
     // Close resources
     H5Sclose(memspace_id);
     H5Sclose(dataspace_id);

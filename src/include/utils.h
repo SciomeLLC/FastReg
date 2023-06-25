@@ -25,6 +25,11 @@ void transform_poi(FRMatrix &G, std::string effect_type = "additive") {
 FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_threshold = 0.05) {
 
     FRMatrix res;
+    // Rcpp::Rcout << "G.data" << std::endl;
+    // G.data.brief_print();
+    // Rcpp::Rcout << "maf_threshold: " << maf_threshold << std::endl;
+    // Rcpp::Rcout << "hwe_threshold: " << hwe_threshold << std::endl;
+
     res.col_names = G.col_names;
     res.row_names = {
         {"Freq (a)", 0}, {"Freq (b)", 1}, {"MAF", 2}, {"HWE Chisq", 3}, {"HWE Pvalue", 4}, {"keep", 5}};
@@ -59,9 +64,15 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
     rowvec bb_ef = square(1 - p) % nS;
 
     rowvec HWE_chisq = (square(aa_of - aa_ef) / aa_ef) + (square(ab_of - ab_ef) / ab_ef) + (square(bb_of - bb_ef) / bb_ef);
-    rowvec HWE_pval = 1 - (Rcpp::pchisq(Rcpp::as<Rcpp::NumericVector>(Rcpp::wrap(HWE_chisq)), 1, true, false));
-    rowvec keep = conv_to<rowvec>::from((maf_freq >= maf_threshold) % (HWE_pval >= hwe_threshold));
     
+    // Rcpp::Rcout << " HWE_chisq: " << HWE_chisq << std::endl;
+    rowvec HWE_pval = 1 - (Rcpp::pchisq(Rcpp::as<Rcpp::NumericVector>(Rcpp::wrap(HWE_chisq)), 1, true, false));
+    // Rcpp::Rcout << " HWE_pval: " << HWE_pval << std::endl;
+    rowvec keep = conv_to<rowvec>::from(conv_to<rowvec>::from((maf_freq >= maf_threshold)) && conv_to<rowvec>::from((HWE_pval >= hwe_threshold)));
+    
+    // Rcpp::Rcout << " (maf_freq >= maf_threshold): " << (maf_freq >= maf_threshold) << std::endl;
+    // Rcpp::Rcout << " (HWE_pval >= hwe_threshold): " << (HWE_pval >= hwe_threshold) << std::endl;
+    // Rcpp::Rcout << " keep " << keep << std::endl;
     res.data.row(0) = a_freq;
     res.data.row(1) = b_freq;
     res.data.row(2) = maf_freq;

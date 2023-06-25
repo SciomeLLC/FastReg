@@ -83,7 +83,7 @@ void FastRegCpp(const std::string config_file) {
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
     std::vector<std::string> intersected_ind = intersect_row_names(common_ind, poi.individuals);
-
+    Rcout << "hwe.threshold: " << config.hwe_threshold << std::endl;
     Rcout << intersected_ind.size() << " unique subjects were found to be common in pheno.file, covar.file, and POI.file" << std::endl;
     if (intersected_ind.empty()) {
         stop("No overlapping individuals found in POI, pheno, and covar files");
@@ -198,6 +198,9 @@ void FastRegCpp(const std::string config_file) {
         );
         
         poi.set_memspace(poi.individuals.size(), chunk_size);
+
+        double nonconvergence_status = 0.0;
+        double total_filtered_pois = 0.0;
         for (int block = 0; block < num_poi_blocks; block ++) {
             Rcout << "Processing POIs block: " << block + 1 << std::endl;
 
@@ -231,13 +234,13 @@ void FastRegCpp(const std::string config_file) {
             auto end_time = std::chrono::high_resolution_clock::now();
             Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
-            if (config.POI_type == "genotypes") {
+            if (config.POI_type == "genotype") {
                 Rcout << "Filtering MAF and HWE" << std::endl;
 
                 FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
                 arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
 
-                if (filtered.data.n_cols == 0 || filtered_col.n_elem == 0) {
+                if (filtered.data.n_cols == 0 || filtered_col.n_elem == poi_matrix.data.n_cols) {
                     Rcout << "no POI passed filtering" << std::endl;
                     continue;
                 }
@@ -246,7 +249,7 @@ void FastRegCpp(const std::string config_file) {
                 int cols_erased = 0;
 
                 for(unsigned int i = 0; i < poi_col_names.size(); i++) {
-                    if (cols_erased < filtered_col.n_elem && filtered_col[cols_erased] == i) {
+                    if ((unsigned) cols_erased < filtered_col.n_elem && filtered_col[cols_erased] == i) {
                         poi_matrix.col_names.erase(poi_col_names[i]);
                         cols_erased++;
                     }
@@ -265,6 +268,8 @@ void FastRegCpp(const std::string config_file) {
                 end_time = std::chrono::high_resolution_clock::now();
                 Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             }
+
+            total_filtered_pois += poi_matrix.data.n_cols;
             
             start_time = std::chrono::high_resolution_clock::now();
             // 1 phenotype 
@@ -272,6 +277,8 @@ void FastRegCpp(const std::string config_file) {
             FRMatrix se_beta;
             int num_parms = covar_poi_interaction_matrix.data.n_cols + covar_matrix.data.n_cols;
             beta_est.data = arma::mat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+            arma::colvec beta_rel_errs = arma::colvec(poi_matrix.data.n_cols, arma::fill::zeros);
+            arma::colvec beta_abs_errs = arma::colvec(poi_matrix.data.n_cols, arma::fill::zeros);
             se_beta.data = arma::mat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
             
             FRMatrix neglog10_pvl;
@@ -320,6 +327,7 @@ void FastRegCpp(const std::string config_file) {
                 Rcout << "Started linear regression" << std::endl;
                 regression.reset(new LinearRegression ());
             }
+            // Allocate memory for convergence parameter and pass them to the regression
             regression->run(
                 covar_matrix, 
                 pheno_matrix, 
@@ -328,7 +336,9 @@ void FastRegCpp(const std::string config_file) {
                 W2, 
                 beta_est, 
                 se_beta, 
-                neglog10_pvl, 
+                neglog10_pvl,
+                beta_rel_errs,
+                beta_abs_errs,
                 config.max_iter, 
                 config.p_value_type == "t.dist"
             );
@@ -339,7 +349,17 @@ void FastRegCpp(const std::string config_file) {
             end_time = std::chrono::high_resolution_clock::now();
             Rcpp::Rcout << "Writing results for block " << block + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             poi_matrix.col_names.clear();
+            FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, "convergence", beta_rel_errs, beta_abs_errs, stratum);
+
+            arma::colvec convergence = conv_to<colvec>::from((beta_rel_errs > config.rel_conv_tolerance) && (beta_abs_errs > config.abs_conv_tolerance));
+            nonconvergence_status += arma::sum(convergence);
+
+
         }
-        
+        double noncovergence_percent = (nonconvergence_status/total_filtered_pois) * 100;
+        if (noncovergence_percent > 0) {
+            Rcpp::Rcout << nonconvergence_status << " out of " << total_filtered_pois << " (" << std::setprecision(2) << noncovergence_percent << "%) POIs did not meet relative and absolute convergence threshold." << std::endl;
+            Rcpp::Rcout << "See convergence_" << stratum << ".tsv for additional details." << std::endl;
+        }
     }
 }

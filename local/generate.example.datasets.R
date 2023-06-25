@@ -43,6 +43,7 @@ write.table(pheno.df[, c(1,3)], file=bin.pheno.file, sep="\t", row.names=FALSE, 
 remove(list="pheno.df");
 
 
+<<<<<<< Updated upstream:local/generate.example.datasets.R
 library("hdf5r");
 file.con <- H5File$new(poi.file, mode="w");
 file.con[["individuals"]] <- ind.id;
@@ -63,6 +64,28 @@ for(i in 1:num.poi) {
 }
 
 file.con[["values"]] <- t(values);
+=======
+# library("hdf5r");
+# file.con <- H5File$new(poi.file, mode="w");
+# file.con[["individuals"]] <- ind.id;
+# file.con[["predictors_of_interest"]] <- poi.id;
+#
+# maf <- runif(num.poi, min=0.05, max=0.5);
+# miss.rate <- runif(num.poi, min=0, max=0.1);
+
+# values <- matrix(0, ncol=num.poi, nrow=num.ind);
+# for(i in 1:num.poi) {
+#   dosage.val <- runif(num.ind);
+#   geno.val <- integer(num.ind);
+#   geno.val[dosage.val < (1-maf[i])^2] <- 0;
+#   geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
+#   geno.val[dosage.val > (1- maf[i]^2)] <- 2;
+#   geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
+#   values[,i] <- geno.val
+# }
+
+# file.con[["values"]] <- t(values);
+>>>>>>> Stashed changes:tests/generate.example.datasets.R
 file.con$close_all();
 remove(list=c("dosage.val","geno.val", "maf", "miss.rate"))
 

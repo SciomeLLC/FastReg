@@ -284,7 +284,6 @@ void FRMatrix::print() {
     }
 }
 
-
 void FRMatrix::write_results(
     FRMatrix& beta, 
     FRMatrix& se_beta, 
@@ -292,7 +291,7 @@ void FRMatrix::write_results(
     arma::umat& W2, 
     std::vector<std::string> poi_names, 
     std::string dir, 
-    std::string file_name, 
+    std::string file_name,
     int stratum, 
     bool exclude_covars) 
 {
@@ -325,7 +324,7 @@ void FRMatrix::write_results(
             Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
-        outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
+        outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val\tAbs Err\tRel Err" << std::endl;
         Rcpp::Rcout << "File created for writing." << std::endl;
     }
 
@@ -350,8 +349,63 @@ void FRMatrix::write_results(
             double std_error = se_beta.data.at(row, col);
             double neglog10_pval = neglog10.data.at(row, col);
             
-            buffer << poi_name << "\t" << N << "\t" << df << "\t" << effect_name << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval << std::endl;
+            buffer << poi_name << "\t" << N << "\t" << df << "\t" << effect_name << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval << "\t" << std::endl;
         }
+    }
+    outfile << buffer.str();
+    outfile.close();
+}
+
+void FRMatrix::write_convergence_results(
+    FRMatrix& beta, 
+    std::vector<std::string> poi_names, 
+    std::string dir, 
+    std::string file_name, 
+    arma::colvec& rel_err,
+    arma::colvec& abs_err,
+    int stratum) 
+{
+    std::vector<std::string> sorted_row_names = beta.sort_map(true);
+    // create dir if it doesn't exist
+    fs::create_directory(dir);
+    // Rcpp::Rcout << "Dir created or already exists" << std::endl;
+    if (poi_names.size() != beta.data.n_cols) {
+        Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
+        // return;
+    }
+
+    std::stringstream ss;
+    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << ".tsv";
+    std::string result_file = ss.str();
+    std::ofstream outfile;
+
+    if(fs::exists(result_file)) {
+        outfile.open(result_file, std::ios::app);
+        if (!outfile.is_open()) {
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            return;
+        }
+        // Rcpp::Rcout << "File already exists and opened for writing/appending." << std::endl;
+    } else {
+        outfile.open(result_file);
+        if (!outfile.is_open()) {
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            return;
+        }
+        outfile << "POI\tAbs Err\tRel Err" << std::endl;
+        Rcpp::Rcout << "File created for writing." << std::endl;
+    }
+
+    outfile << std::fixed << std::setprecision(17);
+    
+    std::stringstream buffer;
+    for (int col = 0; col < (int)beta.data.n_cols; col++) {
+        std::string poi_name = poi_names[col];
+        
+        double abs_err_val = abs_err.at(col);
+        double rel_err_val = rel_err.at(col);
+        
+        buffer << poi_name << "\t" << abs_err_val << "\t" << rel_err_val << std::endl;
     }
     outfile << buffer.str();
     outfile.close();

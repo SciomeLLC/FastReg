@@ -124,7 +124,7 @@ void Config::set_default_values()
         {"POI.file.delim", "tab"},
         {"pheno.file.delim", "tab"},
         {"covar.file.delim", "tab"},
-        {"POI.type", "genotypes"},
+        {"POI.type", "genotype"},
         {"POI.subset.file", ""},
         {"POI.covar.interactions", ""},
         {"split.by", ""},
@@ -136,7 +136,9 @@ void Config::set_default_values()
         {"Pvalue.type", "t.dist"},
         {"verbose", "1"},
         {"compress.results", "1"},
-        {"max.cores", "-1"}};
+        {"max.cores", "-1"}, 
+        {"rel.conv.tolerance", "0.0001"},
+        {"abs.conv.tolerance", "0.0001"}};
 
     for (auto item : defaults)
     {
@@ -246,6 +248,8 @@ void Config::validate_args()
     }
     p_value_type = temp;
 
+    rel_conv_tolerance = get<double>("rel.conv.tolerance");
+    abs_conv_tolerance = get<double>("abs.conv.tolerance");
     // required values
     pheno_file = values.at("pheno.file");
     covar_file = values.at("covar.file");
