@@ -100,7 +100,7 @@ void LogisticRegression::run(
 
         arma::colvec beta_diff = arma::abs(beta-beta_old);
         beta_abs_errs.at(poi_col) = beta_diff.max();
-        beta_rel_errs.at(poi_col) = (beta_diff / beta).max();
+        beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
         
         int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
         arma::colvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A))));

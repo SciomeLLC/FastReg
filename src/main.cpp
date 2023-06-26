@@ -73,6 +73,7 @@ void FastRegCpp(const std::string config_file) {
     double file_writing_time = 0.0;
     double poi_reading_time = 0.0;
     double regression_time = 0.0;
+    double memory_allocation_time = 0.0;
     Config config(config_file);
     FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim, config.pheno_rowname_cols);
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
@@ -86,7 +87,7 @@ void FastRegCpp(const std::string config_file) {
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
     std::vector<std::string> intersected_ind = intersect_row_names(common_ind, poi.individuals);
-    Rcout << "hwe.threshold: " << config.hwe_threshold << std::endl;
+    
     Rcout << intersected_ind.size() << " unique subjects were found to be common in pheno.file, covar.file, and POI.file" << std::endl;
     if (intersected_ind.empty()) {
         stop("No overlapping individuals found in POI, pheno, and covar files");
@@ -318,6 +319,7 @@ void FastRegCpp(const std::string config_file) {
             }
             
             end_time = std::chrono::high_resolution_clock::now();
+            memory_allocation_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Memory allocation timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             start_time = std::chrono::high_resolution_clock::now();
@@ -357,10 +359,12 @@ void FastRegCpp(const std::string config_file) {
             Rcpp::Rcout << "Writing results for block " << block + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             poi_matrix.col_names.clear();
 
-            start_time = std::chrono::high_resolution_clock::now();
-            FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, "convergence", beta_rel_errs, beta_abs_errs, stratum);
-            end_time = std::chrono::high_resolution_clock::now();
-            file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
+            if (config.regression_type == "logistic") {
+                start_time = std::chrono::high_resolution_clock::now();
+                FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, "convergence", beta_rel_errs, beta_abs_errs, stratum);
+                end_time = std::chrono::high_resolution_clock::now();
+                file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
+            }
 
             arma::colvec convergence = conv_to<colvec>::from((beta_rel_errs > config.rel_conv_tolerance) && (beta_abs_errs > config.abs_conv_tolerance));
             nonconvergence_status += arma::sum(convergence);
@@ -368,14 +372,15 @@ void FastRegCpp(const std::string config_file) {
 
         }
         double noncovergence_percent = (nonconvergence_status/total_filtered_pois) * 100;
-        if (noncovergence_percent > 0) {
+        if (noncovergence_percent > 0.0) {
             Rcpp::Rcout << nonconvergence_status << " out of " << total_filtered_pois << " (" << std::setprecision(2) << noncovergence_percent << "%) POIs did not meet relative and absolute convergence threshold." << std::endl;
             Rcpp::Rcout << "See convergence_" << stratum << ".tsv for additional details." << std::endl;
         }
     }
 
     Rcpp::Rcout << "Timing Summary: " << std::endl;
-    Rcpp::Rcout << "Reading HDF5: " << poi_reading_time / 1000.0 << "sec" << std::endl;
-    Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "sec" << std::endl;
-    Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "sec" << std::endl;
+    Rcpp::Rcout << "Reading HDF5: " << poi_reading_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Memory allocation: " << memory_allocation_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "s" << std::endl;
 }

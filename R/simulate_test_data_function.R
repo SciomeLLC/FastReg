@@ -8,7 +8,7 @@ library("rhdf5")
 #'@param bin.resp.mean numeric value between 0 and 1 denoting baseline incidence rate for binary response
 #'@param num.resp.mean numeric value denoting overall mean of numeric response
 #'@param num.resp.sd numeric value denoting overall standard deviation of numeric response
-#'@param poi.type character must be either "genotypes" or "dosage"
+#'@param poi.type character must be either "genotype" or "dosage"
 #'@param poi.chunk.size an integer denoting poi chunk size used during H5 file generation
 #'@param poi.compression.level an integer denoting compression level used during H5 file creation
 #'@param verbose logical to control display of progress messages (default=TRUE)
@@ -20,7 +20,7 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  bin.resp.mean = 0.2,
 								                  num.resp.mean = 24,
 								                  num.resp.sd = 5,
-								                  poi.type = "genotypes",
+								                  poi.type = "genotype",
 								                  poi.chunk.size = 100,
 								                  poi.compression.level=7,
                                   data.dir = "../input/",
@@ -30,7 +30,7 @@ simulate_test_dataset <- function(num.poi = 50000,
   covariates <- c("age", "sex", "eth", "treatment", "severity")
 
   # seed <- 12133;
-  #poi.type <- "genotypes"
+  #poi.type <- "genotype"
   #poi.chunk.size <- 100
   #poi.compression.level <- 7
   # data.dir <- "../input/"
@@ -123,7 +123,7 @@ simulate_test_dataset <- function(num.poi = 50000,
   num.poi.blocks <- ceiling(num.poi/poi.chunk.size);
 
 
-  if(poi.type=="genotypes") {
+  if(poi.type=="genotype") {
 	h5createDataset(file=poi.file, dataset="values", dims=c(num.ind,num.poi),
                 storage.mode = "integer",
 				chunk=c(num.ind,poi.chunk.size), level=poi.compression.level)
