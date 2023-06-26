@@ -70,6 +70,9 @@ std::vector<std::string> set_diff(const std::vector<std::string>& a, const std::
 
 // [[Rcpp::export]]
 void FastRegCpp(const std::string config_file) {
+    double file_writing_time = 0.0;
+    double poi_reading_time = 0.0;
+    double regression_time = 0.0;
     Config config(config_file);
     FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim, config.pheno_rowname_cols);
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
@@ -232,6 +235,7 @@ void FastRegCpp(const std::string config_file) {
             
             srt_cols_2 = poi_matrix.sort_map(false);
             auto end_time = std::chrono::high_resolution_clock::now();
+            poi_reading_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             if (config.POI_type == "genotype") {
@@ -266,6 +270,7 @@ void FastRegCpp(const std::string config_file) {
                 start_time = std::chrono::high_resolution_clock::now();
                 filtered.write_summary(config.output_dir, "POI_Summary", stratum);
                 end_time = std::chrono::high_resolution_clock::now();
+                file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
                 Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             }
 
@@ -344,12 +349,18 @@ void FastRegCpp(const std::string config_file) {
             );
             end_time = std::chrono::high_resolution_clock::now();
             Rcpp::Rcout << "regression timing for block " << block + 1 <<  "/" << num_poi_blocks << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+            regression_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             start_time = std::chrono::high_resolution_clock::now();
             FRMatrix::write_results(beta_est, se_beta, neglog10_pvl, W2, srt_cols, config.output_dir, "Results", stratum, config.output_exclude_covar);
             end_time = std::chrono::high_resolution_clock::now();
+            file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Writing results for block " << block + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             poi_matrix.col_names.clear();
+
+            start_time = std::chrono::high_resolution_clock::now();
             FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, "convergence", beta_rel_errs, beta_abs_errs, stratum);
+            end_time = std::chrono::high_resolution_clock::now();
+            file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
 
             arma::colvec convergence = conv_to<colvec>::from((beta_rel_errs > config.rel_conv_tolerance) && (beta_abs_errs > config.abs_conv_tolerance));
             nonconvergence_status += arma::sum(convergence);
@@ -362,4 +373,9 @@ void FastRegCpp(const std::string config_file) {
             Rcpp::Rcout << "See convergence_" << stratum << ".tsv for additional details." << std::endl;
         }
     }
+
+    Rcpp::Rcout << "Timing Summary: " << std::endl;
+    Rcpp::Rcout << "Reading HDF5: " << poi_reading_time / 1000.0 << "sec" << std::endl;
+    Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "sec" << std::endl;
+    Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "sec" << std::endl;
 }

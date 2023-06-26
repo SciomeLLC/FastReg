@@ -171,5 +171,9 @@ void LinearRegression::run(
         se_beta.data.col(poi_col) = arma::sqrt(mse * arma::abs(arma::diagvec(arma::pinv(A))));
         arma::mat temp_se = se_beta.data.col(poi_col);
         neglog10_pvl.data.col(poi_col) = dist_func(arma::abs(beta/temp_se), df, true);
+
+        // arma::colvec beta_diff = arma::abs(beta-beta_old);
+        // beta_abs_errs.at(poi_col) = beta_diff.max();
+        // beta_rel_errs.at(poi_col) = (beta_diff / beta).max();
     }
 }
