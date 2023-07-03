@@ -1,19 +1,5 @@
 // [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
-#include <string>
-#include <algorithm>
-#include <iterator>
-#include <vector>
-#include <chrono>
-#define R_NO_REMAP
-#include <Rmath.h>
-#include <fr_matrix.h>
-#include <covariate.h>
-#include <stats.hpp>
 #include <regression.h>
-
-#undef pnorm
-using namespace arma;
 
 arma::colvec RegressionBase::t_dist(arma::colvec abs_z, int df) {
 
@@ -23,7 +9,7 @@ arma::colvec RegressionBase::t_dist(arma::colvec abs_z, int df) {
 }
 
 arma::colvec RegressionBase::norm_dist(arma::colvec abs_z, int df) {
-    return -1*(stats2::pnorm(abs_z, true) + log(2))/log(10);
+    return -1*(stats2::pnorm(abs_z, 1.0, 1.0, true) + log(2))/log(10);
 }
 
 arma::colvec pmean(arma::colvec a, arma::colvec b) {
@@ -137,7 +123,7 @@ void LinearRegression::run(
     arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
     arma::span col_1 = arma::span(0,0);
     
-    arma::colvec (*dist_func)(arma::colvec, int, bool) = is_t_dist == true ? t_dist : norm_dist;
+    arma::colvec (*dist_func)(arma::colvec, int) = is_t_dist == true ? t_dist : norm_dist;
     
     // arma::colvec (*dist_func)(arma::colvec, int) = t_dist;
     #pragma omp parallel for
