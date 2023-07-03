@@ -64,17 +64,32 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
         }
 
         levels.erase(std::find(levels.begin(), levels.end(), ref_level));
+        // for (int i = 0; i < levels.size(); i ++) {
+        //     Rcpp::Rcout << levels.at(i) << std::endl;
+        // }
+        // Rcpp::Rcout << "ref_level: " << ref_level << std::endl;
         if(X_mat.data.n_cols == 0) {
             levels.insert(levels.begin(), ref_level);
         }
 
         int count = 0;
         std::vector<std::string> col_vals = df.get_col_str(name);
+        // if (ref_level == "Very Low") {
+        //     for (int k = 0; k < col_vals.size(); k++) {
+        //         Rcpp::Rcout << col_vals[k] << std::endl;
+        //     }
+        // }
         for (const std::string& lev : levels) {
             arma::mat res(df.data.n_rows, 1);
             for (arma::uword i = 0; i < df.data.n_rows; i++) {
+                
                 res(i, 0) = (col_vals[i] == lev) ? 1: 0;
+                // if (lev == "Very High") {
+                //     Rcpp::Rcout << col_vals[i] << std::endl;
+                // }
             }
+
+
 
             candidate_cols.data.insert_cols(count, res);
             std::string col_name;
@@ -87,6 +102,9 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
             candidate_cols.col_names[col_name] = count;
             temp_col_names.push_back(col_name);
             count++;
+            // Rcpp::Rcout << col_name << std::endl;
+            // Rcpp::Rcout << "for level: " << lev << " res sum: " << std::endl;
+            // arma::sum(res).print();
         }
         // candidate_cols.data.print();
     }
@@ -114,6 +132,9 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
             continue;
         }
         arma::mat y = arma::reshape(candidate_cols.data.col(candidate_cols.col_names[can_col_name]), nS, 1);
+        // Rcpp::Rcout << "Y sum for " << can_col_name << ": " << std::endl;
+        // arma::sum(y).print();
+
         arma::mat Z = X_mat.data;
         for (auto retained_col : retained_col_map) {
             Z = arma::join_horiz(Z, arma::mat(candidate_cols.data.col(candidate_cols.col_names[retained_col.first])));
@@ -131,9 +152,10 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
             }
         }
 
-        Z = Z.rows(find(w > 0));
-        y = arma::mat(y.rows(find(w > 0)));
-
+        Z = Z.rows(arma::find(w > 0));
+        y = arma::mat(y.rows(arma::find(w > 0)));
+        // Rcpp::Rcout << "Y dims: " << y.n_rows << "x" << y.n_cols << std::endl;
+        // Rcpp::Rcout << "Z dims: " << Z.n_rows << "x" << Z.n_cols << std::endl;
         double ssa = arma::accu(arma::square(y));
 
         arma::mat zty = Z.t()*y;
@@ -146,6 +168,11 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
             retained_cols.push_back(can_col_name);
             temp_col_count++;
         } else {
+            // Rcpp::Rcout << "zty: " << std::endl;
+            // zty.print();
+            // Rcpp::Rcout << "ssa: " << ssa << std::endl;
+            // Rcpp::Rcout << "sse: " << sse << std::endl;
+            // Rcpp::Rcout << "rsquared: " << rsquared << " colinearity_rsq: " << colinearity_rsq << std::endl;
             Rcpp::Rcout << "Candidate column " << can_col_name << " was not added to design matrix due to potential of colinearity." << std::endl;
         }
         //Rcpp::Rcout << "join horiz Z covar" << std::endl;

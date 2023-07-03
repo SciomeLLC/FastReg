@@ -87,7 +87,7 @@ void FastRegCpp(const std::string config_file) {
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
     std::vector<std::string> intersected_ind = intersect_row_names(common_ind, poi.individuals);
-    
+    Rcpp::Rcout << "intersected_ind: " << intersected_ind.size() << std::endl;
     Rcout << intersected_ind.size() << " unique subjects were found to be common in pheno.file, covar.file, and POI.file" << std::endl;
     if (intersected_ind.empty()) {
         stop("No overlapping individuals found in POI, pheno, and covar files");
@@ -127,12 +127,13 @@ void FastRegCpp(const std::string config_file) {
             config.no_intercept,
             config.colinearity_rsq
         ); // n individuals x # covariates
-
+        Rcpp::Rcout << "Covar matrix row x cols: " << covar_matrix.data.n_rows << "x" << covar_matrix.data.n_cols << std::endl;
         FRMatrix covar_poi_interaction_matrix;
         covar_poi_interaction_matrix.data = arma::mat(covar_matrix.data.n_rows, 1, arma::fill::ones);
         covar_poi_interaction_matrix.row_names = covar_matrix.row_names;
         covar_poi_interaction_matrix.col_names = {{"poi", 0}};
         create_Z_matrix(covar_matrix, config.POI_covar_interactions, covar_poi_interaction_matrix); // n individuals x 1 or 1 + num interacting poi covars
+        Rcpp::Rcout << "covar_poi_interaction_matrix row x cols: " << covar_poi_interaction_matrix.data.n_rows << "x" << covar_poi_interaction_matrix.data.n_cols << std::endl;
 
         int num_threads, chunk_size;
         if(config.poi_block_size == 0) {
@@ -171,7 +172,7 @@ void FastRegCpp(const std::string config_file) {
                 ind_set_filtered.push_back(ind_set[i]);
             }
         }
-
+        Rcpp::Rcout << "Shedding rows: " << nan_idx.size() << std::endl;
         // remove from covar, pheno
         covar_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
         pheno_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
@@ -200,9 +201,9 @@ void FastRegCpp(const std::string config_file) {
                 ];
             }
         );
-        
+        Rcpp::Rcout << "Num strat inds: " << strat_individuals.size() << std::endl;
         poi.set_memspace(poi.individuals.size(), chunk_size);
-
+        Rcpp::Rcout << "Poi individuals: " << poi.individuals.size() << std::endl;
         double nonconvergence_status = 0.0;
         double total_filtered_pois = 0.0;
         for (int block = 0; block < num_poi_blocks; block ++) {
@@ -219,8 +220,12 @@ void FastRegCpp(const std::string config_file) {
             auto start_time = std::chrono::high_resolution_clock::now();
             poi.get_POI_matrix(poi_matrix, poi.individuals, poi_names_chunk, chunk_size);
 
+            // Rcpp::Rcout << "poi matrix: " << std::endl;
+            // poi_matrix.data(arma::span(0, 9), arma::span(0, 499)).print();
+
             std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
             std::vector<std::string> drop_rows = set_diff(poi.individuals, strat_individuals);
+            Rcpp::Rcout << "Dropping rows for set diff: " << drop_rows.size() << std::endl;
             int num_dropped = poi.individuals.size() - strat_individuals.size();
             arma::uvec drop_row_idx(drop_rows.size());
             for (size_t i = 0; i < drop_rows.size(); i++) {

@@ -7,6 +7,7 @@
 #include <vector>
 #include <list>
 #include <algorithm>
+#include <regex>
 #include <sys/stat.h>
 
 #ifndef __has_include
@@ -115,7 +116,7 @@ void FRMatrix::load_from_csv(std::string& filename, std::string& delim, std::str
             try {
                 data(row_count, i - 1) = std::stod(row_items[i]);
             } catch (const std::invalid_argument &e) {
-
+                Rcpp::Rcout << row_items[i] << std::endl;
                 str_data[row_count].push_back(row_items[i]);
                 col_names_str[col_headers.at(i)] = str_col_count;
                 str_col_count++; 
@@ -192,8 +193,6 @@ std::vector<std::string> FRMatrix::split(const std::string& str_tokens, char del
     std::stringstream ss(str_tokens);
     std::string item;
     while (std::getline(ss, item, delim)) {
-        // emplace_back
-        item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
         tokens.push_back(item);
     }
     return tokens;
@@ -324,7 +323,7 @@ void FRMatrix::write_results(
             Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
-        outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val\tAbs Err\tRel Err" << std::endl;
+        outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
         Rcpp::Rcout << "File created for writing." << std::endl;
     }
 

@@ -13,7 +13,7 @@ library("rhdf5")
 #'@param poi.compression.level an integer denoting compression level used during H5 file creation
 #'@param verbose logical to control display of progress messages (default=TRUE)
 #'@return a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response
-simulate_test_dataset <- function(num.poi = 50000,
+simulate_test_dataset <- function(num.poi = 500,
                                   num.ind = 5000,
                                   seed = 12133,
 								                  coeff.sd = 0,
@@ -23,7 +23,7 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  poi.type = "genotype",
 								                  poi.chunk.size = 100,
 								                  poi.compression.level=7,
-                                  data.dir = "../input/",
+                                  data.dir = "F:/",
                                   prefix = "testdata_5k_by_50k", verbose=TRUE){
   # num.poi <- 50000
   # num.ind <- 5000
@@ -124,30 +124,30 @@ simulate_test_dataset <- function(num.poi = 50000,
 
 
   if(poi.type=="genotype") {
-	h5createDataset(file=poi.file, dataset="values", dims=c(num.ind,num.poi),
-                storage.mode = "integer",
-				chunk=c(num.ind,poi.chunk.size), level=poi.compression.level)
+    h5createDataset(file=poi.file, dataset="values", dims=c(num.ind,num.poi),
+                  storage.mode = "integer",
+          chunk=c(num.ind,poi.chunk.size), level=poi.compression.level)
 
-	for(j in 1:num.poi.blocks) {
+    for(j in 1:num.poi.blocks) {
 
-		block.index <- ((j-1)*poi.chunk.size+1):(min(poi.chunk.size*j, num.poi));
-		block.size <- length(block.index);
+      block.index <- ((j-1)*poi.chunk.size+1):(min(poi.chunk.size*j, num.poi));
+      block.size <- length(block.index);
 
-		maf <- runif(block.size, min=0.05, max=0.5);
-		miss.rate <- runif(block.size, min=0, max=0.1);
+      maf <- runif(block.size, min=0.05, max=0.5);
+      miss.rate <- runif(block.size, min=0, max=0.1);
 
-		values <- matrix(0, ncol=block.size, nrow=num.ind);
-		for(i in 1:block.size) {
-			dosage.val <- runif(num.ind);
-			geno.val <- integer(num.ind);
-			geno.val[dosage.val < (1-maf[i])^2] <- 0;
-			geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
-			geno.val[dosage.val > (1- maf[i]^2)] <- 2;
-			geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
-			values[,i] <- geno.val;
-		}
-		h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
-		if(verbose & (j %in% ceiling(seq(0.1,1,0.1)*num.poi.blocks))) cat("completed poi generation for ", j, " blocks out of ", num.poi.blocks, "\n");
+      values <- matrix(0, ncol=block.size, nrow=num.ind);
+      for(i in 1:block.size) {
+        dosage.val <- runif(num.ind);
+        geno.val <- integer(num.ind);
+        geno.val[dosage.val < (1-maf[i])^2] <- 0;
+        geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
+        geno.val[dosage.val > (1- maf[i]^2)] <- 2;
+        geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
+        values[,i] <- geno.val;
+      }
+      h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
+      if(verbose & (j %in% ceiling(seq(0.1,1,0.1)*num.poi.blocks))) cat("completed poi generation for ", j, " blocks out of ", num.poi.blocks, "\n");
 
 	}
 } else {

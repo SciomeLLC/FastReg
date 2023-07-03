@@ -32,8 +32,8 @@ class RegressionBase {
             bool is_t_dist
         ) = 0;
     protected:
-        static arma::colvec t_dist(arma::colvec abs_z, int df, bool log_form);
-        static arma::colvec norm_dist(arma::colvec abs_z, int df, bool log_form);
+        static arma::colvec t_dist(arma::colvec abs_z, int df);
+        static arma::colvec norm_dist(arma::colvec abs_z, int df);
 };
 
 class LogisticRegression : public RegressionBase {

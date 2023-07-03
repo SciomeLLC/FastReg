@@ -27,7 +27,7 @@ Description: Efficiently perform large scale simple linear and logistic regressi
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 4.0), RcppArmadillo
+Depends: R (>= 4.0), RcppArmadillo, rhdf5
 biocViews:
 Imports: RcppArmadillo, rhdf5, Rcpp
 LinkingTo: Rcpp, RcppArmadillo
