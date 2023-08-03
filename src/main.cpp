@@ -16,8 +16,9 @@
 #include <config.h>
 #include <strata.h>
 #include <chrono>
-#include <omp.h>
-
+#if !defined(__APPLE__) && !defined(__MACH__)
+  #include <omp.h>
+#endif
 using namespace Rcpp;
 using namespace arma;
 
@@ -79,6 +80,9 @@ void FastRegCpp(const std::string config_file) {
     if(dir_exists(config.output_dir)) {
         delete_dir(config.output_dir);
     }
+
+
+
     // Find common individuals
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
@@ -87,6 +91,12 @@ void FastRegCpp(const std::string config_file) {
     Rcout << intersected_ind.size() << " unique subjects were found to be common in pheno.file, covar.file, and POI.file" << std::endl;
     if (intersected_ind.empty()) {
         stop("No overlapping individuals found in POI, pheno, and covar files");
+    }
+
+    if (!config.POI_subset_file.empty()) {
+        
+        FRMatrix poi_subset(config.POI_subset_file, config.POI_subset_file_delim, config.POI_subset_rowname_col);
+        std::vector<std::string> poi_names = intersect_row_names(poi_subset.str_data[0], poi.names);
     }
 
     int num_poi = poi_names.size();
@@ -131,22 +141,10 @@ void FastRegCpp(const std::string config_file) {
         create_Z_matrix(covar_matrix, config.POI_covar_interactions, covar_poi_interaction_matrix); // n individuals x 1 or 1 + num interacting poi covars
 
         int num_threads, chunk_size;
-        if(config.poi_block_size == 0) {
-            std::vector<int> chunk_size_num_threads = estimate_poi_block_size(num_poi, ind_set.size(), config.POI_type, config.max_cores);
-            chunk_size = chunk_size_num_threads[0];
-            num_threads = chunk_size_num_threads[1];
-            if (chunk_size > num_poi) {
-                chunk_size = num_poi;
-            }
-        }
-        else {
-            chunk_size = config.poi_block_size;
-            if(config.max_cores > 0) {
-                num_threads = config.max_cores;
-            } else {
-                num_threads = 1;
-            }
-        }
+        std::vector<int> chunk_size_num_threads = estimate_poi_block_size(num_poi, ind_set.size(), config.POI_type, config.max_threads, config.poi_block_size);
+        chunk_size = chunk_size_num_threads[0];
+        num_threads = chunk_size_num_threads[1];
+        
         Rcout << "POI block size: " << chunk_size << std::endl;
         Rcout << "threads: " << num_threads << std::endl;
         int num_poi_blocks = (int) std::ceil((double)num_poi/(double)chunk_size);
@@ -196,10 +194,13 @@ void FastRegCpp(const std::string config_file) {
                 ];
             }
         );
-        
+
         poi.set_memspace(poi.individuals.size(), chunk_size);
+        double nonconvergence_status = 0.0;
+        double total_filtered_pois = 0.0;
+
         for (int block = 0; block < num_poi_blocks; block ++) {
-            Rcout << "Processing POIs block: " << block + 1 << std::endl;
+            Rcpp::Rcout << "Processing POIs block: " << block + 1 << std::endl;
 
             int start_chunk = block*chunk_size;
             int end_chunk = start_chunk + chunk_size;
@@ -207,6 +208,10 @@ void FastRegCpp(const std::string config_file) {
                 end_chunk = (int)poi_names.size();
                 poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
             }
+            
+            Rcpp::Rcout << "Effective block size: " << end_chunk - start_chunk << std::endl;
+            Rcpp::Rcout << "start chunk pos: " << start_chunk << std::endl;
+            Rcpp::Rcout << "end chunk pos: " << end_chunk << std::endl;
             std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
             omp_set_num_threads(num_threads);
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -264,6 +269,7 @@ void FastRegCpp(const std::string config_file) {
                 filtered.write_summary(config.output_dir, "POI_Summary", stratum);
                 end_time = std::chrono::high_resolution_clock::now();
                 Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+                Rcpp::Rcout << "Effective block size after filtering: " << poi_matrix.data.n_cols << std::endl;
             }
             
             start_time = std::chrono::high_resolution_clock::now();

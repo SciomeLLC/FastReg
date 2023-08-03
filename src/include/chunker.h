@@ -32,17 +32,13 @@ unsigned long long getTotalSystemMemory() {
 }
 
 
-std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string poi_type, int max_cores = -1) {
+std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string poi_type, int max_threads = -1, int poi_block_size = 0) {
     std::vector<int> res;
     Rcpp::Rcout << "Estimating block size" << std::endl;
     int num_threads = std::thread::hardware_concurrency();
-    if (max_cores != -1 && num_threads > max_cores) {
+    if (max_threads != -1 && num_threads > max_threads) {
         // Check for hyper threading
-        if (num_threads % 2 == 0) {
-            num_threads = max_cores * 2;
-        } else {
-            num_threads = max_cores;
-        }
+        num_threads = max_threads;
     }
 
     std::string os = "";
@@ -66,9 +62,9 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     Rcpp::Rcout << "Free memory: " << memfree/(1024*1024*1024) << "GB" << std::endl;
 
     // Keep one thread idle
-    if (num_threads > 1) {
-        num_threads--;
-        Rcpp::Rcout << "Keeping 1 thread idle, num_threads: " << num_threads << std::endl;
+    if (num_threads > 2 && max_threads == -1) {
+        num_threads = num_threads - 2;
+        Rcpp::Rcout << "Keeping 2 thread idle, num_threads: " << num_threads << std::endl;
     }
 
     double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
@@ -78,8 +74,13 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     unsigned long long master_thread_memory = 524288000ULL; // 500mb
     double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(num_poi / chunks);
-    // int chunked_parallel = std::floor(chunked_dim1 / num_threads);
-    // Rcpp::Rcout << "chunked_parallel: " << chunked_parallel << std::endl;
+    
+    if (poi_block_size != 0 && chunked_dim1 > poi_block_size) {
+        chunked_dim1 = poi_block_size;
+    }
+    if (chunked_dim1 > num_poi) {
+        chunked_dim1 = num_poi;
+    }
 
     res.push_back(chunked_dim1);
     res.push_back(num_threads);

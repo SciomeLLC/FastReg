@@ -37,9 +37,9 @@ void LogisticRegression::run(
     arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
 
     // create a pointer to the specified distribution function
-    arma::colvec (*dist_func)(arma::colvec, int, bool) = is_t_dist == true ? t_dist : norm_dist;
-    // arma::colvec (*dist_func)(Rcpp::NumericVector, int) = is_t_dist == true ? &t_dist : &norm_dist;
-
+    arma::colvec (*dist_func)(arma::colvec, int) = is_t_dist == true ? t_dist : norm_dist;
+    // arma::colvec (*dist_func)(arma::colvec, int) = t_dist;
+    
     #pragma omp parallel for
     for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
         arma::mat A(n_parms, n_parms, arma::fill::zeros);

@@ -1,3 +1,5 @@
+UNAME=$(shell uname)
+
 CCACHE=ccache
 CXX_STD =$(CCACHE) CXX11
 RHDF5_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
@@ -6,8 +8,13 @@ RHDF5_CFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="Rhdf5lib","include"))')
 
 PKG_CFLAGS = $(RHDF5_CFLAGS)
-PKG_CXXFLAGS = -I./lib  -I./include $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
-PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs
+ifeq ($(UNAME), Darwin)
+    PKG_CXXFLAGS = -I./lib  -I./include $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
+    PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs
+else
+    PKG_CXXFLAGS = -I./lib  -I./include $(RHDF5_CFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
+    PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs
+endif
 MAIN         = $(wildcard *.cpp)
 MAIN_CODE    = $(wildcard lib/*.cpp)
 OBJECTS      = $(MAIN:.cpp=.o) $(MAIN_CODE:.cpp=.o)

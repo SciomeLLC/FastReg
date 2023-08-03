@@ -129,14 +129,16 @@ void Config::set_default_values()
         {"POI.covar.interactions", ""},
         {"split.by", ""},
         {"output.file.format", "long"},
-        {"output.exclude.covar", "0"},
+        {"output.exclude.covar", "1"},
         {"poi.block.size", "0"},
         {"covariate.terms", ""},
         {"max.iter", "6"},
         {"Pvalue.type", "t.dist"},
         {"verbose", "1"},
         {"compress.results", "1"},
-        {"max.cores", "-1"}};
+        {"max.threads", "-1"}, 
+        {"rel.conv.tolerance", "0.0001"},
+        {"abs.conv.tolerance", "0.0001"}};
 
     for (auto item : defaults)
     {
@@ -229,7 +231,7 @@ void Config::validate_args()
     }
 
     max_iter = get<int>("max.iter");
-    max_cores = get<int>("max.cores");
+    max_threads = get<int>("max.threads");
     poi_block_size = get<int>("poi.block.size");
 
     temp.assign(get<std::string>("output.file.format"));
