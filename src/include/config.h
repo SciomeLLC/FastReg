@@ -35,8 +35,8 @@ class Config {
         covar_rowname_cols, phenotype, output_dir, POI_type, covariate_terms;
 
     bool no_intercept, verbose, compress_results, output_exclude_covar;
-    double hwe_threshold, maf_threshold, colinearity_rsq;
-    int max_iter, max_cores, poi_block_size;
+    double hwe_threshold, maf_threshold, colinearity_rsq, rel_conv_tolerance, abs_conv_tolerance;
+    int max_iter, max_threads, poi_block_size;
 
     // optional
     std::string subject_subset_rowname_cols,

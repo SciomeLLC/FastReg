@@ -1,5 +1,5 @@
 library("rhdf5")
-
+library("parallel")
 #' simulate_test_dataset function to generate test dataset for evaluation of FastReg
 #'@param num.poi an integer denoting number of predictors of interest (SNP calls)
 #'@param num.ind an integer denoting number of individuals
@@ -20,10 +20,10 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  bin.resp.mean = 0.2,
 								                  num.resp.mean = 24,
 								                  num.resp.sd = 5,
-								                  poi.type = "genotypes",
+								                  poi.type = "genotype",
 								                  poi.chunk.size = 100,
 								                  poi.compression.level=7,
-                                  data.dir = "../input/",
+                                  data.dir = "F:/",
                                   prefix = "testdata_5k_by_50k", verbose=TRUE){
   # num.poi <- 50000
   # num.ind <- 5000
@@ -41,6 +41,7 @@ simulate_test_dataset <- function(num.poi = 50000,
   covar.file <-     file.path(data.dir, paste0(prefix, ".covar.txt"));
   num.pheno.file <- file.path(data.dir, paste0(prefix, ".num.pheno.txt"));
   bin.pheno.file <- file.path(data.dir, paste0(prefix, ".bin.pheno.txt"));
+  poi.txt.file <-       file.path(data.dir, paste0(prefix, ".poi.txt"));
   poi.file <-       file.path(data.dir, paste0(prefix, ".poi.h5"));
   poi.subset.file <- file.path(data.dir, paste0(prefix, ".poi.subset.txt"));
   subject.subset.file <-file.path(data.dir, paste0(prefix, ".sample.subset.txt"));
@@ -49,7 +50,7 @@ simulate_test_dataset <- function(num.poi = 50000,
   set.seed(seed);
 
   ind.id <- paste0("IND", formatC(1:num.ind, format="d", flag="0", digits=floor(log10(num.ind))));
-  poi.id <- unique(paste0("rs", formatC(10000000*runif(2*num.poi), format="d", flag="0", digits=8)))[1:num.poi];
+  poi.id <- paste0("rs", formatC(1:num.poi, format="d", flag="0", digits=floor(log10(num.poi))));
 
 
   write.table(data.frame("ind"=sort(sample(ind.id, size=5, replace=FALSE)), stringsAsFactors=FALSE),
@@ -130,24 +131,41 @@ simulate_test_dataset <- function(num.poi = 50000,
 
 	for(j in 1:num.poi.blocks) {
 
-		block.index <- ((j-1)*poi.chunk.size+1):(min(poi.chunk.size*j, num.poi));
-		block.size <- length(block.index);
+      block.index <- ((j-1)*poi.chunk.size+1):(min(poi.chunk.size*j, num.poi));
+      block.size <- length(block.index);
+      maf <- runif(block.size, min=0.05, max=0.5);
+      miss.rate <- runif(block.size, min=0, max=0.1);
 
-		maf <- runif(block.size, min=0.05, max=0.5);
-		miss.rate <- runif(block.size, min=0, max=0.1);
+      values <- matrix(0, ncol=block.size, nrow=num.ind);
+      for(i in 1:block.size) {
+        dosage.val <- runif(num.ind);
+        geno.val <- integer(num.ind);
+        geno.val[dosage.val < (1-maf[i])^2] <- 0;
+        geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
+        geno.val[dosage.val > (1- maf[i]^2)] <- 2;
+        geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
+        values[,i] <- geno.val;
+      }
+      if(poi.file.type == "h5") {
+        h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
+      }
+      else {
+        start <- ((j-1)*poi.chunk.size+1)
+        end <- (min(poi.chunk.size*j, num.poi))
+        values <- t(values)
 
-		values <- matrix(0, ncol=block.size, nrow=num.ind);
-		for(i in 1:block.size) {
-			dosage.val <- runif(num.ind);
-			geno.val <- integer(num.ind);
-			geno.val[dosage.val < (1-maf[i])^2] <- 0;
-			geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
-			geno.val[dosage.val > (1- maf[i]^2)] <- 2;
-			geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
-			values[,i] <- geno.val;
-		}
-		h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
-		if(verbose & (j %in% ceiling(seq(0.1,1,0.1)*num.poi.blocks))) cat("completed poi generation for ", j, " blocks out of ", num.poi.blocks, "\n");
+        if (j == 1) {
+          values <- cbind(poi.id[start:end], values)
+          colnames(values) <- c("", ind.id)
+          write.table(values, file=poi.txt.file, sep = "\t", row.names=FALSE, col.names=TRUE, na="", quote=FALSE)
+        }
+        else {
+          values <- cbind(poi.id[start:end], values)
+          write.table(values, file=poi.txt.file, sep = "\t", row.names=FALSE, col.names=FALSE, na="", quote=FALSE, append=TRUE)
+        }
+      }
+
+      if(verbose & (j %in% ceiling(seq(0.1,1,0.1)*num.poi.blocks))) cat("completed poi generation for ", j, " blocks out of ", num.poi.blocks, "\n");
 
 	}
 } else {
@@ -170,7 +188,23 @@ simulate_test_dataset <- function(num.poi = 50000,
 			values[,i] <- geno.val;
 		}
 
-		h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
+    if(poi.file.type == "h5") {
+        h5write(values, file=poi.file, name="values", index=list(NULL,block.index));
+    } else {
+      start <- ((j-1)*poi.chunk.size+1)
+      end <- (min(poi.chunk.size*j, num.poi))
+      values <- t(values)
+
+      if (j == 1) {
+        values <- cbind(poi.id[start:end], values)
+        colnames(values) <- c("", ind.id)
+        write.table(values, file=poi.txt.file, sep = "\t", row.names=FALSE, col.names=TRUE, na="", quote=FALSE)
+      }
+      else {
+        values <- cbind(poi.id[start:end], values)
+        write.table(values, file=poi.txt.file, sep = "\t", row.names=FALSE, col.names=FALSE, na="", quote=FALSE, append=TRUE)
+      }
+    }
 		if(verbose & (j %in% ceiling(seq(0.1,1,0.1)*num.poi.blocks))) cat("completed poi generation for ", j, " blocks out of ", num.poi.blocks, "\n");
 	}
 }

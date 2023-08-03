@@ -115,7 +115,6 @@ void FRMatrix::load_from_csv(std::string& filename, std::string& delim, std::str
             try {
                 data(row_count, i - 1) = std::stod(row_items[i]);
             } catch (const std::invalid_argument &e) {
-
                 str_data[row_count].push_back(row_items[i]);
                 col_names_str[col_headers.at(i)] = str_col_count;
                 str_col_count++; 

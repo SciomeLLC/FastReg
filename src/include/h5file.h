@@ -18,6 +18,7 @@ public:
     std::unordered_map<std::string, int> individuals_map;
     std::unordered_map<std::string, int> names_map;
     hid_t file_id;
+    hid_t values_dataset_id;
     int rank = 2;
     hid_t memspace_id = -1;
     hsize_t hyperslab_dims[2];
@@ -27,6 +28,7 @@ public:
     H5File(const std::string& file_name) {
         file_path = file_name;
         file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
         if (file_id < 0) {
             Rcpp::stop("Failed to open HDF5 file.");
         }
@@ -40,6 +42,10 @@ public:
         }
         if(file_id >= 0){
             H5Fclose(file_id);
+        }
+
+        if (values_dataset_id >= 0) {
+            H5Dclose(values_dataset_id);
         }
     }
     void get_POI_individuals();

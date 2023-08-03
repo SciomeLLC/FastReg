@@ -17,5 +17,6 @@ StripTrailingWhitespace: Yes
 
 BuildType: Package
 PackageUseDevtools: Yes
+PackagePath: E:/Development/ToxicR
 PackageInstallArgs: --with-keep.source
 PackageRoxygenize: rd,collate,namespace
