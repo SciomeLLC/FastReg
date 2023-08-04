@@ -8,7 +8,9 @@
 #include <unordered_map>
 #include "hdf5.h"
 #include <fr_matrix.h>
-#include <omp.h>
+#if !defined(__APPLE__) && !defined(__MACH__)
+  #include <omp.h>
+#endif
 
 #pragma once
 class H5File {
