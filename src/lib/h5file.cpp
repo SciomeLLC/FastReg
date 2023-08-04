@@ -6,7 +6,9 @@
 #include <unordered_map>
 #include "hdf5.h"
 #include <fr_matrix.h>
-#include <omp.h>
+#if !defined(__APPLE__) && !defined(__MACH__)
+  #include <omp.h>
+#endif
 #include <h5file.h>
 
 void H5File::get_POI_individuals() {
