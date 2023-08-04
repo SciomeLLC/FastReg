@@ -8,7 +8,9 @@
 #include <vector>
 #include <fr_matrix.h>
 #include <covariate.h>
-#include <omp.h>
+#if !defined(__APPLE__) && !defined(__MACH__)
+  #include <omp.h>
+#endif
 #pragma once
 
 using namespace arma;
