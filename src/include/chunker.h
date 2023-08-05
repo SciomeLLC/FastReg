@@ -17,6 +17,8 @@ unsigned long long getTotalSystemMemory() {
     GlobalMemoryStatusEx(&status);
     return status.ullAvailPhys;
 #elif defined(__APPLE__)
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
     uint64_t memsize;
     size_t len = sizeof(memsize);
     if (sysctlbyname("hw.memsize", &memsize, &len, NULL, 0) == 0) {

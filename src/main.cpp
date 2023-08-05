@@ -213,7 +213,9 @@ void FastRegCpp(const std::string config_file) {
             Rcpp::Rcout << "start chunk pos: " << start_chunk << std::endl;
             Rcpp::Rcout << "end chunk pos: " << end_chunk << std::endl;
             std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
+            #if !defined(__APPLE__) && !defined(__MACH__)
             omp_set_num_threads(num_threads);
+            #endif
             auto start_time = std::chrono::high_resolution_clock::now();
             poi.get_POI_matrix(poi_matrix, poi.individuals, poi_names_chunk, chunk_size);
 
