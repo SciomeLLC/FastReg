@@ -1,19 +1,21 @@
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
-#include <iostream>
-#include <cmath>
-#include <thread>
+
+
+if defined(__APPLE__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <unistd.h>
 #endif
-
-if defined(__APPLE__)
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#endif
+// [[Rcpp::depends(RcppArmadillo)]]
+#include <RcppArmadillo.h>
+#include <iostream>
+#include <cmath>
+#include <thread>
 
 unsigned long long getTotalSystemMemory() {
 #ifdef _WIN32
