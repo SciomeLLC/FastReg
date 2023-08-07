@@ -30,35 +30,65 @@ void H5File::get_POI_individuals() {
         H5Dclose(ind_dataset);
         return;
     }
-    
-    size_t datatype_size = H5Tget_size(native_type);
-    hid_t space = H5Dget_space(ind_dataset);
-    hsize_t num_ind;
-    H5Sget_simple_extent_dims(space, &num_ind, NULL);
-    individuals.reserve(num_ind);
+    if (H5Tget_class(native_type) != H5T_STRING) {
+        Rcpp::Rcerr << "Dataset does not have the expected variable-length string data type." << std::endl;
+        // Close your resources and return
+    }
 
-    char* buffer = new char[num_ind * datatype_size];
+    if (H5Tis_variable_str(native_type)) {
+        hid_t space = H5Dget_space(ind_dataset);
+        hsize_t num_ind;
+        H5Sget_simple_extent_dims(space, &num_ind, NULL);
 
-    if (H5Dread(ind_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
-        Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+        // This is the change. Instead of a char buffer, you now have an array of pointers.
+        char** rdata = new char*[num_ind];
+
+        if (H5Dread(ind_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata) < 0) {
+            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            delete[] rdata;
+            // Close your resources and return
+        }
+
+        for (hsize_t i = 0; i < num_ind; i++) {
+            std::string name = rdata[i];
+            individuals.push_back(name);
+            individuals_map[name] = i;
+            // Freeing the variable-length data
+            free(rdata[i]);
+        }
+
+        delete[] rdata;
+        H5Sclose(space);
+    } else {
+        size_t datatype_size = H5Tget_size(native_type);
+        hid_t space = H5Dget_space(ind_dataset);
+        hsize_t num_ind;
+        H5Sget_simple_extent_dims(space, &num_ind, NULL);
+        individuals.reserve(num_ind);
+
+        char* buffer = new char[num_ind * datatype_size];
+
+        if (H5Dread(ind_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
+            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            delete[] buffer;
+            H5Sclose(space);
+            H5Tclose(native_type);
+            H5Tclose(datatype);
+            H5Dclose(ind_dataset);
+            return;
+        }
+        for (hsize_t i = 0; i < num_ind; i++) {
+            std::string name = std::string(&buffer[i * datatype_size], datatype_size);
+            // Remove potential trailing white spaces due to fixed-length string format
+            name.erase(name.find_last_not_of(' ') + 1);
+            individuals.push_back(name);
+            individuals_map[name] = i;
+        }
+
         delete[] buffer;
         H5Sclose(space);
-        H5Tclose(native_type);
-        H5Tclose(datatype);
-        H5Dclose(ind_dataset);
-        return;
     }
-
-    for (hsize_t i = 0; i < num_ind; i++) {
-        std::string name = std::string(&buffer[i * datatype_size], datatype_size);
-        // Remove potential trailing white spaces due to fixed-length string format
-        name.erase(name.find_last_not_of(' ') + 1);
-        individuals.push_back(name);
-        individuals_map[name] = i;
-    }
-
-    delete[] buffer;
-    H5Sclose(space);
+    
     H5Tclose(native_type);
     H5Tclose(datatype);
     H5Dclose(ind_dataset);
@@ -83,33 +113,60 @@ void H5File::get_POI_names() {
         H5Dclose(poi_dataset);
         return;
     }
-    size_t datatype_size = H5Tget_size(native_type);
-    hid_t space = H5Dget_space(poi_dataset);
-    hsize_t num_poi;
-    H5Sget_simple_extent_dims(space, &num_poi, NULL);
-    names.reserve(num_poi);
 
-    char* buffer = new char[num_poi * datatype_size];
-    if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
-        Rcpp::Rcerr << "Failed to read POI dataset" << std::endl;
+    if (H5Tis_variable_str(native_type)) {
+        hid_t space = H5Dget_space(poi_dataset);
+        hsize_t num_poi;
+        H5Sget_simple_extent_dims(space, &num_poi, NULL);
+
+        // This is the change. Instead of a char buffer, you now have an array of pointers.
+        char** rdata = new char*[num_poi];
+
+        if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata) < 0) {
+            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            delete[] rdata;
+            // Close your resources and return
+        }
+
+        for (hsize_t i = 0; i < num_poi; i++) {
+            std::string name = rdata[i];
+            names.push_back(name);
+            names_map[name] = i;
+            // Freeing the variable-length data
+            free(rdata[i]);
+        }
+
+        delete[] rdata;
+        H5Sclose(space);
+    } else {
+        size_t datatype_size = H5Tget_size(native_type);
+        hid_t space = H5Dget_space(poi_dataset);
+        hsize_t num_poi;
+        H5Sget_simple_extent_dims(space, &num_poi, NULL);
+        names.reserve(num_poi);
+
+        char* buffer = new char[num_poi * datatype_size];
+        if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
+            Rcpp::Rcerr << "Failed to read POI dataset" << std::endl;
+            delete[] buffer;
+            H5Sclose(space);
+            H5Tclose(native_type);
+            H5Tclose(datatype);
+            H5Dclose(poi_dataset);
+            return;
+        }
+
+        for (hsize_t i = 0; i < num_poi; i++) {
+            std::string name = std::string(&buffer[i * datatype_size], datatype_size);
+            // Remove potential trailing white spaces due to fixed-length string format
+            name.erase(name.find_last_not_of(' ') + 1);
+            names.push_back(name);
+            names_map[name] = i;
+        }
+
         delete[] buffer;
         H5Sclose(space);
-        H5Tclose(native_type);
-        H5Tclose(datatype);
-        H5Dclose(poi_dataset);
-        return;
     }
-
-    for (hsize_t i = 0; i < num_poi; i++) {
-        std::string name = std::string(&buffer[i * datatype_size], datatype_size);
-        // Remove potential trailing white spaces due to fixed-length string format
-        name.erase(name.find_last_not_of(' ') + 1);
-        names.push_back(name);
-        names_map[name] = i;
-    }
-
-    delete[] buffer;
-    H5Sclose(space);
     H5Tclose(native_type);
     H5Tclose(datatype);
     H5Dclose(poi_dataset);
