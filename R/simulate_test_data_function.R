@@ -24,7 +24,9 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  poi.chunk.size = 100,
 								                  poi.compression.level=7,
                                   data.dir = "F:/",
-                                  prefix = "testdata_5k_by_50k", verbose=TRUE){
+                                  prefix = "testdata_5k_by_50k_aug", 
+                                  verbose=TRUE,
+                                  poi.file.type = "txt"){
   # num.poi <- 50000
   # num.ind <- 5000
   covariates <- c("age", "sex", "eth", "treatment", "severity")

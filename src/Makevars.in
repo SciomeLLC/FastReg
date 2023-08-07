@@ -8,9 +8,9 @@ RHDF5_CFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
 PKG_CXXFLAGS =  -I./lib/ -I./include/ $(SHLIB_OPENMP_CXXFLAGS) -DR_COMPILATION -O3 -Wall $(RHDF5_CFLAGS) -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_USE_HDF5 -DARMA_64BIT_WORD 
 PKG_LIBS = $(LAPACK_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@ 
 
-MAIN         = $(wildcard *.cpp)
-MAIN_CODE    = $(wildcard lib/*.cpp)
-OBJECTS      = $(MAIN:.cpp=.o) $(MAIN_CODE:.cpp=.o)
+MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
+# MAIN_CODE    = $(wildcard lib/*.cpp)
+OBJECTS      = $(MAIN:.cpp=.o) fastR_hdf5convertlibRportable.o
 
 # Include all C++ files in src/ and its subdirectories
 # SOURCES=@SRC_SOURCES@ 
