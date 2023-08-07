@@ -52,6 +52,8 @@ jobs:
           needs: |
             check
             roxygen2
+      - name: Compile Attributes
+        run: Rscript -e 'Rcpp::compileAttributes()'
       - name: Build package (Windows)
         if: runner.os == 'Windows'
         shell: cmd
