@@ -62,25 +62,25 @@ jobs:
       - name: Test Install  (Windows)
         if: runner.os == 'Windows'
         shell: cmd
-        run: R CMD INSTALL --build FastReg_0.4.10.tar.gz
+        run: R CMD INSTALL --build FastReg_0.4.14.tar.gz
       - name: Test Install
         if: runner.os == 'Linux' || runner.os == 'macOs'
-        run: R CMD INSTALL --build FastReg_0.4.10.tar.gz
+        run: R CMD INSTALL --build FastReg_0.4.14.tar.gz
       - name: Upload package (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v3
         with:
-          path: FastReg_0.4.10.zip
-          name: FastReg_0.4.10-${{ runner.os }}-R.${{ matrix.config.r }}.zip
+          path: FastReg_0.4.14.zip
+          name: FastReg_0.4.14-${{ runner.os }}-R.${{ matrix.config.r }}.zip
       - name: Upload package (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v3
         with:
-          path: FastReg_0.4.10_R_x86_64-pc-linux-gnu.tar.gz
-          name: FastReg_0.4.10-x86_64-linux-R.${{ matrix.config.r }}.zip
+          path: FastReg_0.4.14_R_x86_64-pc-linux-gnu.tar.gz
+          name: FastReg_0.4.14-x86_64-linux-R.${{ matrix.config.r }}.zip
       - name: Upload package (macOs)
         if: runner.os == 'macOs'
         uses: actions/upload-artifact@v3
         with:
-          path: FastReg_0.4.10.tgz
-          name: FastReg_0.4.10-x86_64-macOs-R.${{ matrix.config.r }}.tgz
+          path: FastReg_0.4.14.tgz
+          name: FastReg_0.4.14-x86_64-macOs-R.${{ matrix.config.r }}.tgz
