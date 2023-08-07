@@ -76,7 +76,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #       "If you do so, make sure to restart R.\n")
 #   }
   packageStartupMessage(msg)
-  if (Sys.info()[['sysname']] == "Darwin" || Sys.info()[['sysname']] == "Windows") {
+  if (Sys.info()[['sysname']] == "Darwin") {
     mac_warning <- "
 **********
 This installation of FastReg has detected a Mac which does not support OpenMP.
