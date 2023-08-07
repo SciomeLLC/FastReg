@@ -36,5 +36,5 @@ fastR_hdf5convert <- function(dataFile, h5File, headerRow=1, idCol=1, dataCol=2,
     return(FALSE)
   }
   chunkEdge <- as.integer(chunkEdge)
-  return(.Call("fastR_hdf5convert", dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge))
+  return(.Call("hdf5convert", dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge))
 }
