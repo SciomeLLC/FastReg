@@ -1,10 +1,11 @@
 .onAttach <- function(libname, pkgname) {
   msg <- "
-
-(  __) / _\ / ___)(_  _)(  _ \(  __) / __)
- ) _) /    \\___ \  )(   )   / ) _) ( (_ \
-(__)  \_/\_/(____/ (__) (__\_)(____) \___/
-
+  _____                 _     ____                 
+ |  ___|   __ _   ___  | |_  |  _ \\    ___    __ _ 
+ | |_     / _` | / __| | __| | |_) |  / _ \\  / _` |
+ |  _|   | (_| | \\__ \\ | |_  |  _ <  |  __/ | (_| |
+ |_|      \\__,_| |___/  \\__| |_| \\_\\  \\___|  \\__, |
+                                             |___/
 
 THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
@@ -75,5 +76,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #       "If you do so, make sure to restart R.\n")
 #   }
   packageStartupMessage(msg)
+  if (Sys.info()[['sysname']] == "Darwin" || Sys.info()[['sysname']] == "Windows") {
+    mac_warning <- "
+**********
+This installation of FastReg has detected a Mac which does not support OpenMP.
+It will only work in single-threaded mode.
+**********
+"
+    packageStartupMessage(mac_warning)
+  }
 #   packageStartupMessage(startup_message)
 }
