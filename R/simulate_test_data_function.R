@@ -22,9 +22,9 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  num.resp.sd = 5,
 								                  poi.type = "genotype",
 								                  poi.chunk.size = 100,
-								                  poi.compression.level=7,
-                                  data.dir = "F:/",
-                                  prefix = "testdata_5k_by_50k_aug", 
+								                  poi.compression.level = 7,
+                                  data.dir = ".",
+                                  prefix = "testdata_5k_by_50k", 
                                   verbose=TRUE,
                                   poi.file.type = "txt"){
   # num.poi <- 50000
@@ -107,29 +107,33 @@ simulate_test_dataset <- function(num.poi = 50000,
   write.table(pheno.df[, c(1,3)], file=bin.pheno.file, sep = "\t", row.names=FALSE, col.names=TRUE, na="", quote=FALSE);
   remove(list="pheno.df");
   if(verbose) cat("generated phonotype files\n");
+  if(poi.file.type == "h5") {
+    if(file.exists(poi.file)) unlink(poi.file);
+    #file.con <- H5File$new(poi.file, mode="w");
+    h5createFile(file=poi.file);
 
-  if(file.exists(poi.file)) unlink(poi.file);
-  #file.con <- H5File$new(poi.file, mode="w");
-  h5createFile(file=poi.file);
+    if(verbose) cat("added ind id into h5 file\n");
+    #file.con[["individuals"]] <- ind.id
+  # h5createGroup(file=poi.file, "individuals");
+    h5write(ind.id, level=4, file=poi.file, name="individuals");
 
-  if(verbose) cat("added ind id into h5 file\n");
-  #file.con[["individuals"]] <- ind.id
- # h5createGroup(file=poi.file, "individuals");
-  h5write(ind.id, level=4, file=poi.file, name="individuals");
+    if(verbose) cat("added poi id into h5 file\n");
 
-  if(verbose) cat("added poi id into h5 file\n");
-
-  #file.con[["predictors_of_interest"]] <- poi.id
-#  h5createGroup(file=poi.file, "predictors_of_interest");
-  h5write(poi.id, level=4, file=poi.file, name="predictors_of_interest");
-
+    #file.con[["predictors_of_interest"]] <- poi.id
+  #  h5createGroup(file=poi.file, "predictors_of_interest");
+    h5write(poi.id, level=4, file=poi.file, name="predictors_of_interest");
+  }
   num.poi.blocks <- ceiling(num.poi/poi.chunk.size);
 
 
   if(poi.type=="genotypes") {
-	h5createDataset(file=poi.file, dataset="values", dims=c(num.ind,num.poi),
-                storage.mode = "integer",
-				chunk=c(num.ind,poi.chunk.size), level=poi.compression.level)
+    if(poi.file.type == "h5") {
+      h5createDataset(
+        file=poi.file, dataset="values", dims=c(num.ind,num.poi),
+        storage.mode = "integer", chunk=c(num.ind,poi.chunk.size), 
+        level=poi.compression.level
+      )
+    }
 
 	for(j in 1:num.poi.blocks) {
 
@@ -171,9 +175,11 @@ simulate_test_dataset <- function(num.poi = 50000,
 
 	}
 } else {
-	h5createDataset(file=poi.file, dataset="values", c(num.ind,num.poi),
+  if(poi.file.type == "h5") {
+	  h5createDataset(file=poi.file, dataset="values", c(num.ind,num.poi),
                 storage.mode = "double",
 				chunk=c(num.ind,poi.chunk.size), level=poi.compression.level)
+  }
 
 
 	for(j in 1:num.poi.blocks) {
