@@ -83,13 +83,3 @@ perform.GLM.test <- function(num.poi=10, prefix="testdata_500_by_500", input.dir
   invisible(TRUE)
 
 }
-
-
-# setwd("//magnolia/SciomeCommon/Projects/Biostatistics/NIEHS/Alison_M-R/FastReg/500x500_dataset")
-
-# library("rhdf5");
-# library("parallel")
-
-
-# perform.GLM.test(num.poi=500, prefix="testdata_500_by_500", input.dir=".", output.dir=".", transpose.h5=FALSE, na.value=NA, mc.cores=1);
-

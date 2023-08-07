@@ -20,7 +20,7 @@ FastReg <- function(
   # max.iter = 6,
   # rel.conv.tolerance = 0.01,
   # abs.conv.tolerance = 0.01,
-  # max.cores = 0,
+  # max.threads = 0,
   
   config.file
   ) {
