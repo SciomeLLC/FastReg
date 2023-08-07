@@ -26,7 +26,7 @@ extern "C" SEXP fastR_hdf5convert(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_FastReg_FastRegCpp", (DL_FUNC) &_FastReg_FastRegCpp, 1},
-    {"hdf5convert", (DL_FUNC) &fastR_hdf5convert, 8},
+    {"fastR_hdf5convert", (DL_FUNC) &fastR_hdf5convert, 8},
     {NULL, NULL, 0}
 };
 
