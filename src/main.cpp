@@ -71,6 +71,10 @@ std::vector<std::string> set_diff(const std::vector<std::string>& a, const std::
 
 // [[Rcpp::export]]
 void FastRegCpp(const std::string config_file) {
+    double file_writing_time = 0.0;
+    double poi_reading_time = 0.0;
+    double regression_time = 0.0;
+    double memory_allocation_time = 0.0;
     Config config(config_file);
     FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim, config.pheno_rowname_cols);
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
@@ -198,7 +202,6 @@ void FastRegCpp(const std::string config_file) {
         poi.set_memspace(poi.individuals.size(), chunk_size);
         double nonconvergence_status = 0.0;
         double total_filtered_pois = 0.0;
-
         for (int block = 0; block < num_poi_blocks; block ++) {
             Rcpp::Rcout << "Processing POIs block: " << block + 1 << std::endl;
 
@@ -208,10 +211,6 @@ void FastRegCpp(const std::string config_file) {
                 end_chunk = (int)poi_names.size();
                 poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
             }
-            
-            Rcpp::Rcout << "Effective block size: " << end_chunk - start_chunk << std::endl;
-            Rcpp::Rcout << "start chunk pos: " << start_chunk << std::endl;
-            Rcpp::Rcout << "end chunk pos: " << end_chunk << std::endl;
             std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
             #if !defined(__APPLE__) && !defined(__MACH__)
             omp_set_num_threads(num_threads);
@@ -221,6 +220,7 @@ void FastRegCpp(const std::string config_file) {
 
             std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
             std::vector<std::string> drop_rows = set_diff(poi.individuals, strat_individuals);
+
             int num_dropped = poi.individuals.size() - strat_individuals.size();
             arma::uvec drop_row_idx(drop_rows.size());
             for (size_t i = 0; i < drop_rows.size(); i++) {
@@ -236,15 +236,16 @@ void FastRegCpp(const std::string config_file) {
             
             srt_cols_2 = poi_matrix.sort_map(false);
             auto end_time = std::chrono::high_resolution_clock::now();
+            poi_reading_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
-            if (config.POI_type == "genotypes") {
+            if (config.POI_type == "genotype") {
                 Rcout << "Filtering MAF and HWE" << std::endl;
 
                 FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
                 arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
 
-                if (filtered.data.n_cols == 0 || filtered_col.n_elem == 0) {
+                if (filtered.data.n_cols == 0 || filtered_col.n_elem == poi_matrix.data.n_cols) {
                     Rcout << "no POI passed filtering" << std::endl;
                     continue;
                 }
@@ -253,7 +254,7 @@ void FastRegCpp(const std::string config_file) {
                 int cols_erased = 0;
 
                 for(unsigned int i = 0; i < poi_col_names.size(); i++) {
-                    if (cols_erased < filtered_col.n_elem && filtered_col[cols_erased] == i) {
+                    if ((unsigned) cols_erased < filtered_col.n_elem && filtered_col[cols_erased] == i) {
                         poi_matrix.col_names.erase(poi_col_names[i]);
                         cols_erased++;
                     }
@@ -270,9 +271,12 @@ void FastRegCpp(const std::string config_file) {
                 start_time = std::chrono::high_resolution_clock::now();
                 filtered.write_summary(config.output_dir, "POI_Summary", stratum);
                 end_time = std::chrono::high_resolution_clock::now();
+                file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
                 Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
                 Rcpp::Rcout << "Effective block size after filtering: " << poi_matrix.data.n_cols << std::endl;
             }
+
+            total_filtered_pois += poi_matrix.data.n_cols;
             
             start_time = std::chrono::high_resolution_clock::now();
             // 1 phenotype 
@@ -280,6 +284,8 @@ void FastRegCpp(const std::string config_file) {
             FRMatrix se_beta;
             int num_parms = covar_poi_interaction_matrix.data.n_cols + covar_matrix.data.n_cols;
             beta_est.data = arma::mat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+            arma::colvec beta_rel_errs = arma::colvec(poi_matrix.data.n_cols, arma::fill::zeros);
+            arma::colvec beta_abs_errs = arma::colvec(poi_matrix.data.n_cols, arma::fill::zeros);
             se_beta.data = arma::mat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
             
             FRMatrix neglog10_pvl;
@@ -314,6 +320,7 @@ void FastRegCpp(const std::string config_file) {
             }
             
             end_time = std::chrono::high_resolution_clock::now();
+            memory_allocation_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Memory allocation timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             start_time = std::chrono::high_resolution_clock::now();
@@ -337,17 +344,41 @@ void FastRegCpp(const std::string config_file) {
                 beta_est, 
                 se_beta, 
                 neglog10_pvl, 
+                beta_rel_errs,
+                beta_abs_errs,
                 config.max_iter, 
                 config.p_value_type == "t.dist"
             );
             end_time = std::chrono::high_resolution_clock::now();
             Rcpp::Rcout << "regression timing for block " << block + 1 <<  "/" << num_poi_blocks << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+            regression_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             start_time = std::chrono::high_resolution_clock::now();
             FRMatrix::write_results(beta_est, se_beta, neglog10_pvl, W2, srt_cols, config.output_dir, "Results", stratum, config.output_exclude_covar);
             end_time = std::chrono::high_resolution_clock::now();
+            file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             Rcpp::Rcout << "Writing results for block " << block + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             poi_matrix.col_names.clear();
+
+            if (config.regression_type == "logistic") {
+                start_time = std::chrono::high_resolution_clock::now();
+                FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, "convergence", beta_rel_errs, beta_abs_errs, stratum);
+                end_time = std::chrono::high_resolution_clock::now();
+                file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
+            }
+
+            arma::colvec convergence = conv_to<colvec>::from((beta_rel_errs > config.rel_conv_tolerance) && (beta_abs_errs > config.abs_conv_tolerance));
+            nonconvergence_status += arma::sum(convergence);
         }
-        
+        double noncovergence_percent = (nonconvergence_status/total_filtered_pois) * 100;
+        if (noncovergence_percent > 0.0) {
+            Rcpp::Rcout << nonconvergence_status << " out of " << total_filtered_pois << " (" << std::setprecision(2) << noncovergence_percent << "%) POIs did not meet relative and absolute convergence threshold." << std::endl;
+            Rcpp::Rcout << "See convergence_" << stratum << ".tsv for additional details." << std::endl;
+        }
     }
+
+    Rcpp::Rcout << "Timing Summary: " << std::endl;
+    Rcpp::Rcout << "Reading HDF5: " << poi_reading_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Memory allocation: " << memory_allocation_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "s" << std::endl;
 }

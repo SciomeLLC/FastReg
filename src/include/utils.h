@@ -62,7 +62,7 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
 
     rowvec HWE_chisq = (square(aa_of - aa_ef) / aa_ef) + (square(ab_of - ab_ef) / ab_ef) + (square(bb_of - bb_ef) / bb_ef);
     rowvec HWE_pval = 1 - (Rcpp::pchisq(Rcpp::as<Rcpp::NumericVector>(Rcpp::wrap(HWE_chisq)), 1, true, false));
-    rowvec keep = conv_to<rowvec>::from((maf_freq >= maf_threshold) % (HWE_pval >= hwe_threshold));
+    rowvec keep = conv_to<rowvec>::from(conv_to<rowvec>::from((maf_freq >= maf_threshold)) && conv_to<rowvec>::from((HWE_pval >= hwe_threshold)));
     
     res.data.row(0) = a_freq;
     res.data.row(1) = b_freq;
