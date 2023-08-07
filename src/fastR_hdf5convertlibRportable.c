@@ -455,7 +455,7 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
 	return(0);
 }
 
-SEXP hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge) {
+SEXP fastR_hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge) {
 	struct fastR_user_params par;
 	int retval;
 	SEXP result=PROTECT(allocVector(LGLSXP, 1));
