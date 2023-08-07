@@ -39,16 +39,16 @@ unsigned long long getTotalSystemMemory() {
 }
 
 
-std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string poi_type, int max_cores = -1) {
+std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string poi_type, int max_threads, int poi_block_size) {
     std::vector<int> res;
     Rcpp::Rcout << "Estimating block size" << std::endl;
     int num_threads = std::thread::hardware_concurrency();
-    if (max_cores != -1 && num_threads > max_cores) {
+    if (max_threads != -1 && num_threads > max_threads) {
         // Check for hyper threading
         if (num_threads % 2 == 0) {
-            num_threads = max_cores * 2;
+            num_threads = max_threads * 2;
         } else {
-            num_threads = max_cores;
+            num_threads = max_threads;
         }
     }
 
@@ -83,6 +83,9 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     unsigned long long master_thread_memory = 524288000ULL; // 500mb
     double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(num_poi / chunks);
+    if (chunked_dim1 > poi_block_size) {
+        chunked_dim1 = poi_block_size;
+    }
     res.push_back(chunked_dim1);
     res.push_back(num_threads);
     return res;
