@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <regex>
 #include <sys/stat.h>
+#include <chrono>
 
 #ifndef __has_include
 static_assert(false, "__has_include not supported");
@@ -407,4 +408,17 @@ void FRMatrix::write_convergence_results(
     }
     outfile << buffer.str();
     outfile.close();
+}
+
+void FRMatrix::zip_results(std::string output_dir) {
+    Rcpp::Environment utils_env("package:utils");
+    Rcpp::Function zip = utils_env["zip"];
+    if(fs::exists(output_dir)) {
+        std::string parent_path = fs::path(output_dir).parent_path().string();
+        const auto time_now = std::chrono::system_clock::now();
+        const auto time_secs = std::chrono::duration_cast<std::chrono::seconds>(time_now.time_since_epoch()).count();
+        Rcpp::Rcout << parent_path << std::endl;
+        std::string archive_name = "results_" + std::to_string(time_secs) + ".zip";
+        zip(archive_name, output_dir);
+    }
 }

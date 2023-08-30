@@ -17,11 +17,11 @@ class Covariate {
     std::string type;
     std::string ref_level;
 
-    Covariate(std::string cov, std::string cov_type, std::string cov_ref_level, std::string cov_levels, int cov_standardize) {
+    Covariate(std::string cov, std::string cov_type, std::string cov_ref_level, std::string cov_levels, bool cov_standardize) {
         name = cov;
         type = cov_type;
         ref_level = cov_ref_level;
-        standardize = cov_standardize > 0;
+        standardize = cov_standardize;
         levels = split(cov_levels, ",");
 
         if(standardize && type != "numeric") {

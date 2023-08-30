@@ -70,12 +70,80 @@ std::vector<std::string> set_diff(const std::vector<std::string>& a, const std::
 }
 
 // [[Rcpp::export]]
-void FastRegCpp(const std::string config_file) {
+void FastRegCpp(
+    const std::string phenotype,
+    const std::string regression_type,
+    const std::string pvalue_dist,
+    bool output_exclude_covar,
+    double maf_threshold,
+    double hwe_threshold,
+    bool no_intercept,
+    double colinearity_rsq,
+    int poi_block_size,
+    int max_iter,
+    double rel_conv_tolerance,
+    double abs_conv_tolderance, 
+    int max_threads,
+    const std::string pheno_file,
+    const std::string pheno_rowname_cols,
+    const std::string pheno_file_delim,
+    const std::string covar_file,
+    const std::string covar_rowname_cols,
+    const std::string covar_file_delim,
+    const std::string poi_file, 
+    const std::string poi_file_delim,
+    const std::string poi_file_format,
+    const std::string poi_type,
+    const std::string poi_effect_type,
+    const Rcpp::StringVector covariates,
+    const Rcpp::StringVector covariate_type,
+    const Rcpp::LogicalVector covariate_standardize,
+    const Rcpp::StringVector covariate_levels,
+    const Rcpp::StringVector covariate_ref_level,
+    const Rcpp::StringVector POI_covar_interactions_str,
+    const Rcpp::StringVector split_by_str,
+    const std::string output_dir,
+    bool compress_results
+    ) {
     double file_writing_time = 0.0;
     double poi_reading_time = 0.0;
     double regression_time = 0.0;
     double memory_allocation_time = 0.0;
-    Config config(config_file);
+    Config config(
+        phenotype,
+        regression_type,
+        pvalue_dist,
+        output_exclude_covar,
+        maf_threshold,
+        hwe_threshold,
+        no_intercept,
+        colinearity_rsq,
+        poi_block_size,
+        max_iter,
+        rel_conv_tolerance,
+        abs_conv_tolderance, 
+        max_threads,
+        pheno_file,
+        pheno_rowname_cols,
+        pheno_file_delim,
+        covar_file,
+        covar_rowname_cols,
+        covar_file_delim,
+        poi_file, 
+        poi_file_delim,
+        poi_file_format,
+        poi_type,
+        poi_effect_type,
+        covariates,
+        covariate_type,
+        covariate_standardize,
+        covariate_levels,
+        covariate_ref_level,
+        POI_covar_interactions_str,
+        split_by_str,
+        output_dir,
+        compress_results
+    );
     FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim, config.pheno_rowname_cols);
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
     H5File poi(config.POI_file);
@@ -97,11 +165,11 @@ void FastRegCpp(const std::string config_file) {
         stop("No overlapping individuals found in POI, pheno, and covar files");
     }
 
-    if (!config.POI_subset_file.empty()) {
+    // if (!config.POI_subset_file.empty()) {
         
-        FRMatrix poi_subset(config.POI_subset_file, config.POI_subset_file_delim, config.POI_subset_rowname_col);
-        std::vector<std::string> poi_names = intersect_row_names(poi_subset.str_data[0], poi.names);
-    }
+    //     FRMatrix poi_subset(config.POI_subset_file, config.POI_subset_file_delim, config.POI_subset_rowname_col);
+    //     std::vector<std::string> poi_names = intersect_row_names(poi_subset.str_data[0], poi.names);
+    // }
 
     int num_poi = poi_names.size();
     if (num_poi == 0) {
@@ -381,4 +449,7 @@ void FastRegCpp(const std::string config_file) {
     Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "s" << std::endl;
     Rcpp::Rcout << "Memory allocation: " << memory_allocation_time / 1000.0 << "s" << std::endl;
     Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "s" << std::endl;
+    if (config.compress_results) {
+        FRMatrix::zip_results(config.output_dir);
+    }
 }

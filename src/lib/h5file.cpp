@@ -260,7 +260,7 @@ void H5File::get_POI_matrix(
         }
     }
     else if (type_class == H5T_FLOAT) {
-        size_t type_size = H5Tget_size(datatype);
+        // size_t type_size = H5Tget_size(datatype);
         // Reading 64-bit double
         arma::Mat<double> tmp(poi_individuals.size(), poi_names.size(), arma::fill::zeros);
         // Reading the data directly into the matrix

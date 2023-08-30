@@ -97,22 +97,100 @@ void Config::validate_keys()
     }
 }
 
-void Config::validate_required_files()
-{
-    std::vector<std::string> file_keys = {
-        "pheno.file",
-        "covar.file",
-        "POI.file"};
+std::vector<std::string> Config::convert_stringV_to_string_arr(Rcpp::StringVector stringV){
+    std::vector<std::string> vstrings(stringV.size());
+    for(int i = 0; i < stringV.size(); i++) {
+        vstrings[i] = stringV(i);
+    }
 
-    for (const auto &key : file_keys)
-    {
-        std::string filename = values[key];
-        if (!fs::exists(filename))
-        {
-            Rcpp::Rcerr << "Error: file '" << key << "' does not exist: " << filename << "\nPlease check that the path is correct." << std::endl;
+    return vstrings;
+}
+void Config::validate_covariate_config(
+    Rcpp::StringVector covariates_str, 
+    Rcpp::StringVector covariate_type_str, 
+    Rcpp::LogicalVector covariate_standardize_str, 
+    Rcpp::StringVector covariate_levels_str, 
+    Rcpp::StringVector covariate_ref_level_str, 
+    Rcpp::StringVector POI_covar_interactions_str
+)
+{
+    // Optional covariate parameters
+    // covariates = split(covariates_str, ",", "", 0);
+    covariates = convert_stringV_to_string_arr(covariates_str);
+    size_t cov_size = covariates.size();
+    covariate_type = convert_stringV_to_string_arr(covariate_type_str);
+
+    // covariate_standardize = split(covariate_standardize_str, ",", "0", cov_size);
+    covariate_levels = convert_stringV_to_string_arr(covariate_levels_str);
+    covariate_ref_level = convert_stringV_to_string_arr(covariate_ref_level_str);
+
+    
+    for (const bool &cov_std : covariate_standardize_str) {
+        covariate_standardize.push_back(cov_std);
+    }
+    
+    // split_by = split(split_by_str, ",", "", 0);
+    POI_covar_interactions = convert_stringV_to_string_arr(POI_covar_interactions_str);
+    if (cov_size == 1 && covariates[0].empty()) {
+        cov_size = 0;
+    }
+    if (cov_size > 0) {
+        if (!std::all_of(
+                covariate_type.begin(),
+                covariate_type.end(),
+                [](const std::string& kv) { return kv == "numeric" || kv == "categorical" || kv == "count"; }
+            )
+        ) {
+            Rcpp::stop("invalid covariate.type");
+        }
+        
+        if(covariate_type.size() != cov_size) {
+            Rcpp::stop("number of covariate.type != number of covariates.");
+        }
+
+        if(covariate_standardize.size() != cov_size) {
+            Rcpp::stop("number of covariate.standardize != number of covariates.");
+        }
+
+        if(covariate_levels.size() != cov_size) {
+            Rcpp::stop("number of covariate.levels != number of covariates.");
+        }
+
+        if(covariate_ref_level.size() != cov_size) {
+            Rcpp::stop("number of covariate.ref.level != number of covariates.");
+        }
+
+        for(unsigned int i = 0; i < cov_size; i++) {
+            Covariate c(covariates[i], covariate_type[i], covariate_ref_level[i], covariate_levels[i], covariate_standardize_str[i]);
+            covs.push_back(c);
         }
     }
 }
+void Config::validate_required_files()
+{
+    // std::vector<std::string> file_keys = {
+    //     pheno_file,
+    //     covar_file,
+    //     POI_file};
+
+    
+    if (!fs::exists(pheno_file))
+    {
+        Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
+        Rcpp::Rcerr << "Error: file does not exist: " << pheno_file << "\nPlease check that the path is correct." << std::endl;
+    }
+    if (!fs::exists(covar_file))
+    {
+        Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
+        Rcpp::Rcerr << "Error: file does not exist: " << covar_file << "\nPlease check that the path is correct." << std::endl;
+    }
+    if (!fs::exists(POI_file))
+    {
+        Rcpp::Rcout << "POI_file: " << POI_file << std::endl;
+        Rcpp::Rcerr << "Error: file does not exist: " << POI_file << "\nPlease check that the path is correct." << std::endl;
+    }
+}
+
 void Config::set_default_values()
 {
     std::unordered_map<std::string, std::string> defaults{
@@ -164,176 +242,93 @@ void Config::set_default_values()
 void Config::validate_args()
 {
     std::string empty_str = "";
-    std::string temp = get<std::string>("POI.file.format");
-    if (!(temp == "txt" || temp == "plink" || temp == "h5"))
+    if (!(POI_file_format == "txt" || POI_file_format == "plink" || POI_file_format == "h5"))
     {
-        throw std::invalid_argument("pheno.file.format not supported");
+        throw std::invalid_argument("POI.file.format not supported");
     }
-    POI_file_format = temp;
 
-    temp.assign(get<std::string>("POI.file.delim"));
-    if (POI_file_format == "txt" && !(temp == "tab" || temp == "comma"))
+    if (POI_file_format == "txt" && !(POI_file_delim == "tab" || POI_file_delim == "comma"))
     {
         throw std::invalid_argument("POI.file.delim not supported");
     }
-    POI_file_delim = temp;
 
-    temp.assign(get<std::string>("POI.effect.type"));
-    if (!(temp == "dosage" || temp == "additive" || temp == "recessive" || temp == "dominant"))
+    if (!(POI_effect_type == "dosage" || POI_effect_type == "additive" || POI_effect_type == "recessive" || POI_effect_type == "dominant"))
     {
         throw std::invalid_argument("invalid POI.effect.type");
     }
-    POI_effect_type = temp;
 
-    temp.assign(get<std::string>("regression.type"));
-    if (!(temp == "logistic" || temp == "linear"))
+    if (!(regression_type == "logistic" || regression_type == "linear"))
     {
         throw std::invalid_argument("invalid regression.type");
     }
-    regression_type = temp;
 
-    temp.assign(get<std::string>("pheno.file.delim"));
-    if (!(temp == "tab" || temp == "comma" || temp == "semicolon"))
+    if (!(pheno_file_delim == "tab" || pheno_file_delim == "comma" || pheno_file_delim == "semicolon"))
     {
         throw std::invalid_argument("pheno.file.delim not supported. Valid values are tab, comma and semicolon.");
     }
-    pheno_file_delim = temp;
 
-    temp.assign(get<std::string>("covar.file.delim"));
-    if (!(temp == "tab" || temp == "comma" || temp == "semicolon"))
+    if (!(covar_file_delim == "tab" || covar_file_delim == "comma" || covar_file_delim == "semicolon"))
     {
         throw std::invalid_argument("cov.file.delim not supported. Valid values are tab, comma and semicolon.");
     }
-    covar_file_delim = temp;
 
-    no_intercept = get<bool>("no.intercept");
-    output_exclude_covar = get<bool>("output.exclude.covar");
-    verbose = get<bool>("verbose");
-    compress_results = get<bool>("compress.results");
-
-    POI_type = get<std::string>("POI.type");
-    maf_threshold = get<double>("maf.threshold");
     if (maf_threshold > 0.5 || maf_threshold < 0)
     {
         throw std::invalid_argument("maf.threshold out of conventional bound");
     }
 
-    hwe_threshold = get<double>("hwe.threshold");
     if (hwe_threshold > 0.5 || hwe_threshold < 0)
     {
         throw std::invalid_argument("hwe.threshold out of conventional bound");
     }
 
-    colinearity_rsq = get<double>("colinearity.rsq");
     if (colinearity_rsq < 0.8 || colinearity_rsq > 1)
     {
         throw std::invalid_argument("colinearity.rsq out of conventional bound");
     }
 
-    max_iter = get<int>("max.iter");
-    max_threads = get<int>("max.threads");
-    poi_block_size = get<int>("poi.block.size");
-
-    temp.assign(get<std::string>("output.file.format"));
-    if (!(temp == "long" || temp == "wide" || temp == "specific"))
-    {
-        throw std::invalid_argument("invalid output.file.format");
-    }
-    output_file_format = temp;
-
-    temp.assign(get<std::string>("Pvalue.type"));
-    if (!(temp == "t.dist" || temp == "norm.dist"))
+    
+    if (!(p_value_type == "t.dist" || p_value_type == "norm.dist"))
     {
         throw std::invalid_argument("Pvalue.type must be t.dist or norm.dist");
     }
-    p_value_type = temp;
 
-    rel_conv_tolerance = get<double>("rel.conv.tolerance");
-    abs_conv_tolerance = get<double>("abs.conv.tolerance");
     // required values
-    pheno_file = values.at("pheno.file");
-    covar_file = values.at("covar.file");
-    POI_file = values.at("POI.file");
-    output_dir = values.at("output.dir");
-    phenotype = values.at("phenotype");
-    pheno_rowname_cols = values.at("pheno.rowname.cols");
-    covar_rowname_cols = values.at("covar.rowname.cols");
+    // pheno_file = values.at("pheno.file");
+    // covar_file = values.at("covar.file");
+    // POI_file = values.at("POI.file");
+    // output_dir = values.at("output.dir");
+    // phenotype = values.at("phenotype");
+    // pheno_rowname_cols = values.at("pheno.rowname.cols");
+    // covar_rowname_cols = values.at("covar.rowname.cols");
 
-    split_by = split(values.at("split.by"), ",", "", 0);
-    POI_covar_interactions = split(values.at("POI.covar.interactions"), ",", "", 0);
-    covariate_terms = values.at("covariate.terms");
+    // POI_covar_interactions = split(values.at("POI.covar.interactions"), ",", "", 0);
+    // covariate_terms = values.at("covariate.terms");
 
     // Subject subset
-    subject_subset_rowname_cols = get_value("subject.subset.rowname.cols", empty_str);
-    subject_subset_delim = get_value("subject.subset.delim", empty_str);
-    subject_subset_file = get_value("subject.subset.file", empty_str);
-    if (subject_subset_file != "")
-    {
-        if (!fs::exists(subject_subset_file))
-        {
-            Rcpp::Rcerr << "Error: file does not exist: " << subject_subset_file << "\nPlease check that the path is correct." << std::endl;
-        }
-    }
+    // subject_subset_rowname_cols = get_value("subject.subset.rowname.cols", empty_str);
+    // subject_subset_delim = get_value("subject.subset.delim", empty_str);
+    // subject_subset_file = get_value("subject.subset.file", empty_str);
+    // if (subject_subset_file != "")
+    // {
+    //     if (!fs::exists(subject_subset_file))
+    //     {
+    //         Rcpp::Rcerr << "Error: file does not exist: " << subject_subset_file << "\nPlease check that the path is correct." << std::endl;
+    //     }
+    // }
 
-    // POI subset
-    POI_subset_file = get_value("POI.subset.file", empty_str);
-    POI_subset_file_delim = get_value("POI.subset.file.delim", empty_str);
-    POI_subset_rowname_col = get_value("POI.subset.rowname.cols", empty_str);
+    // // POI subset
+    // POI_subset_file = get_value("POI.subset.file", empty_str);
+    // POI_subset_file_delim = get_value("POI.subset.file.delim", empty_str);
+    // POI_subset_rowname_col = get_value("POI.subset.rowname.cols", empty_str);
 
-    if (POI_subset_file != "")
-    {
-        if (!fs::exists(POI_subset_file))
-        {
-            Rcpp::Rcerr << "Error: file does not exist: " << POI_subset_file << "\nPlease check that the path is correct." << std::endl;
-        }
-    }
-
-    // Optional covariate parameters
-    covariates = split(get_value("covariates", empty_str), ",", "", 0);
-    size_t cov_size = covariates.size();
-    covariate_type = split(get_value("covariate.type", empty_str), ",", "", cov_size);
-    covariate_standardize = split(get_value("covariate.standardize", empty_str), ",", "0", cov_size);
-    covariate_levels = split(get_value("covariate.levels", empty_str), ";", "", cov_size);
-    covariate_ref_level = split(get_value("covariate.ref.level", empty_str), ",", "", cov_size);
-
-
-    if (cov_size == 1 && covariates[0].empty()) {
-        cov_size = 0;
-    }
-    if (cov_size > 0) {
-        if (!std::all_of(
-                covariate_type.begin(),
-                covariate_type.end(),
-                [](const std::string& kv) { return kv == "numeric" || kv == "categorical" || kv == "count"; }
-            )
-        ) {
-            Rcpp::stop("invalid covariate.type");
-        }
-
-        std::vector<int> covariate_standardize_ints;
-
-        for(auto& it : covariate_standardize) {
-            covariate_standardize_ints.push_back(std::stoi(it));
-        }
-
-        
-        if(covariate_type.size() != cov_size) {
-            Rcpp::stop("number of covariate.type != number of covariates.");
-        }
-
-        if(covariate_standardize.size() != cov_size) {
-            Rcpp::stop("number of covariate.standardize != number of covariates.");
-        }
-
-        if(covariate_ref_level.size() != cov_size) {
-            Rcpp::stop("number of covariate.ref.level != number of covariates.");
-        }
-
-        for(unsigned int i = 0; i < cov_size; i++) {
-            Covariate c(covariates[i], covariate_type[i], covariate_ref_level[i], covariate_levels[i], covariate_standardize_ints[i]);
-            covs.push_back(c);
-        }
-    }
+    // if (POI_subset_file != "")
+    // {
+    //     if (!fs::exists(POI_subset_file))
+    //     {
+    //         Rcpp::Rcerr << "Error: file does not exist: " << POI_subset_file << "\nPlease check that the path is correct." << std::endl;
+    //     }
+    // }
 }
 
 std::vector<std::string> Config::split(std::string val, std::string delim, std::string default_str_val, unsigned int size) {
