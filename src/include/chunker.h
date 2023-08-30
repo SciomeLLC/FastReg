@@ -43,13 +43,11 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     std::vector<int> res;
     Rcpp::Rcout << "Estimating block size" << std::endl;
     int num_threads = std::thread::hardware_concurrency();
-    if (max_threads != -1 && num_threads > max_threads) {
-        // Check for hyper threading
-        if (num_threads % 2 == 0) {
-            num_threads = max_threads * 2;
-        } else {
-            num_threads = max_threads;
-        }
+    if (max_threads != 0 && num_threads > max_threads) {
+        num_threads = max_threads;
+    } else {
+        num_threads--;
+        Rcpp::Rcout << "Keeping 1 thread idle, num_threads: " << num_threads << std::endl;
     }
 
     std::string os = "";
@@ -70,12 +68,6 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     
     Rcpp::Rcout << "Free memory: " << memfree/(1024*1024*1024) << "GB" << std::endl;
 
-    // Keep one thread idle
-    if (num_threads > 1) {
-        num_threads--;
-        Rcpp::Rcout << "Keeping 1 thread idle, num_threads: " << num_threads << std::endl;
-    }
-
     double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
     int max_num_matrix = 6;
     int float_size = 8; // 8 bytes per number assuming 64-bit numbers
@@ -83,7 +75,8 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     unsigned long long master_thread_memory = 524288000ULL; // 500mb
     double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(num_poi / chunks);
-    if (chunked_dim1 > poi_block_size) {
+
+    if (poi_block_size > 0 && chunked_dim1 > poi_block_size) {
         chunked_dim1 = poi_block_size;
     }
     res.push_back(chunked_dim1);

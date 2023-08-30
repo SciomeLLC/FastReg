@@ -58,4 +58,5 @@ public:
         arma::colvec& abs_err,
         int stratum
     ); 
+    static void zip_results(std::string output_dir);
 };

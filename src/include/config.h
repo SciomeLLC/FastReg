@@ -23,13 +23,7 @@ namespace fs = std::experimental::filesystem;
 #pragma once
 class Config {
     public:
-    Config(const std::string &file_path) {
-        parse(file_path);
-        validate_required_files();
-        validate_keys();
-        set_default_values();
-        validate_args();
-    }
+    
     std::string pheno_file, POI_file_format, POI_file_delim, POI_effect_type, regression_type, pheno_file_delim,
         covar_file_delim, output_file_format, p_value_type, POI_file, covar_file, pheno_rowname_cols,
         covar_rowname_cols, phenotype, output_dir, POI_type, covariate_terms;
@@ -45,19 +39,96 @@ class Config {
 
     std::vector<Covariate> covs;
     std::vector<std::string> covariates, covariate_levels, covariate_ref_level, covariate_type, split_by,
-        covariate_standardize, POI_covar_interactions;
+        POI_covar_interactions;
+    std::vector<bool> covariate_standardize;
+    Config(
+        std::string phenotype_str,
+        std::string regression_type_str,
+        std::string pvalue_dist_str,
+        bool output_exclude_covar_bool,
+        double maf_threshold_dbl,
+        double hwe_threshold_dbl,
+        bool no_intercept_bool,
+        double colinearity_rsq_dbl,
+        int poi_block_size_int,
+        int max_iter_int,
+        double rel_conv_tolerance_dbl,
+        double abs_conv_tolderance_dbl, 
+        int max_threads_int,
+        std::string pheno_file_str,
+        std::string pheno_rowname_cols_str,
+        std::string pheno_file_delim_str,
+        std::string covar_file_str,
+        std::string covar_rowname_cols_str,
+        std::string covar_file_delim_str,
+        std::string poi_file_str, 
+        std::string poi_file_delim_str,
+        std::string poi_file_format_str,
+        std::string poi_type_str,
+        std::string poi_effect_type_str,
+        Rcpp::StringVector covariates_str,
+        Rcpp::StringVector covariate_type_str,
+        Rcpp::LogicalVector covariate_standardize_str,
+        Rcpp::StringVector covariate_levels_str,
+        Rcpp::StringVector covariate_ref_level_str,
+        Rcpp::StringVector POI_covar_interactions_str,
+        Rcpp::StringVector split_by_str,
+        std::string output_dir_str,
+        bool compress_results_bool
+    ) {
+        phenotype = phenotype_str;
+        regression_type = regression_type_str;
+        p_value_type = pvalue_dist_str;
+        output_exclude_covar = output_exclude_covar_bool;
+        maf_threshold = maf_threshold_dbl;
+        hwe_threshold = hwe_threshold_dbl;
+        no_intercept = no_intercept_bool;
+        colinearity_rsq = colinearity_rsq_dbl;
+        poi_block_size = poi_block_size_int;
+        max_iter = max_iter_int;
+        rel_conv_tolerance = rel_conv_tolerance_dbl;
+        abs_conv_tolerance = abs_conv_tolderance_dbl;
+        max_threads = max_threads_int;
+        pheno_file = pheno_file_str;
+        pheno_rowname_cols = pheno_rowname_cols_str;
+        pheno_file_delim = pheno_file_delim_str;
+        covar_file = covar_file_str;
+        covar_file_delim = covar_file_delim_str;
+        covar_rowname_cols = covar_rowname_cols_str;
+        POI_file = poi_file_str;
+        POI_effect_type = poi_effect_type_str;
+        POI_file_delim = poi_file_delim_str;
+        POI_file_format = poi_file_format_str;
+        POI_type = poi_type_str;
+        split_by = convert_stringV_to_string_arr(split_by_str);
+        output_dir = output_dir_str;
+        compress_results = compress_results_bool;
+        validate_covariate_config(covariates_str, covariate_type_str, covariate_standardize_str, covariate_levels_str, covariate_ref_level_str, POI_covar_interactions_str);
+
+        validate_required_files();
+        validate_args();
+    }
     private:
     std::unordered_map<std::string, std::string> values;
     template <typename T>
     T get(const std::string &key);
     bool has_key(const std::string &key);
     std::string get_value(std::string key, std::string def);
+    std::vector<std::string> convert_stringV_to_string_arr(Rcpp::StringVector stringV);
     void trim(std::string &s);
     void parse(std::string file_path, const char delim = '\t', const char comment = '#');
     void validate_keys();
     void validate_required_files();
     void set_default_values();
     void validate_args();
+    void validate_covariate_config(
+        Rcpp::StringVector covariates_str, 
+        Rcpp::StringVector covariate_type_str, 
+        Rcpp::LogicalVector covariate_standardize_str, 
+        Rcpp::StringVector covariate_levels_str, 
+        Rcpp::StringVector covariate_ref_level_str,
+        Rcpp::StringVector POI_covar_interactions_str    
+    );
     std::vector<std::string> split(std::string val, std::string delim, std::string default_str_val, unsigned int size);
 
 };
