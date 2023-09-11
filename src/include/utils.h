@@ -40,6 +40,7 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_thresho
         isnan_mat(nonfinite_indices(i), col) = 1;
       }
     }
+    
     FRMatrix G_copy = G;
     G_copy.data.replace(datum::nan, 0);
     
@@ -121,7 +122,7 @@ FRMatrix create_design_matrix(
     FRMatrix &df,
     std::vector<Covariate> covariates,
     bool no_intercept=false,
-    double colinearity_rsq=0.99
+    double colinearity_rsq=1.0
 ) {
     FRMatrix X;
     X.row_names = df.row_names;
