@@ -79,6 +79,10 @@ std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string p
     if (poi_block_size > 0 && chunked_dim1 > poi_block_size) {
         chunked_dim1 = poi_block_size;
     }
+
+    if (chunked_dim1 > num_poi) {
+        chunked_dim1 = num_poi;
+    }
     res.push_back(chunked_dim1);
     res.push_back(num_threads);
     return res;

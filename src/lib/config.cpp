@@ -176,17 +176,17 @@ void Config::validate_required_files()
     
     if (!fs::exists(pheno_file))
     {
-        Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
+        Rcpp::Rcout << "pheno.file: " << pheno_file << std::endl;
         Rcpp::Rcerr << "Error: file does not exist: " << pheno_file << "\nPlease check that the path is correct." << std::endl;
     }
     if (!fs::exists(covar_file))
     {
-        Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
+        Rcpp::Rcout << "covar.file: " << covar_file << std::endl;
         Rcpp::Rcerr << "Error: file does not exist: " << covar_file << "\nPlease check that the path is correct." << std::endl;
     }
     if (!fs::exists(POI_file))
     {
-        Rcpp::Rcout << "POI_file: " << POI_file << std::endl;
+        Rcpp::Rcout << "POI.file: " << POI_file << std::endl;
         Rcpp::Rcerr << "Error: file does not exist: " << POI_file << "\nPlease check that the path is correct." << std::endl;
     }
 }
@@ -195,9 +195,9 @@ void Config::set_default_values()
 {
     std::unordered_map<std::string, std::string> defaults{
         {"no.intercept", "0"},
-        {"maf.threshold", "0.01"},
-        {"hwe.threshold", "1e-14"},
-        {"colinearity.rsq", "0.99"},
+        {"maf.threshold", "1e-13"},
+        {"hwe.threshold", "1e-13"},
+        {"colinearity.rsq", "1.0"},
         {"POI.file.format", "txt"},
         {"POI.file.delim", "tab"},
         {"pheno.file.delim", "tab"},
@@ -292,43 +292,6 @@ void Config::validate_args()
     {
         throw std::invalid_argument("Pvalue.type must be t.dist or norm.dist");
     }
-
-    // required values
-    // pheno_file = values.at("pheno.file");
-    // covar_file = values.at("covar.file");
-    // POI_file = values.at("POI.file");
-    // output_dir = values.at("output.dir");
-    // phenotype = values.at("phenotype");
-    // pheno_rowname_cols = values.at("pheno.rowname.cols");
-    // covar_rowname_cols = values.at("covar.rowname.cols");
-
-    // POI_covar_interactions = split(values.at("POI.covar.interactions"), ",", "", 0);
-    // covariate_terms = values.at("covariate.terms");
-
-    // Subject subset
-    // subject_subset_rowname_cols = get_value("subject.subset.rowname.cols", empty_str);
-    // subject_subset_delim = get_value("subject.subset.delim", empty_str);
-    // subject_subset_file = get_value("subject.subset.file", empty_str);
-    // if (subject_subset_file != "")
-    // {
-    //     if (!fs::exists(subject_subset_file))
-    //     {
-    //         Rcpp::Rcerr << "Error: file does not exist: " << subject_subset_file << "\nPlease check that the path is correct." << std::endl;
-    //     }
-    // }
-
-    // // POI subset
-    // POI_subset_file = get_value("POI.subset.file", empty_str);
-    // POI_subset_file_delim = get_value("POI.subset.file.delim", empty_str);
-    // POI_subset_rowname_col = get_value("POI.subset.rowname.cols", empty_str);
-
-    // if (POI_subset_file != "")
-    // {
-    //     if (!fs::exists(POI_subset_file))
-    //     {
-    //         Rcpp::Rcerr << "Error: file does not exist: " << POI_subset_file << "\nPlease check that the path is correct." << std::endl;
-    //     }
-    // }
 }
 
 std::vector<std::string> Config::split(std::string val, std::string delim, std::string default_str_val, unsigned int size) {

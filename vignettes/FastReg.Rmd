@@ -33,7 +33,7 @@ Create a configuration file. All available configuration options are listed belo
 
 -   **pheno.file.delim** - delimiter used in phenotype file - tab\|space\|comma
 
--   **pheno.rownames.cols** - column to be treated as the subject identifier when matching across files. Can be multiple columns.
+-   **pheno.rownames.cols** - column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 
 -   **subject.subset.rowname.cols** - column to be treated as the subject identifier when matching across files
 
@@ -81,7 +81,7 @@ Create a configuration file. All available configuration options are listed belo
 
 -   **maf.threshold** - 0.00-1.00
 
--   **POI.type** - genotypes\|numerical (dosage value data type)
+-   **POI.type** - genotype\|numerical (dosage value data type)
 
 -   **POI.effect.type** - additive\|dominant\|recessive
 

@@ -54,7 +54,7 @@ BEGIN_RCPP
 END_RCPP
 }
 
-extern "C" SEXP fastR_hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge);
+RcppExport SEXP fastR_hdf5convert(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"_FastReg_FastRegCpp", (DL_FUNC) &_FastReg_FastRegCpp, 33},

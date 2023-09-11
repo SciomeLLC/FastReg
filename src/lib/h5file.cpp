@@ -181,12 +181,23 @@ void H5File::set_memspace(size_t rows, size_t cols) {
     memspace_id = H5Screate_simple(rank, hyperslab_dims, NULL);
 }
 
+H5T_class_t H5File::get_POI_data_type() {
+
+    // Get the dataspace
+    values_dataspace_id = H5Dget_space(values_dataset_id);
+    values_datatype = H5Dget_type(values_dataset_id);
+
+    return H5Tget_class(values_datatype);
+}
+
 void H5File::get_POI_matrix(
     FRMatrix& G,
     const std::vector<std::string>& poi_individuals,
     const std::vector<std::string>& poi_names,
     const int chunk_size
 ) {
+    G.row_names.reserve(poi_individuals.size());
+    G.col_names.reserve(poi_names.size());
     G.row_names = std::unordered_map<std::string, int>(poi_individuals.size());
     G.col_names = std::unordered_map<std::string, int>(poi_names.size());
     std::vector<hsize_t> row_indices(poi_individuals.size());
@@ -200,22 +211,11 @@ void H5File::get_POI_matrix(
         G.col_names[poi_names[i]] = i;
         col_indices[i] = names_map[poi_names[i]];
     }
-
-    // Open the HDF5 file
-    hid_t file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-
-    // Open the dataset
-    hid_t dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
-
-    // Get the dataspace
-    hid_t dataspace_id = H5Dget_space(dataset_id);
-    hid_t datatype = H5Dget_type(dataset_id);
-    H5T_class_t type_class = H5Tget_class(datatype);
-
+    
     // Get dimensions of the dataspace
-    int ndims = H5Sget_simple_extent_ndims(dataspace_id);
+    int ndims = H5Sget_simple_extent_ndims(values_dataspace_id);
     std::vector<hsize_t> dims(ndims);
-    H5Sget_simple_extent_dims(dataspace_id, dims.data(), NULL);
+    H5Sget_simple_extent_dims(values_dataspace_id, dims.data(), NULL);
     bool transpose = false;
     if(poi_individuals.size() != dims[0] && poi_individuals.size() == dims[1]) {
         transpose = true;
@@ -224,10 +224,7 @@ void H5File::get_POI_matrix(
     if(poi_individuals.size() != dims[0] && poi_individuals.size() != dims[1]) {
         Rcpp::Rcerr << "Dimensions of the dataset do not match the sizes of poi_individuals. Please check the hdf5 file dataset dimensions." << std::endl;
         return;
-    }
-
-    // check for hdf5 memory buffer size - can this be optimized?
-    G.data = arma::mat(poi_individuals.size(), chunk_size, arma::fill::zeros);
+    }    
 
     hsize_t hyperslab_dims[2] = {poi_individuals.size(), poi_names.size()};
     
@@ -239,38 +236,27 @@ void H5File::get_POI_matrix(
     }
     hsize_t dst_offset[2] = {0, 0};
     // n x m
-    H5Sselect_hyperslab(dataspace_id, H5S_SELECT_SET, src_offset, NULL, hyperslab_dims, NULL);
+    H5Sselect_hyperslab(values_dataspace_id, H5S_SELECT_SET, src_offset, NULL, hyperslab_dims, NULL);
 
     // Create a memory dataspace
     hid_t memspace_id = H5Screate_simple(2, hyperslab_dims, NULL);
     H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, dst_offset, NULL, hyperslab_dims, NULL);
 
+    G.data.set_size(poi_individuals.size(), poi_names.size());
     // Read the data
-    if (type_class == H5T_INTEGER) {
-        size_t type_size = H5Tget_size(datatype);
-
-        if (type_size == 4) {
-            // Reading 32-bit integers
-            arma::Mat<int32_t> tmp(poi_individuals.size(), poi_names.size(), arma::fill::zeros);
-            // Reading the data directly into the matrix
-            H5Dread(dataset_id, H5T_NATIVE_INT32, memspace_id, dataspace_id, H5P_DEFAULT, tmp.memptr());
-            // Convert to arma::mat
-            G.data = arma::conv_to<arma::mat>::from(tmp);
-            G.data.replace(-2147483648, arma::datum::nan);
-        }
-    }
-    else if (type_class == H5T_FLOAT) {
-        // size_t type_size = H5Tget_size(datatype);
-        // Reading 64-bit double
-        arma::Mat<double> tmp(poi_individuals.size(), poi_names.size(), arma::fill::zeros);
+    if (values_type_class == H5T_INTEGER) {
         // Reading the data directly into the matrix
-        H5Dread(dataset_id, H5T_NATIVE_DOUBLE, memspace_id, dataspace_id, H5P_DEFAULT, tmp.memptr());
-        G.data = arma::conv_to<arma::mat>::from(tmp);
+        H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, G.data.memptr());
+        // Convert to arma::mat
+        G.data.replace(-2147483648, arma::datum::nan);
+    }
+    else if (values_type_class == H5T_FLOAT) {
+        // Reading 64-bit double
+        // Reading the data directly into the matrix
+        H5Dread(values_dataset_id, H5T_NATIVE_DOUBLE, memspace_id, values_dataspace_id, H5P_DEFAULT, G.data.memptr());
     }
     else {
         Rcpp::Rcerr << "HDF5 dataset type class is not float or int" << std::endl;
     }
     H5Sclose(memspace_id);
-    H5Sclose(dataspace_id);
-    H5Dclose(dataset_id);
 }
