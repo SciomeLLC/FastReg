@@ -245,14 +245,13 @@ void H5File::get_POI_matrix(
     G.data.set_size(poi_individuals.size(), poi_names.size());
     // Read the data
     if (values_type_class == H5T_INTEGER) {
-        arma::Mat<int32_t> tmp;
-        tmp.set_size(poi_individuals.size(), poi_names.size());
+        arma::Mat<int32_t> tmp(poi_individuals.size(), poi_names.size(), arma::fill::zeros);
         // Reading the data directly into the matrix
         H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, tmp.memptr());
         
         // Convert to arma::mat
-        tmp.replace(-2147483648, arma::datum::nan);
         G.data = arma::conv_to<arma::mat>::from(tmp);
+        G.data.replace(-2147483648, arma::datum::nan);
     }
     else if (values_type_class == H5T_FLOAT) {
         // Reading 64-bit double
