@@ -186,7 +186,6 @@ H5T_class_t H5File::get_POI_data_type() {
     // Get the dataspace
     values_dataspace_id = H5Dget_space(values_dataset_id);
     values_datatype = H5Dget_type(values_dataset_id);
-
     return H5Tget_class(values_datatype);
 }
 
@@ -213,6 +212,7 @@ void H5File::get_POI_matrix(
     }
     
     // Get dimensions of the dataspace
+
     int ndims = H5Sget_simple_extent_ndims(values_dataspace_id);
     std::vector<hsize_t> dims(ndims);
     H5Sget_simple_extent_dims(values_dataspace_id, dims.data(), NULL);
@@ -245,10 +245,14 @@ void H5File::get_POI_matrix(
     G.data.set_size(poi_individuals.size(), poi_names.size());
     // Read the data
     if (values_type_class == H5T_INTEGER) {
+        arma::Mat<int32_t> tmp;
+        tmp.set_size(poi_individuals.size(), poi_names.size());
         // Reading the data directly into the matrix
-        H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, G.data.memptr());
+        H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, tmp.memptr());
+        
         // Convert to arma::mat
-        G.data.replace(-2147483648, arma::datum::nan);
+        tmp.replace(-2147483648, arma::datum::nan);
+        G.data = arma::conv_to<arma::mat>::from(tmp);
     }
     else if (values_type_class == H5T_FLOAT) {
         // Reading 64-bit double
