@@ -8,6 +8,7 @@
 #'@param mc.cores an integer denoting number of cores utilzed during parallel processing
 #'@return invisible TRUE when successful (POI level output for logistic and linear regression are saved in separate tsv files)
 #'@export
+#' @import parallel
 perform.GLM.test <- function(num.poi=10, prefix="testdata_500_by_500", input.dir=".", output.dir=".", transpose.h5=FALSE, na.values=NA, mc.cores=1) {
 
   x.df <- read.delim(file=file.path(input.dir, paste0(prefix, ".covar.txt")), sep="\t", header=TRUE, stringsAsFactors=FALSE, check.names=FALSE);

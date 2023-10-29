@@ -20,11 +20,11 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  bin.resp.mean = 0.2,
 								                  num.resp.mean = 24,
 								                  num.resp.sd = 5,
-								                  poi.type = "genotype",
+								                  poi.type = "genotypes",
 								                  poi.chunk.size = 100,
 								                  poi.compression.level = 7,
                                   data.dir = ".",
-                                  prefix = "testdata_5k_by_50k", 
+                                  prefix = "testdata_5k_by_50k",
                                   verbose=TRUE,
                                   poi.file.type = "txt"){
   # num.poi <- 50000
@@ -130,7 +130,7 @@ simulate_test_dataset <- function(num.poi = 50000,
     if(poi.file.type == "h5") {
       h5createDataset(
         file=poi.file, dataset="values", dims=c(num.ind,num.poi),
-        storage.mode = "integer", chunk=c(num.ind,poi.chunk.size), 
+        storage.mode = "integer", chunk=c(num.ind,poi.chunk.size),
         level=poi.compression.level
       )
     }
@@ -149,7 +149,7 @@ simulate_test_dataset <- function(num.poi = 50000,
         geno.val[dosage.val < (1-maf[i])^2] <- 0;
         geno.val[((1-maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1;
         geno.val[dosage.val > (1- maf[i]^2)] <- 2;
-        geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
+        # geno.val[runif(num.ind)>1-miss.rate[i]] <- NA;
         values[,i] <- geno.val;
       }
       if(poi.file.type == "h5") {

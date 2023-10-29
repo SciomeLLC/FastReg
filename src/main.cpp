@@ -153,8 +153,6 @@ void FastRegCpp(
         delete_dir(config.output_dir);
     }
 
-
-
     // Find common individuals
     std::vector<std::string> poi_names = poi.names;
     std::vector<std::string> common_ind = intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
