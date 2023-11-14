@@ -108,6 +108,7 @@ class Config {
         validate_required_files();
         validate_args();
     }
+    Config(){};
     private:
     std::unordered_map<std::string, std::string> values;
     template <typename T>
