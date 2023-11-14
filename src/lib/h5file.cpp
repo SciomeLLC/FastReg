@@ -16,7 +16,7 @@ void H5File::get_POI_individuals() {
     hid_t ind_dataset = H5Dopen(file_id, dname, H5P_DEFAULT);
 
     if (ind_dataset < 0) {
-        Rcpp::Rcerr << "Failed to open individuals dataset." << std::endl;
+        std::cerr << "Failed to open individuals dataset." << std::endl;
         return;
     }
 
@@ -24,14 +24,14 @@ void H5File::get_POI_individuals() {
     hid_t native_type = H5Tget_native_type(datatype, H5T_DIR_ASCEND);
 
     if (H5Tget_class(native_type) != H5T_STRING) {
-        Rcpp::Rcerr << "Dataset does not have the expected string data type." << std::endl;
+        std::cerr << "Dataset does not have the expected string data type." << std::endl;
         H5Tclose(native_type);
         H5Tclose(datatype);
         H5Dclose(ind_dataset);
         return;
     }
     if (H5Tget_class(native_type) != H5T_STRING) {
-        Rcpp::Rcerr << "Dataset does not have the expected variable-length string data type." << std::endl;
+        std::cerr << "Dataset does not have the expected variable-length string data type." << std::endl;
         // Close your resources and return
     }
 
@@ -44,7 +44,7 @@ void H5File::get_POI_individuals() {
         char** rdata = new char*[num_ind];
 
         if (H5Dread(ind_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata) < 0) {
-            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            std::cerr << "Failed to read individuals dataset" << std::endl;
             delete[] rdata;
             // Close your resources and return
         }
@@ -69,7 +69,7 @@ void H5File::get_POI_individuals() {
         char* buffer = new char[num_ind * datatype_size];
 
         if (H5Dread(ind_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
-            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            std::cerr << "Failed to read individuals dataset" << std::endl;
             delete[] buffer;
             H5Sclose(space);
             H5Tclose(native_type);
@@ -99,7 +99,7 @@ void H5File::get_POI_names() {
     hid_t poi_dataset = H5Dopen(file_id, dname, H5P_DEFAULT);
 
     if (poi_dataset < 0) {
-        Rcpp::Rcerr << "Failed to open predictors_of_interest dataset." << std::endl;
+        std::cerr << "Failed to open predictors_of_interest dataset." << std::endl;
         return;
     }
 
@@ -107,7 +107,7 @@ void H5File::get_POI_names() {
     hid_t native_type = H5Tget_native_type(datatype, H5T_DIR_ASCEND);
 
     if (H5Tget_class(native_type) != H5T_STRING) {
-        Rcpp::Rcerr << "Dataset does not have the expected string data type." << std::endl;
+        std::cerr << "Dataset does not have the expected string data type." << std::endl;
         H5Tclose(native_type);
         H5Tclose(datatype);
         H5Dclose(poi_dataset);
@@ -123,7 +123,7 @@ void H5File::get_POI_names() {
         char** rdata = new char*[num_poi];
 
         if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata) < 0) {
-            Rcpp::Rcerr << "Failed to read individuals dataset" << std::endl;
+            std::cerr << "Failed to read individuals dataset" << std::endl;
             delete[] rdata;
             // Close your resources and return
         }
@@ -147,7 +147,7 @@ void H5File::get_POI_names() {
 
         char* buffer = new char[num_poi * datatype_size];
         if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer) < 0) {
-            Rcpp::Rcerr << "Failed to read POI dataset" << std::endl;
+            std::cerr << "Failed to read POI dataset" << std::endl;
             delete[] buffer;
             H5Sclose(space);
             H5Tclose(native_type);
@@ -181,12 +181,12 @@ void H5File::set_memspace(size_t rows, size_t cols) {
     memspace_id = H5Screate_simple(rank, hyperslab_dims, NULL);
 }
 
-H5T_class_t H5File::get_POI_data_type() {
+void H5File::get_POI_data_type() {
 
     // Get the dataspace
     values_dataspace_id = H5Dget_space(values_dataset_id);
     values_datatype = H5Dget_type(values_dataset_id);
-    return H5Tget_class(values_datatype);
+    values_type_class = H5Tget_class(values_datatype);
 }
 
 void H5File::get_POI_matrix(
@@ -212,7 +212,8 @@ void H5File::get_POI_matrix(
     }
     
     // Get dimensions of the dataspace
-
+    
+    get_POI_data_type();
     int ndims = H5Sget_simple_extent_ndims(values_dataspace_id);
     std::vector<hsize_t> dims(ndims);
     H5Sget_simple_extent_dims(values_dataspace_id, dims.data(), NULL);
@@ -222,7 +223,7 @@ void H5File::get_POI_matrix(
     }
 
     if(poi_individuals.size() != dims[0] && poi_individuals.size() != dims[1]) {
-        Rcpp::Rcerr << "Dimensions of the dataset do not match the sizes of poi_individuals. Please check the hdf5 file dataset dimensions." << std::endl;
+        std::cerr << "Dimensions of the dataset do not match the sizes of poi_individuals. Please check the hdf5 file dataset dimensions." << std::endl;
         return;
     }    
 
@@ -259,7 +260,34 @@ void H5File::get_POI_matrix(
         H5Dread(values_dataset_id, H5T_NATIVE_DOUBLE, memspace_id, values_dataspace_id, H5P_DEFAULT, G.data.memptr());
     }
     else {
-        Rcpp::Rcerr << "HDF5 dataset type class is not float or int" << std::endl;
+        std::cerr << "HDF5 dataset type class is not float or int" << std::endl;
     }
     H5Sclose(memspace_id);
+}
+void H5File::close_all() {
+    if(memspace_id > -1) { 
+        H5Sclose(memspace_id);  
+    }
+    if(file_id >= 0){
+        H5Fclose(file_id);
+    }
+
+    if (values_dataset_id >= 0) {
+        H5Dclose(values_dataset_id);
+    }
+
+    if (values_dataspace_id >= 0) {
+        H5Sclose(values_dataspace_id);
+    }
+}
+
+void H5File::open_file() {
+    file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);        
+    if (file_id < 0) {
+        Rcpp::stop("Failed to open HDF5 file.");
+    }
+}
+
+void H5File::get_values_dataset_id() {
+    values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
 }

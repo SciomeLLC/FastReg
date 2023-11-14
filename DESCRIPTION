@@ -2,7 +2,7 @@ Package: FastReg
 Type: Package
 Title: This is a easy to use package to perform high throughput
         logistic and linear regression.
-Version: 0.4.16
+Version: 0.4.17
 Authors@R: 
     c(
     person(given = "Shail",

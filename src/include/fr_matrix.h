@@ -1,5 +1,6 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
+#include <names_map.h>
 #include <string>
 #include <unordered_map>
 #include <fstream>
@@ -13,9 +14,12 @@ public:
     FRMatrix() {};
 
     arma::mat data;
+    // NamesMap row_names;
+    // NamesMap col_names;
+    // NamesMap col_names_str;
     std::vector<std::vector<std::string>> str_data;
     std::unordered_map<std::string, int> col_names_str;
-
+    
     std::unordered_map<std::string, int> row_names;
     std::unordered_map<std::string, int> col_names;
     FRMatrix(std::string filename, std::string delim, std::string &names) {
