@@ -118,14 +118,13 @@ void H5File::get_POI_names() {
         hid_t space = H5Dget_space(poi_dataset);
         hsize_t num_poi;
         H5Sget_simple_extent_dims(space, &num_poi, NULL);
-
-        // This is the change. Instead of a char buffer, you now have an array of pointers.
         char** rdata = new char*[num_poi];
 
         if (H5Dread(poi_dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata) < 0) {
-            std::cerr << "Failed to read individuals dataset" << std::endl;
             delete[] rdata;
-            // Close your resources and return
+            H5Sclose(space);
+            std::cerr << "Failed to read individuals dataset" << std::endl;
+            return;
         }
 
         for (hsize_t i = 0; i < num_poi; i++) {
