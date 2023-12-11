@@ -275,13 +275,18 @@ void H5File::close_all() {
         H5Dclose(values_dataset_id);
     }
 
-    if (values_dataspace_id >= 0) {
+    if (values_dataspace_id > 0) {
         H5Sclose(values_dataspace_id);
     }
 }
 
-void H5File::open_file() {
-    file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);        
+void H5File::open_file(bool read_only) {
+    if  (read_only == true) {
+        file_id = H5Fopen(file_path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    }
+    else {
+        file_id = H5Fopen(file_path.c_str(), H5F_ACC_SWMR_READ, H5P_DEFAULT);       
+    } 
     if (file_id < 0) {
         Rcpp::stop("Failed to open HDF5 file.");
     }

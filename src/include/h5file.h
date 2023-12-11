@@ -45,7 +45,7 @@ public:
     // ~H5File() {
     //     close_all();
     // }
-    void open_file();
+    void open_file(bool read_only = false);
     void get_values_dataset_id();
     void close_all();
     void get_POI_individuals();
