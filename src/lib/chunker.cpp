@@ -36,7 +36,7 @@ unsigned long long Chunker::getTotalSystemMemory() {
 
 void Chunker::estimate_chunks_threads() {
     // TEMPORARY HARD CODE
-    num_procs = 15;
+    num_procs = 10;
     Rcpp::Rcout << "Estimating block size" << std::endl;
     num_threads = std::thread::hardware_concurrency();
     Rcpp::Rcout << "Totals threads available: " << num_threads << std::endl;
@@ -62,19 +62,19 @@ void Chunker::estimate_chunks_threads() {
     #else
     os = "Linux";
     #endif
+    // Hard code
+    num_threads = 2;
     if (os == "Darwin") {
         Rcpp::warning("**********\n " \
                     "Mac detected - using 1 thread.\n" \
                     "**********");
         num_threads = 1;
     }
-    // Hard code
-    num_threads = 2;
     double matrix_size = std::exp(std::log(_num_poi) + std::log(_num_ind));
     int max_num_matrix = 3;
     int float_size = 8; // 8 bytes per number assuming 64-bit numbers
-    double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
-    double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
+    double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix)) + 5;
+    double chunks = (data_size) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(_num_poi / chunks);
 
     if (_poi_block_size > 0 && chunked_dim1 > _poi_block_size) {

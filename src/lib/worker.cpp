@@ -30,24 +30,24 @@ void Worker::process_job(Job& job) {
     H5File poi(job.config.POI_file);
     std::cout << "Processing POIs block: " << job.id + 1 << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
-    {
+    //{
         // reading HDF5 file in critical section
-        std::unique_lock<std::mutex> lock(_mtx);
-        poi.open_file();
-        poi.get_values_dataset_id();
-        poi.get_POI_individuals();
-        poi.get_POI_names();
-        poi.set_memspace(poi.individuals.size(), job.chunk_size);
-        int start_chunk = job.id*job.chunk_size;
-        int end_chunk = start_chunk + job.chunk_size;
-        if (end_chunk > job.num_poi) {
-            end_chunk = job.num_poi;
-            poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
-        }
-        std::vector<std::string> poi_names_chunk(job.poi_names.begin() + start_chunk, job.poi_names.begin() + end_chunk);
-        poi.get_POI_matrix(poi_matrix, poi.individuals, poi_names_chunk, job.chunk_size);
-        poi.close_all();
+    // std::unique_lock<std::mutex> lock(_mtx);
+    poi.open_file(true);
+    poi.get_values_dataset_id();
+    poi.get_POI_individuals();
+    poi.get_POI_names();
+    poi.set_memspace(poi.individuals.size(), job.chunk_size);
+    int start_chunk = job.id*job.chunk_size;
+    int end_chunk = start_chunk + job.chunk_size;
+    if (end_chunk > job.num_poi) {
+        end_chunk = job.num_poi;
+        poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
     }
+    std::vector<std::string> poi_names_chunk(job.poi_names.begin() + start_chunk, job.poi_names.begin() + end_chunk);
+    poi.get_POI_matrix(poi_matrix, poi.individuals, poi_names_chunk, job.chunk_size);
+    poi.close_all();
+    //}
     
     #if !defined(__APPLE__) && !defined(__MACH__)
     omp_set_num_threads(job.num_threads);

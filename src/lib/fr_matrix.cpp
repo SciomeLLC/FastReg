@@ -60,6 +60,10 @@ void FRMatrix::load_from_csv(std::string& filename, std::string& delim, std::str
     std::string line;
 
     std::getline(file_stream, line);
+    // remove carriage returns for windows
+    if (line[line.size() - 1] == '\r') {
+        line.erase(line.size() - 1);
+    }
     std::stringstream ss(line);
 
     char delim_char;
@@ -201,7 +205,7 @@ std::vector<std::string> FRMatrix::split(const std::string& str_tokens, char del
 std::vector<std::string> FRMatrix::get_col_str(const std::string& col_name) {
     bool exists = col_names_str.find(col_name) != col_names_str.end();
     if(!exists) {
-      Rcpp::stop("Column name doesn't match any non-numeric columns");
+      Rcpp::stop("Column name " + col_name + " doesn't match any non-numeric columns.");
     }
     int col_idx = col_names_str[col_name];
     std::vector<std::string> col_vals;
