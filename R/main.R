@@ -33,11 +33,15 @@
 #' @param split.by Default: c(""). List of covariates values to split by when stratifying the data.
 #' @param output.dir Default: results. Relative path to directory for output. Directory will be created if it doesn't exist
 #' @param compress.results TRUE|FALSE. Default: FALSE. Compress results inside the output directory.
+#' @param config.file deprecated. No effect.
 #' @return numeric denoting elapsed.time
 #' @export
 #' @import rhdf5
 #' @import Rcpp
 #' @import RcppArmadillo
+#' @import stats
+#' @import parallel
+#' @import data.table
 
 FastReg <- function(
   phenotype = "bin.resp",

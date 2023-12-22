@@ -1,7 +1,7 @@
 Package: FastReg
 Type: Package
-Title: This is a easy to use package to perform high throughput
-        logistic and linear regression.
+Title: Fast Regression
+Description: Efficiently perform large scale simple linear and logistic regression analysis.
 Version: 0.4.17
 Authors@R: 
     c(
@@ -24,14 +24,13 @@ Authors@R:
            role = "ctb")
     )
 Maintainer: Deepak Mav<software.support@sciome.com>
-Description: Efficiently perform large scale simple linear and logistic regression analysis
-License: What license is it under?
+License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.0), RcppArmadillo
 biocViews:
-Imports: RcppArmadillo, rhdf5, Rcpp
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel
 LinkingTo: Rcpp, RcppArmadillo
-Suggests: testthat (>= 3.0.0)
+Suggests: testthat (>= 3.0.0), stats
 Config/testthat/edition: 3
 NeedsCompilation: yes
 RoxygenNote: 7.2.3

@@ -1,17 +1,24 @@
-library("rhdf5")
-library("parallel")
 #' simulate_test_dataset function to generate test dataset for evaluation of FastReg
-#'@param num.poi an integer denoting number of predictors of interest (SNP calls)
-#'@param num.ind an integer denoting number of individuals
-#'@param seed an integer denoting random number generate seed
-#'@param coeff.sd numeric value denoting the standard deviation parameter for regression coefficients for covariates (default=0, regression coefficients for covarites are set to zero)
-#'@param bin.resp.mean numeric value between 0 and 1 denoting baseline incidence rate for binary response
-#'@param num.resp.mean numeric value denoting overall mean of numeric response
-#'@param num.resp.sd numeric value denoting overall standard deviation of numeric response
-#'@param poi.type character must be either "genotypes" or "dosage"
-#'@param poi.chunk.size an integer denoting poi chunk size used during H5 file generation
-#'@param poi.compression.level an integer denoting compression level used during H5 file creation
-#'@param verbose logical to control display of progress messages (default=TRUE)
+#' @param num.poi an integer denoting number of predictors of interest (SNP calls)
+#' @param num.ind an integer denoting number of individuals
+#' @param seed an integer denoting random number generate seed
+#' @param coeff.sd numeric value denoting the standard deviation parameter for regression coefficients for covariates (default=0, regression coefficients for covarites are set to zero)
+#' @param bin.resp.mean numeric value between 0 and 1 denoting baseline incidence rate for binary response
+#' @param num.resp.mean numeric value denoting overall mean of numeric response
+#' @param num.resp.sd numeric value denoting overall standard deviation of numeric response
+#' @param poi.type character must be either "genotype" or "dosage"
+#' @param poi.chunk.size an integer denoting poi chunk size used during H5 file generation
+#' @param poi.compression.level an integer denoting compression level used during H5 file creation
+#' @param data.dir output directory
+#' @param prefix prefix for all files created
+#' @param poi.file.type 'h5' or 'txt'
+#' @param verbose logical to control display of progress messages (default=TRUE)
+#' @import stats
+#' @import parallel
+#' @import data.table
+#' @import rhdf5
+#' @importFrom("stats", "as.formula", "glm", "pt", "rbinom", "rnorm", "runif", "sd")
+#' @importFrom("utils", "read.delim", "write.table")
 #'@return a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response
 simulate_test_dataset <- function(num.poi = 50000,
                                   num.ind = 5000,
@@ -20,7 +27,7 @@ simulate_test_dataset <- function(num.poi = 50000,
 								                  bin.resp.mean = 0.2,
 								                  num.resp.mean = 24,
 								                  num.resp.sd = 5,
-								                  poi.type = "genotypes",
+								                  poi.type = "genotype",
 								                  poi.chunk.size = 100,
 								                  poi.compression.level = 7,
                                   data.dir = ".",
@@ -126,7 +133,7 @@ simulate_test_dataset <- function(num.poi = 50000,
   num.poi.blocks <- ceiling(num.poi/poi.chunk.size);
 
 
-  if(poi.type=="genotypes") {
+  if(poi.type=="genotype") {
     if(poi.file.type == "h5") {
       h5createDataset(
         file=poi.file, dataset="values", dims=c(num.ind,num.poi),

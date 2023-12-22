@@ -36,13 +36,19 @@ simulate_test_dataset(
 
 \item{num.resp.sd}{numeric value denoting overall standard deviation of numeric response}
 
-\item{poi.type}{character must be either "genotypes" or "dosage"}
+\item{poi.type}{character must be either "genotype" or "dosage"}
 
 \item{poi.chunk.size}{an integer denoting poi chunk size used during H5 file generation}
 
 \item{poi.compression.level}{an integer denoting compression level used during H5 file creation}
 
+\item{data.dir}{output directory}
+
+\item{prefix}{prefix for all files created}
+
 \item{verbose}{logical to control display of progress messages (default=TRUE)}
+
+\item{poi.file.type}{'h5' or 'txt'}
 }
 \value{
 a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response

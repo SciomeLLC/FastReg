@@ -7,6 +7,9 @@
 #' @param buffSize buffer size
 #' @param transpose boolean to transpose the data
 #' @param chunkEdge chunk size for the hdf5 file
+#' @param vcf TRUE or FALSE
+#' @param delimiter delimiter used in the dataFile
+#' @param gz bool to gzip the h5 dataset or not
 #' @return Boolean stating if the result file was created succesfully
 #' @export
 
@@ -60,5 +63,5 @@ fastR_hdf5convert <- function(dataFile, h5File, headerRow=1, idCol=1, dataCol=2,
 		cat("Error: gz must be a single-member logical vector\n")
 		return(FALSE)
 	}
-	return(.Call("fastR_hdf5convert", dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge, vcf, delimiter, gz))
+	return(.Call("hdf5convert", dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge, vcf, delimiter, gz))
 }

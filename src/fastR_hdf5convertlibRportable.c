@@ -182,6 +182,9 @@ static int read_header_write_cols(FILE *datafile, gzFile gzdatafile, struct hdf5
 			i++;
 			if(nread==-1) {
 				fprintf(stderr, "Error: could not read specified header row from input file\n");
+				free(collabel);
+				free(colnames);
+				free(line);
 				return(1);
 			}
 		}
@@ -191,6 +194,9 @@ static int read_header_write_cols(FILE *datafile, gzFile gzdatafile, struct hdf5
 		i++;
 		if(nread==-1) {
 			fprintf(stderr, "Error: could not read specified header row from input file\n");
+			free(collabel);
+			free(colnames);
+			free(line);
 			return(1);
 		}
 		while(line[0]=='#' && line[1]=='#') {
@@ -201,6 +207,9 @@ static int read_header_write_cols(FILE *datafile, gzFile gzdatafile, struct hdf5
 			i++;
 			if(nread==-1) {
 				fprintf(stderr, "Error: could not read specified header row from input file\n");
+				free(collabel);
+				free(colnames);
+				free(line);
 				return(1);
 			}
 		}
@@ -237,6 +246,9 @@ static int read_header_write_cols(FILE *datafile, gzFile gzdatafile, struct hdf5
 	status=H5Dwrite(h5vars->col_dataset, h5vars->col_datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, colnames);
 	if(status<0) {
 		fprintf(stderr, "Error: unable to write column names to HDF5 file\n");
+		free(collabel);
+		free(colnames);
+		free(line);
 		return(1);
 	}
 	free(collabel);
@@ -603,7 +615,7 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
 	return(0);
 }
 
-SEXP fastR_hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge, SEXP vcf, SEXP delim, SEXP gz) {
+SEXP hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge, SEXP vcf, SEXP delim, SEXP gz) {
 	struct fastR_user_params par;
 	int retval;
 	SEXP result=PROTECT(allocVector(LGLSXP, 1));

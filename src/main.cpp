@@ -50,24 +50,25 @@ namespace fs = std::experimental::filesystem;
 #endif
 
 struct ProcResult {
-    int timing_results[4];
-    double process_nonconvergence_status;
-    double process_total_filtered_pois;
+    int timing_results[4] = {0, 0, 0, 0};
+    double process_nonconvergence_status = 0.0;
+    double process_total_filtered_pois = 0.0;
 };
 
+// exception handler - per thread. print the stack trace (check out Boost)
 
-
+// parameter by reference - Config* config, int* process_id
 void process_regression(
     Config& config,
-    int& process_id,
-    int& chunk_size,
-    int& num_poi,
+    int process_id,
+    int chunk_size,
+    int num_poi,
     std::vector<std::string>& poi_names,
     std::vector<std::string>& strat_individuals,
-    int& num_threads,
-    int& stratum,
+    int num_threads,
+    int stratum,
     double& total_filtered_pois,
-    int& num_poi_blocks,
+    int num_poi_blocks,
     FRMatrix& interactions_matrix,
     FRMatrix& covar_matrix,
     FRMatrix& pheno_matrix,
@@ -75,35 +76,40 @@ void process_regression(
     int timing_results[4]
     ) {
     FRMatrix poi_matrix;
-    H5File poi(config.POI_file);
+    H5File poi_child(config.POI_file);
     std::cout << "Processing POIs block: " << process_id + 1 << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
-    //{
-        // reading HDF5 file in critical section
-    // std::unique_lock<std::mutex> lock(_mtx);
-    poi.open_file(true);
-    poi.get_values_dataset_id();
-    poi.get_POI_individuals();
-    poi.get_POI_names();
-    poi.set_memspace(poi.individuals.size(), chunk_size);
+
+    poi_child.open_file(true);
+    poi_child.get_values_dataset_id();
+    
+    std::cout << "started Reading POI individual ids for: " << process_id << std::endl;
+    poi_child.get_POI_individuals();
+    std::cout << "completed Reading individual ids names for: " << process_id << std::endl;
+    std::cout << "started Reading POI names for: " << process_id << std::endl;
+    poi_child.get_POI_names();
+    std::cout << "completed Reading POI names for: " << process_id << std::endl;
+    poi_child.set_memspace(poi_child.individuals.size(), chunk_size);
     int start_chunk = process_id*chunk_size;
     int end_chunk = start_chunk + chunk_size;
     if (end_chunk > num_poi) {
         end_chunk = num_poi;
-        poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
+        poi_child.set_memspace(poi_child.individuals.size(), end_chunk - start_chunk);
     }
-    std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
-    poi.get_POI_matrix(poi_matrix, poi.individuals, poi_names_chunk, chunk_size);
-    poi.close_all();
-    //}
     
+    std::cout << "started Reading POIs for: " << process_id << std::endl;
+    std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
+    poi_child.get_POI_matrix(poi_matrix, poi_child.individuals, poi_names_chunk, chunk_size);
+    std::cout << "Completed Reading POIs for: " << process_id << std::endl;
+    poi_child.close_all();
+    std::cout << "Closed POI file for: " << process_id << std::endl;
     #if !defined(__APPLE__) && !defined(__MACH__)
     omp_set_num_threads(num_threads);
     #endif
     std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
-    std::vector<std::string> drop_rows = set_diff(poi.individuals, strat_individuals);
+    std::vector<std::string> drop_rows = set_diff(poi_child.individuals, strat_individuals);
 
-    int num_dropped = poi.individuals.size() - strat_individuals.size();
+    int num_dropped = poi_child.individuals.size() - strat_individuals.size();
     arma::uvec drop_row_idx(drop_rows.size());
     for (size_t i = 0; i < drop_rows.size(); i++) {
         drop_row_idx[i] = poi_matrix.row_names[drop_rows[i]];
@@ -164,6 +170,8 @@ void process_regression(
     
     start_time = std::chrono::high_resolution_clock::now();
     // 1 phenotype 
+    
+    std::cout << "Creating matrices for regression for: " << process_id << std::endl;
     FRMatrix beta_est;
     FRMatrix se_beta;
     int num_parms = interactions_matrix.data.n_cols + covar_matrix.data.n_cols;
@@ -190,9 +198,12 @@ void process_regression(
     beta_est.col_names = covar_matrix.row_names;
     se_beta.col_names = beta_est.col_names;
     neglog10_pvl.col_names = beta_est.col_names;
+    
+    std::cout << "Completed allocating matrices for regression for: " << process_id << std::endl;
     std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
 
-
+    
+    std::cout << "Creating weigth matrices for regression for: " << process_id << std::endl;
     // create weight mask matrix    
     arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols, arma::fill::ones);
     for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
@@ -203,6 +214,7 @@ void process_regression(
         }
     }
     
+    std::cout << "Completed allocating weigth matrices for regression for: " << process_id << std::endl;
     end_time = std::chrono::high_resolution_clock::now();
     // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
     timing_results[0] = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
@@ -220,6 +232,7 @@ void process_regression(
         //std::cout << "Started linear regression" << std::endl;
         regression.reset(new LinearRegression ());
     }
+    std::cout << "Started regression for " << process_id << std::endl;
     regression->run(
         covar_matrix, 
         pheno_matrix, 
@@ -234,6 +247,8 @@ void process_regression(
         config.max_iter, 
         config.p_value_type == "t.dist"
     );
+    
+    std::cout << "Completed regression for " << process_id << std::endl;
     end_time = std::chrono::high_resolution_clock::now();
     // Rcpp::Rcout << "regression timing for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
     // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
@@ -336,11 +351,10 @@ void FastRegCpp(
     FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim, config.pheno_rowname_cols);
     FRMatrix covar_df(config.covar_file, config.covar_file_delim, config.covar_rowname_cols);
     H5File poi(config.POI_file);
-    poi.open_file();
+    poi.open_file(true);
     poi.get_values_dataset_id();
     poi.get_POI_names();
     poi.get_POI_individuals();
-    poi.close_all();
 
     // Clean up previous run 
     if(dir_exists(config.output_dir)) {
@@ -463,8 +477,9 @@ void FastRegCpp(
         int num_parallel_poi_blocks = (int) std::ceil((double)num_poi/(double)parallel_chunk_size);
         Rcpp::Rcout << "POIs will be processed in " << num_parallel_poi_blocks << " blocks each of size " << parallel_chunk_size << std::endl;
         Rcpp::Rcout << "Closing main thread h5 file" << std::endl;
-
-        auto start = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        
+        poi.close_all();
+        // auto start = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         int total_nonconvergence_status = 0.0;
         double sum_total_filtered_pois = 0.0;
         int memory_allocation_time = 0;
@@ -477,40 +492,41 @@ void FastRegCpp(
         int num_processes_started = 0;
         int num_processes_completed = 0;
         #ifdef _WIN32
-        // std::vector<PROCESS_INFORMATION> process_info(num_processes);
-        // std::vector<HANDLE> h_read_pipe(num_processes);
-        // SECURITY_ATTRIBUTES security_attributes;
-        // security_attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
-        // security_attributes.bInheritHandle = TRUE;
-        // security_attributes.lpSecurityDescriptor = NULL;
+        std::vector<PROCESS_INFORMATION> process_info(num_processes);
+        std::vector<HANDLE> h_read_pipe(num_processes);
+        SECURITY_ATTRIBUTES security_attributes;
+        security_attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
+        security_attributes.bInheritHandle = TRUE;
+        security_attributes.lpSecurityDescriptor = NULL;
 
-        // for (int i = 0; i < num_parallel_poi_blocks; i++) {
-        //     HANDLE h_write_pipe;
-        //     if(!CreatePipe(&h_read_pipe[i], &h_write_pipe, &security_attributes, 0)) {
-        //         Rcpp::Rcout << "CreatePipe failed (" << GetLastError() << ")." << std::endl;
-        //         return -1;
-        //     }
+        for (int i = 0; i < num_parallel_poi_blocks; i++) {
+            // HANDLE h_write_pipe;
+            // if(!CreatePipe(&h_read_pipe[i], &h_write_pipe, &security_attributes, 0)) {
+            //     Rcpp::Rcout << "CreatePipe failed (" << GetLastError() << ")." << std::endl;
+            //     return -1;
+            // }
 
-        //     STARTUPINFO siStartInfo;
-        //     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-        //     ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-        //     siStartInfo.cb = sizeof(STARTUPINFO);
-        //     siStartInfo.hStdError = hWritePipe;
-        //     siStartInfo.hStdOutput = hWritePipe;
-        //     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-        //     std::string cmd = "regression_process " + std::to_string(i);
+            // STARTUPINFO siStartInfo;
+            // ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+            // ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+            // siStartInfo.cb = sizeof(STARTUPINFO);
+            // siStartInfo.hStdError = hWritePipe;
+            // siStartInfo.hStdOutput = hWritePipe;
+            // siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+            // std::string cmd = "regression_process " + std::to_string(i);
 
-        //     int rval = CreateProcess(
-        //         NULL,
-        //         &cmd[0],
+            // int rval = CreateProcess(
+            //     NULL,
+            //     &cmd[0],
 
-        //     )
-        // }
+            // )
+        }
         #else
         // create 2 pipes per process - one each for read and write
         std::vector<int> pipe_file_descriptors(num_processes * 2); 
         std::vector<pid_t> process_ids(num_processes);
         std::vector<bool> has_completed(num_parallel_poi_blocks, false);
+        // std::unique_lock<std::mutex> lock(_mtx);
         while(num_processes_completed < num_parallel_poi_blocks) {
             while(num_processes_started < num_parallel_poi_blocks && num_processes_started - num_processes_completed < num_processes) {
                 int i = num_processes_started;
@@ -518,7 +534,6 @@ void FastRegCpp(
                     perror("pipe");
                     return;
                 }
-
                 process_ids[i] = fork();
                 if(process_ids[i] == -1) {
                     perror("fork");
@@ -528,6 +543,8 @@ void FastRegCpp(
                 if(process_ids[i] == 0) { // child process
                     close(pipe_file_descriptors[i*2]); // close read pipe
                     int timing_results[4] = {memory_allocation_time, file_writing_time, poi_reading_time, regression_time};
+                    
+                    Rcpp::Rcout << "Started process_regression for " << i << std::endl;
                     process_regression(
                         config, 
                         i, 
@@ -545,49 +562,57 @@ void FastRegCpp(
                         nonconvergence_status, 
                         timing_results
                     );
+                    Rcpp::Rcout << "Completed process_regression for " << i << std::endl;
 
                     ProcResult proc_result;
-                    std::copy(timing_results, timing_results + 4, proc_result.timing_results);
+                    size_t num_elements = sizeof(timing_results) / sizeof(timing_results[0]);
+                    std::copy(timing_results, timing_results + num_elements, proc_result.timing_results);
                     proc_result.process_nonconvergence_status = nonconvergence_status;
                     proc_result.process_total_filtered_pois = total_filtered_pois;
-                    write(pipe_file_descriptors[i*2 + 1], &proc_result, sizeof(proc_result));
+                    ssize_t bytes_written = write(pipe_file_descriptors[i*2 + 1], &proc_result, sizeof(proc_result));
+                    if (bytes_written == -1) {
+                        perror("Unable write to pipe fd.");
+                    }
                     close(pipe_file_descriptors[i*2 + 1]);
                     _exit(EXIT_SUCCESS);
+                    return;
                 } else {
                     close(pipe_file_descriptors[i*2 + 1]);
                     num_processes_started++;
                 }
             }
-
             // Check for finished processes
             for(int i = 0; i < num_processes_started; i++) {
-                if(!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
-                    // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-                    int timing_results[4];
-                    int process_nonconvergence_status;
-                    int process_total_filtered_pois;
-                    ProcResult proc_result;
-                    read(
-                        pipe_file_descriptors[i*2], 
-                        &proc_result, 
-                        sizeof(proc_result)
-                    );
-                    close(pipe_file_descriptors[i*2]);
+                if(process_ids[i] != 0) { // parent process
+                    if(!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
+                        // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
+                        ProcResult proc_result;
+                        ssize_t bytes_read = read(
+                            pipe_file_descriptors[i*2], 
+                            &proc_result, 
+                            sizeof(proc_result)
+                        );
+                        if (bytes_read == -1) {
+                            stop("Unable to read pipe fd.");
+                        }
+                        close(pipe_file_descriptors[i*2]);
 
-                    memory_allocation_time += proc_result.timing_results[0];
-                    file_writing_time += proc_result.timing_results[1];
-                    poi_reading_time += proc_result.timing_results[2];
-                    regression_time += proc_result.timing_results[3];
+                        memory_allocation_time += proc_result.timing_results[0];
+                        file_writing_time += proc_result.timing_results[1];
+                        poi_reading_time += proc_result.timing_results[2];
+                        regression_time += proc_result.timing_results[3];
 
-                    Rcpp::Rcout << "Memory allocation time for process " << i + 1 << ":" << proc_result.timing_results[0]  << " ms" << std::endl;
-                    Rcpp::Rcout << "File writing time for process " << i + 1 << ":" << proc_result.timing_results[1]  << " ms" << std::endl;
-                    Rcpp::Rcout << "POI reading time for process " << i + 1 << ":" << proc_result.timing_results[2]  << " ms" << std::endl;
-                    Rcpp::Rcout << "Regression time for process " << i + 1 << ":" << proc_result.timing_results[3]  << " ms" << std::endl;
+                        Rcpp::Rcout << "Memory allocation time for process " << i + 1 << ":" << proc_result.timing_results[0]  << " ms" << std::endl;
+                        Rcpp::Rcout << "File writing time for process " << i + 1 << ":" << proc_result.timing_results[1]  << " ms" << std::endl;
+                        Rcpp::Rcout << "POI reading time for process " << i + 1 << ":" << proc_result.timing_results[2]  << " ms" << std::endl;
+                        Rcpp::Rcout << "Regression time for process " << i + 1 << ":" << proc_result.timing_results[3]  << " ms" << std::endl;
 
-                    total_nonconvergence_status += proc_result.process_nonconvergence_status;
-                    sum_total_filtered_pois += proc_result.process_total_filtered_pois;
-                    has_completed[i] = true;
-                    num_processes_completed++;
+                        total_nonconvergence_status += proc_result.process_nonconvergence_status;
+                        sum_total_filtered_pois += proc_result.process_total_filtered_pois;
+                        has_completed[i] = true;
+                        num_processes_completed++;
+                        // delete proc_result;
+                    }
                 }
             }
         }
@@ -598,7 +623,7 @@ void FastRegCpp(
         Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "s" << std::endl;
         Rcpp::Rcout << "Memory allocation: " << memory_allocation_time / 1000.0 << "s" << std::endl;
         Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "s" << std::endl;
-        auto end = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        // auto end = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         double noncovergence_percent = (total_nonconvergence_status / sum_total_filtered_pois) * 100;
         if (noncovergence_percent > 0.0) {
             Rcpp::Rcout << total_nonconvergence_status << " out of " << sum_total_filtered_pois << " (" << std::setprecision(2) << noncovergence_percent << "%) POIs did not meet relative and absolute convergence threshold." << std::endl;

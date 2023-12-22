@@ -109,7 +109,7 @@ FastReg(
 
 \item{compress.results}{TRUE|FALSE. Default: FALSE. Compress results inside the output directory.}
 
-\item{config.file}{an optional character denoting configuration filename (default=NULL)}
+\item{config.file}{deprecated. No effect.}
 }
 \value{
 numeric denoting elapsed.time
