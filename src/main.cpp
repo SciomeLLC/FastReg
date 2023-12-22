@@ -77,18 +77,18 @@ void process_regression(
     ) {
     FRMatrix poi_matrix;
     H5File poi_child(config.POI_file);
-    std::cout << "Processing POIs block: " << process_id + 1 << std::endl;
+    Rcpp::Rcout << "Processing POIs block: " << process_id + 1 << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
 
     poi_child.open_file(true);
     poi_child.get_values_dataset_id();
     
-    std::cout << "started Reading POI individual ids for: " << process_id << std::endl;
+    Rcpp::Rcout << "started Reading POI individual ids for: " << process_id << std::endl;
     poi_child.get_POI_individuals();
-    std::cout << "completed Reading individual ids names for: " << process_id << std::endl;
-    std::cout << "started Reading POI names for: " << process_id << std::endl;
+    Rcpp::Rcout << "completed Reading individual ids names for: " << process_id << std::endl;
+    Rcpp::Rcout << "started Reading POI names for: " << process_id << std::endl;
     poi_child.get_POI_names();
-    std::cout << "completed Reading POI names for: " << process_id << std::endl;
+    Rcpp::Rcout << "completed Reading POI names for: " << process_id << std::endl;
     poi_child.set_memspace(poi_child.individuals.size(), chunk_size);
     int start_chunk = process_id*chunk_size;
     int end_chunk = start_chunk + chunk_size;
@@ -97,12 +97,12 @@ void process_regression(
         poi_child.set_memspace(poi_child.individuals.size(), end_chunk - start_chunk);
     }
     
-    std::cout << "started Reading POIs for: " << process_id << std::endl;
+    Rcpp::Rcout << "started Reading POIs for: " << process_id << std::endl;
     std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
     poi_child.get_POI_matrix(poi_matrix, poi_child.individuals, poi_names_chunk, chunk_size);
-    std::cout << "Completed Reading POIs for: " << process_id << std::endl;
+    Rcpp::Rcout << "Completed Reading POIs for: " << process_id << std::endl;
     poi_child.close_all();
-    std::cout << "Closed POI file for: " << process_id << std::endl;
+    Rcpp::Rcout << "Closed POI file for: " << process_id << std::endl;
     #if !defined(__APPLE__) && !defined(__MACH__)
     omp_set_num_threads(num_threads);
     #endif
@@ -125,16 +125,16 @@ void process_regression(
     srt_cols_2 = poi_matrix.sort_map(false);
     auto end_time = std::chrono::high_resolution_clock::now();
     timing_results[2] = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count(); // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-    //std::cout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+    //Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
     if (config.POI_type == "genotype") {
-        std::cout << "Filtering MAF and HWE" << std::endl;
+        Rcpp::Rcout << "Filtering MAF and HWE" << std::endl;
 
         FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
         arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
 
         if (filtered.data.n_cols == 0 || filtered_col.n_elem == poi_matrix.data.n_cols) {
-            std::cout << "no POI passed filtering" << std::endl;
+            Rcpp::Rcout << "no POI passed filtering" << std::endl;
             return;
         }
         
@@ -153,7 +153,7 @@ void process_regression(
 
         poi_matrix.data.shed_cols(filtered_col);
 
-        //std::cout << "transforming POI and writing statistics" << std::endl;
+        //Rcpp::Rcout << "transforming POI and writing statistics" << std::endl;
         srt_cols_2 = poi_matrix.sort_map(false);
         transform_poi(poi_matrix, config.POI_effect_type);
         start_time = std::chrono::high_resolution_clock::now();
@@ -162,8 +162,8 @@ void process_regression(
         end_time = std::chrono::high_resolution_clock::now();
         // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
         timing_results[1] = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-        //std::cout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";  
-        //std::cout << "Effective block size after filtering: " << poi_matrix.data.n_cols << std::endl;
+        //Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";  
+        //Rcpp::Rcout << "Effective block size after filtering: " << poi_matrix.data.n_cols << std::endl;
     }
 
     total_filtered_pois = poi_matrix.data.n_cols;
@@ -171,7 +171,7 @@ void process_regression(
     start_time = std::chrono::high_resolution_clock::now();
     // 1 phenotype 
     
-    std::cout << "Creating matrices for regression for: " << process_id << std::endl;
+    Rcpp::Rcout << "Creating matrices for regression for: " << process_id << std::endl;
     FRMatrix beta_est;
     FRMatrix se_beta;
     int num_parms = interactions_matrix.data.n_cols + covar_matrix.data.n_cols;
@@ -199,11 +199,11 @@ void process_regression(
     se_beta.col_names = beta_est.col_names;
     neglog10_pvl.col_names = beta_est.col_names;
     
-    std::cout << "Completed allocating matrices for regression for: " << process_id << std::endl;
+    Rcpp::Rcout << "Completed allocating matrices for regression for: " << process_id << std::endl;
     std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
 
     
-    std::cout << "Creating weigth matrices for regression for: " << process_id << std::endl;
+    Rcpp::Rcout << "Creating weigth matrices for regression for: " << process_id << std::endl;
     // create weight mask matrix    
     arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols, arma::fill::ones);
     for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
@@ -214,25 +214,25 @@ void process_regression(
         }
     }
     
-    std::cout << "Completed allocating weigth matrices for regression for: " << process_id << std::endl;
+    Rcpp::Rcout << "Completed allocating weigth matrices for regression for: " << process_id << std::endl;
     end_time = std::chrono::high_resolution_clock::now();
     // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
     timing_results[0] = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-    //std::cout << "Memory allocation timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+    //Rcpp::Rcout << "Memory allocation timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
     start_time = std::chrono::high_resolution_clock::now();
     std::unique_ptr<RegressionBase> regression;
 
 
     if (config.regression_type == "logistic") {
-        //std::cout << "Started logistic regression" << std::endl;
+        //Rcpp::Rcout << "Started logistic regression" << std::endl;
         regression.reset(new LogisticRegression());
     }
     else {
-        //std::cout << "Started linear regression" << std::endl;
+        //Rcpp::Rcout << "Started linear regression" << std::endl;
         regression.reset(new LinearRegression ());
     }
-    std::cout << "Started regression for " << process_id << std::endl;
+    Rcpp::Rcout << "Started regression for " << process_id << std::endl;
     regression->run(
         covar_matrix, 
         pheno_matrix, 
@@ -248,7 +248,7 @@ void process_regression(
         config.p_value_type == "t.dist"
     );
     
-    std::cout << "Completed regression for " << process_id << std::endl;
+    Rcpp::Rcout << "Completed regression for " << process_id << std::endl;
     end_time = std::chrono::high_resolution_clock::now();
     // Rcpp::Rcout << "regression timing for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
     // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
@@ -259,7 +259,7 @@ void process_regression(
     end_time = std::chrono::high_resolution_clock::now();
     // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
     timing_results[1] += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-    // std::cout << "Writing results for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+    // Rcpp::Rcout << "Writing results for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
     poi_matrix.col_names.clear();
 
     if (config.regression_type == "logistic") {
@@ -274,7 +274,7 @@ void process_regression(
     arma::colvec convergence = conv_to<colvec>::from((beta_rel_errs > config.rel_conv_tolerance) && (beta_abs_errs > config.abs_conv_tolerance));
     nonconvergence_status = arma::sum(convergence);
     auto end = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::cout << "Completed process " << process_id << " at: " << std::ctime(&end) << std::endl;
+    Rcpp::Rcout << "Completed process " << process_id << " at: " << std::ctime(&end) << std::endl;
 }
 
 // [[Rcpp::export]]
