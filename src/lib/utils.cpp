@@ -10,10 +10,10 @@ void delete_dir(const std::string& path) {
     
     if (fs::exists(directory) && fs::is_directory(directory)) {
         fs::remove_all(directory);
-        std::cout << "Directory deleted: " << path << std::endl;
+        Rcpp::Rcout << "Directory deleted: " << path << std::endl;
     }
     else {
-        std::cout << "Directory does not exist: " << path << std::endl;
+        Rcpp::Rcout << "Directory does not exist: " << path << std::endl;
     }
 }
 

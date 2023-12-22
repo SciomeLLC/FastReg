@@ -305,7 +305,7 @@ void FRMatrix::write_results(
     fs::create_directory(dir);
     // Rcpp::Rcout << "Dir created or already exists" << std::endl;
     if (poi_names.size() != beta.data.n_cols) {
-        std::cout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
+        Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
         // return;
     }
 
@@ -317,18 +317,18 @@ void FRMatrix::write_results(
     if(fs::exists(result_file)) {
         outfile.open(result_file, std::ios::app);
         if (!outfile.is_open()) {
-            std::cout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
         // Rcpp::Rcout << "File already exists and opened for writing/appending." << std::endl;
     } else {
         outfile.open(result_file);
         if (!outfile.is_open()) {
-            std::cout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
         outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
-        std::cout << "File created for writing." << std::endl;
+        Rcpp::Rcout << "File created for writing." << std::endl;
     }
 
     outfile << std::fixed << std::setprecision(17);
@@ -373,7 +373,7 @@ void FRMatrix::write_convergence_results(
     fs::create_directory(dir);
     // Rcpp::Rcout << "Dir created or already exists" << std::endl;
     if (poi_names.size() != beta.data.n_cols) {
-        std::cout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
+        Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
         // return;
     }
 
@@ -385,18 +385,18 @@ void FRMatrix::write_convergence_results(
     if(fs::exists(result_file)) {
         outfile.open(result_file, std::ios::app);
         if (!outfile.is_open()) {
-            std::cout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
         // Rcpp::Rcout << "File already exists and opened for writing/appending." << std::endl;
     } else {
         outfile.open(result_file);
         if (!outfile.is_open()) {
-            std::cout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
             return;
         }
         outfile << "POI\tAbs Err\tRel Err" << std::endl;
-        std::cout << "File created for writing." << std::endl;
+        Rcpp::Rcout << "File created for writing." << std::endl;
     }
 
     outfile << std::fixed << std::setprecision(17);
@@ -421,7 +421,7 @@ void FRMatrix::zip_results(std::string output_dir) {
         std::string parent_path = fs::path(output_dir).parent_path().string();
         const auto time_now = std::chrono::system_clock::now();
         const auto time_secs = std::chrono::duration_cast<std::chrono::seconds>(time_now.time_since_epoch()).count();
-        std::cout << parent_path << std::endl;
+        Rcpp::Rcout << parent_path << std::endl;
         std::string archive_name = "results_" + std::to_string(time_secs) + ".zip";
         zip(archive_name, output_dir);
     }
