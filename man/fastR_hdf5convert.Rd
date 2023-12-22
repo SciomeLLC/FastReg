@@ -12,7 +12,10 @@ fastR_hdf5convert(
   dataCol = 2,
   buffSize = 1,
   transpose = FALSE,
-  chunkEdge = 100
+  chunkEdge = 100,
+  vcf = FALSE,
+  delimiter = " \\t",
+  gz = FALSE
 )
 }
 \arguments{
@@ -31,6 +34,12 @@ fastR_hdf5convert(
 \item{transpose}{boolean to transpose the data}
 
 \item{chunkEdge}{chunk size for the hdf5 file}
+
+\item{vcf}{TRUE or FALSE}
+
+\item{delimiter}{delimiter used in the dataFile}
+
+\item{gz}{bool to gzip the h5 dataset or not}
 }
 \value{
 Boolean stating if the result file was created succesfully

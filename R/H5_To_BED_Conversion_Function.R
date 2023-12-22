@@ -1,3 +1,6 @@
+library("parallel")
+library("stats")
+library("data.table")
 #' convert_H5_To_Bed function to convert previously generated H5 files into plink files
 #' @param input.dir folder location where input files reside
 #' @param output.dir folder location where plink files will be saved
@@ -7,6 +10,9 @@
 #' @param num.poi number of poi used during conversion (default=NULL, equivalent to all)
 #' @param num.ind number of ind used during conversion (default=NULL, equivalent to all)
 #' @return integer 1 when successful
+#' @import stats
+#' @import parallel
+#' @import data.table
 convert_H5_To_Bed <- function(input.dir=".", output.dir=NULL, prefix=NULL, poi.chunk.size=1000, seed=12133, num.poi=NULL, num.ind=NULL) {
 
   if(is.null(output.dir)) output.dir <- input.dir;
