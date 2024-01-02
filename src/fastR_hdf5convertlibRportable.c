@@ -1,11 +1,11 @@
-#include <hdf5.h>
+#include "hdf5.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <R.h>
 #include <Rdefines.h>
-#include <zlib.h>-
+#include <zlib.h>
 
 //consolidates all HDF5 handles and attributes
 struct hdf5_vars {
