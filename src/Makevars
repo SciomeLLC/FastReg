@@ -7,7 +7,6 @@ RHDF5_CFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
 
 ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="RcppArmadillo","include"))')
-
 CXX = -fsanitize=address -fno-omit-frame-pointer
 PKG_CFLAGS = $(RHDF5_CFLAGS) -I./lib -I./include/
 ifeq ($(UNAME), Darwin)
@@ -15,7 +14,8 @@ ifeq ($(UNAME), Darwin)
     PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) 
 else
     PKG_CXXFLAGS = -I./lib  -I./include $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
-    PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@
+    PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs
+    SHLIB_OPENMP_CXXFLAGS=-fopenmp
 endif
 
 MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
