@@ -478,7 +478,7 @@ void FastRegCpp(
         Rcpp::Rcout << "POIs will be processed in " << num_parallel_poi_blocks << " blocks each of size " << parallel_chunk_size << std::endl;
         Rcpp::Rcout << "Closing main thread h5 file" << std::endl;
         
-        poi.close_all();
+        // poi.close_all();
         // auto start = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         int total_nonconvergence_status = 0.0;
         double sum_total_filtered_pois = 0.0;
