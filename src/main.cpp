@@ -101,7 +101,7 @@ void process_regression(
     std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk, poi_names.begin() + end_chunk);
     poi_child.get_POI_matrix(poi_matrix, poi_child.individuals, poi_names_chunk, chunk_size);
     Rcpp::Rcout << "Completed Reading POIs for: " << process_id << std::endl;
-    poi_child.close_all();
+    // poi_child.close_all();
     Rcpp::Rcout << "Closed POI file for: " << process_id << std::endl;
     #if !defined(__APPLE__) && !defined(__MACH__)
     omp_set_num_threads(num_threads);
