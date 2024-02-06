@@ -184,7 +184,7 @@ ChunkConfig Chunker::estimate_num_files(int num_poi, int num_ind) {
     int chunked_dim1 = std::floor(num_poi / chunks);
 
     ChunkConfig chunk_config;
-    chunk_config.num_files = std::ciel(chunks);
+    chunk_config.num_files = std::ceil(chunks);
     chunk_config.num_poi = chunked_dim1;
     return chunk_config;
 }   
