@@ -51,7 +51,8 @@ public:
         std::string dir, 
         std::string file_name, 
         int stratum,
-        bool exclude_covars
+        bool exclude_covars,
+        int process_id
     );
     static void write_convergence_results(
         FRMatrix& beta, 
@@ -60,7 +61,13 @@ public:
         std::string file_name, 
         arma::colvec& rel_err,
         arma::colvec& abs_err,
-        int stratum
+        int stratum,
+        int process_id
     ); 
+    static void concatenate_results(
+        std::string output_dir,
+        std::string file_name_prefix,
+        int stratum
+    );
     static void zip_results(std::string output_dir);
 };

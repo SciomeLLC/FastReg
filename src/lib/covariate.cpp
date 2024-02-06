@@ -35,7 +35,7 @@ void Covariate::add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_
 
     // Get levels and reference level if not specified
     if (levels.empty() && type != "numeric") {
-        Rcpp::Rcout << "Getting reference level for: " << name << std::endl;
+        // Rcpp::Rcout << "Getting reference level for: " << name << std::endl;
         std::vector<std::string> col_vals = df.get_col_str(name);
         auto it = std::unique(col_vals.begin(), col_vals.end());
         col_vals.resize(std::distance(col_vals.begin(), it));
