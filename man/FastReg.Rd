@@ -24,7 +24,7 @@ FastReg(
   covar.file = "testdata_1k_by_5k.covar.txt",
   covar.rowname.cols = "ind",
   covar.file.delim = "tab",
-  POI.file = "testdata_1k_by_5k.poi.h5",
+  POI.file.dir = "testdata/",
   POI.file.delim = "tab",
   POI.file.format = "h5",
   POI.type = "dosage",
@@ -81,7 +81,7 @@ FastReg(
 
 \item{covar.file.delim}{tab|space|comma. Default: tab. delimiter used in covariate file.}
 
-\item{POI.file}{relative path to POI file}
+\item{POI.file.dir}{relative path to the directory with POI file(s).}
 
 \item{POI.file.delim}{tab|space|comma. Default: tab. delimiter used in POI file if POI.file.format != h5}
 

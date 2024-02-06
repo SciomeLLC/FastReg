@@ -296,7 +296,8 @@ void FRMatrix::write_results(
     std::string dir, 
     std::string file_name, 
     int stratum, 
-    bool exclude_covars) 
+    bool exclude_covars,
+    int process_id) 
 {
     int n_parms = beta.data.n_rows;
 
@@ -310,7 +311,7 @@ void FRMatrix::write_results(
     }
 
     std::stringstream ss;
-    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << ".tsv";
+    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << "_" << process_id << ".tsv";
     std::string result_file = ss.str();
     std::ofstream outfile;
 
@@ -328,7 +329,7 @@ void FRMatrix::write_results(
             return;
         }
         outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
-        Rcpp::Rcout << "File created for writing." << std::endl;
+        // Rcpp::Rcout << "File created for writing." << std::endl;
     }
 
     outfile << std::fixed << std::setprecision(17);
@@ -366,7 +367,9 @@ void FRMatrix::write_convergence_results(
     std::string file_name, 
     arma::colvec& rel_err,
     arma::colvec& abs_err,
-    int stratum) 
+    int stratum,
+    int process_id
+    ) 
 {
     std::vector<std::string> sorted_row_names = beta.sort_map(true);
     // create dir if it doesn't exist
@@ -378,7 +381,7 @@ void FRMatrix::write_convergence_results(
     }
 
     std::stringstream ss;
-    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << ".tsv";
+    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << "_" << process_id << ".tsv";
     std::string result_file = ss.str();
     std::ofstream outfile;
 
@@ -396,7 +399,7 @@ void FRMatrix::write_convergence_results(
             return;
         }
         outfile << "POI\tAbs Err\tRel Err" << std::endl;
-        Rcpp::Rcout << "File created for writing." << std::endl;
+        // Rcpp::Rcout << "File created for writing." << std::endl;
     }
 
     outfile << std::fixed << std::setprecision(17);
@@ -425,4 +428,30 @@ void FRMatrix::zip_results(std::string output_dir) {
         std::string archive_name = "results_" + std::to_string(time_secs) + ".zip";
         zip(archive_name, output_dir);
     }
+}
+
+void FRMatrix::concatenate_results(std::string output_dir, std::string file_name_prefix, int stratum) {
+    std::string outputFile = output_dir + "/" + file_name_prefix + "_stratum_" + std::to_string(stratum + 1) + ".tsv";
+
+    std::ofstream out(outputFile, std::ios::binary);
+
+    if (!out.is_open()) {
+        std::cerr << "Failed to open the output file: " << outputFile << std::endl;
+        return;
+    }
+
+    for (const auto& entry : fs::directory_iterator(output_dir)) {
+        if (entry.path().extension() == ".tsv" && entry.path().filename().string().rfind(file_name_prefix, 0) == 0) {
+            std::ifstream in(entry.path(), std::ios::binary);
+
+            if (!in.is_open()) {
+                std::cerr << "Failed to open " << entry.path() << std::endl;
+                continue; 
+            }
+
+            out << in.rdbuf();  // Stream the file content directly
+        }
+    }
+
+    out.close();
 }

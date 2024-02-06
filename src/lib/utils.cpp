@@ -111,7 +111,7 @@ void create_Z_matrix(FRMatrix& df, const std::vector<std::string>& poi_covar_int
     }
 
     if(!interaction_cols.empty()) {
-        Rcpp::Rcout << "Found poi covar interactions" << std::endl;
+        // Rcpp::Rcout << "Found poi covar interactions" << std::endl;
         std::vector<int> col_idx;
         int count = 0;
         for (const auto& col_name : interaction_cols) {
@@ -156,9 +156,9 @@ FRMatrix create_design_matrix(
     if (covariates.empty()) return X;
 
     for(auto &cv : covariates) {
-      Rcpp::Rcout << "adding " << cv.name << " to design matrix" << std::endl;
+    //   Rcpp::Rcout << "adding " << cv.name << " to design matrix" << std::endl;
       cv.add_to_matrix(df, X, colinearity_rsq);
     }
-    Rcpp::Rcout << "Created design matrix" << std::endl;
+    // Rcpp::Rcout << "Created design matrix" << std::endl;
     return X;
 }

@@ -176,18 +176,15 @@ void Config::validate_required_files()
     
     if (!fs::exists(pheno_file))
     {
-        Rcpp::Rcout << "pheno.file: " << pheno_file << std::endl;
         Rcpp::Rcerr << "Error: file does not exist: " << pheno_file << "\nPlease check that the path is correct." << std::endl;
     }
     if (!fs::exists(covar_file))
     {
-        Rcpp::Rcout << "covar.file: " << covar_file << std::endl;
         Rcpp::Rcerr << "Error: file does not exist: " << covar_file << "\nPlease check that the path is correct." << std::endl;
     }
-    if (!fs::exists(POI_file))
+    if (!fs::exists(POI_file_dir))
     {
-        Rcpp::Rcout << "POI.file: " << POI_file << std::endl;
-        Rcpp::Rcerr << "Error: file does not exist: " << POI_file << "\nPlease check that the path is correct." << std::endl;
+        Rcpp::Rcerr << "Error: Directory does not exist - " << POI_file_dir << "\nPlease check that the path is correct." << std::endl;
     }
 }
 
@@ -314,4 +311,13 @@ std::vector<std::string> Config::split(std::string val, std::string delim, std::
     }
 
     return split_result;
+}
+// get a list of poi files from the poi_file_dir directory with the poi_file_type extension
+void Config::get_poi_files() {
+    // get all files in the directory POI_file_dir
+    Rcpp::Rcout << "getting poi files" << std::endl;
+    for(auto& entry : std::filesystem::directory_iterator(POI_file_dir)) {
+        Rcpp::Rcout << "File found: " << entry.path().string() << std::endl;
+        poi_files.push_back(entry.path().string());
+    }
 }

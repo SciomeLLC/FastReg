@@ -25,7 +25,7 @@ class Config {
     public:
     
     std::string pheno_file, POI_file_format, POI_file_delim, POI_effect_type, regression_type, pheno_file_delim,
-        covar_file_delim, output_file_format, p_value_type, POI_file, covar_file, pheno_rowname_cols,
+        covar_file_delim, output_file_format, p_value_type, POI_file_dir, covar_file, pheno_rowname_cols,
         covar_rowname_cols, phenotype, output_dir, POI_type, covariate_terms;
 
     bool no_intercept, verbose, compress_results, output_exclude_covar;
@@ -38,6 +38,7 @@ class Config {
         POI_subset_file, POI_subset_file_delim, POI_subset_rowname_col;
 
     std::vector<Covariate> covs;
+    std::vector<std::string> poi_files;
     std::vector<std::string> covariates, covariate_levels, covariate_ref_level, covariate_type, split_by,
         POI_covar_interactions;
     std::vector<bool> covariate_standardize;
@@ -61,7 +62,7 @@ class Config {
         std::string covar_file_str,
         std::string covar_rowname_cols_str,
         std::string covar_file_delim_str,
-        std::string poi_file_str, 
+        std::string poi_file_dir_str, 
         std::string poi_file_delim_str,
         std::string poi_file_format_str,
         std::string poi_type_str,
@@ -95,7 +96,7 @@ class Config {
         covar_file = covar_file_str;
         covar_file_delim = covar_file_delim_str;
         covar_rowname_cols = covar_rowname_cols_str;
-        POI_file = poi_file_str;
+        POI_file_dir = poi_file_dir_str;
         POI_effect_type = poi_effect_type_str;
         POI_file_delim = poi_file_delim_str;
         POI_file_format = poi_file_format_str;
@@ -107,6 +108,7 @@ class Config {
 
         validate_required_files();
         validate_args();
+        get_poi_files();
     }
     Config(){};
     private:
@@ -130,6 +132,7 @@ class Config {
         Rcpp::StringVector covariate_ref_level_str,
         Rcpp::StringVector POI_covar_interactions_str    
     );
+    void get_poi_files();
     std::vector<std::string> split(std::string val, std::string delim, std::string default_str_val, unsigned int size);
 
 };

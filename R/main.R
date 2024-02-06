@@ -19,7 +19,7 @@
 #' @param covar.file relative path to covariates file.
 #' @param covar.rowname.cols Default: ind. column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 #' @param covar.file.delim tab|space|comma. Default: tab. delimiter used in covariate file.
-#' @param POI.file relative path to POI file
+#' @param POI.file.dir relative path to the directory with POI file(s).
 #' @param POI.file.delim tab|space|comma. Default: tab. delimiter used in POI file if POI.file.format != h5
 #' @param POI.file.format h5|txt. Default: h5. POI data file format. 
 #' @param POI.type genotype|dosage. Default: dosage. 
@@ -63,7 +63,7 @@ FastReg <- function(
   covar.file = "testdata_1k_by_5k.covar.txt",
   covar.rowname.cols = "ind",
   covar.file.delim = "tab",
-  POI.file = "testdata_1k_by_5k.poi.h5",
+  POI.file.dir = "testdata/",
   POI.file.delim = "tab",
   POI.file.format = "h5",
   POI.type = "dosage",
@@ -98,7 +98,7 @@ FastReg <- function(
     covar.file,
     covar.rowname.cols,
     covar.file.delim,
-    POI.file,
+    POI.file.dir,
     POI.file.delim,
     POI.file.format,
     POI.type,
