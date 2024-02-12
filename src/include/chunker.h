@@ -34,7 +34,7 @@ class Chunker{
     int get_threads();
     int get_procs();
     void get_num_cpus();
+    static ChunkConfig estimate_num_files(int num_poi, int num_ind, int usr_threads, float usr_mem);
     private:
     void estimate_chunks_threads();
-    static ChunkConfig estimate_num_files(int num_poi, int num_ind);
 };

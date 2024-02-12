@@ -6,13 +6,13 @@
 #' @param output.exclude.covar TRUE | FALSE. Default: TRUE. Excludes covariates in the results output
 #' @param maf.threshold Default: 1e-13. Minor Allele frequency threshold. Acceptable values: 0-0.5
 #' @param hwe.threshold Default: 1e-13. Hardy-Weinberg Equilibrium threshold. Acceptable values: 0-0.5
-#' @param no.intercept TRUE | FALSE. Default: FALSE. 
+#' @param no.intercept TRUE | FALSE. Default: FALSE.
 #' @param colinearity.rsq Default: 1.0. Filter covariates if above R-squared colinearity threshold. Acceptage values: 0.8-1.0
 #' @param poi.block.size Default: 0. Overrides auto-calculated poi block size.
 #' @param max.iter Default: 6. Number of logistic regression iterations. Doesn't apply when regression.type = linear.
-#' @param rel.conv.tolerance Default: 0.01. Relative convergence threshold for POIs. 
-#' @param abs.conv.tolerance Default: 0.01. Absolute convergence threshold for POIs. 
-#' @param max.threads Default: 0. Overrides number of threads used. By default FastReg will use the max number of threads available - 1. 
+#' @param rel.conv.tolerance Default: 0.01. Relative convergence threshold for POIs.
+#' @param abs.conv.tolerance Default: 0.01. Absolute convergence threshold for POIs.
+#' @param max.threads Default: 0. Overrides number of threads used. By default FastReg will use the max number of threads available - 1.
 #' @param pheno.file relative path to phenotype file. Contains outcomes that will be modelled.
 #' @param pheno.rowname.cols Default: ind. column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 #' @param pheno.file.delim tab|space|comma. Default: tab. delimiter used in phenotype file.
@@ -21,8 +21,8 @@
 #' @param covar.file.delim tab|space|comma. Default: tab. delimiter used in covariate file.
 #' @param POI.file.dir relative path to the directory with POI file(s).
 #' @param POI.file.delim tab|space|comma. Default: tab. delimiter used in POI file if POI.file.format != h5
-#' @param POI.file.format h5|txt. Default: h5. POI data file format. 
-#' @param POI.type genotype|dosage. Default: dosage. 
+#' @param POI.file.format h5|txt. Default: h5. POI data file format.
+#' @param POI.type genotype|dosage. Default: dosage.
 #' @param POI.effect.type additive|dominant|recessive. Default: additive.
 #' @param covariates Default: c("age","sex","eth","treatment","severity"). List of column names of the covariates file.
 #' @param covariate.type Default: c("numeric","categorical","categorical","categorical","categorical"). List of column data type for each covariate listed in covariates.
@@ -44,40 +44,39 @@
 #' @import data.table
 
 FastReg <- function(
-  phenotype = "bin.resp",
-  regression.type = "logistic",
-  Pvalue.dist = "t.dist",
-  output.exclude.covar = TRUE,
-  maf.threshold = 1e-13,
-  hwe.threshold = 1e-13,
-  no.intercept = FALSE,
-  colinearity.rsq = 1.0,
-  poi.block.size = 0,
-  max.iter = 6,
-  rel.conv.tolerance = 0.01,
-  abs.conv.tolerance = 0.01,
-  max.threads = 0,
-  pheno.file = "testdata_1k_by_5k.bin.pheno.txt",
-  pheno.rowname.cols = "ind",
-  pheno.file.delim = "tab",
-  covar.file = "testdata_1k_by_5k.covar.txt",
-  covar.rowname.cols = "ind",
-  covar.file.delim = "tab",
-  POI.file.dir = "testdata/",
-  POI.file.delim = "tab",
-  POI.file.format = "h5",
-  POI.type = "dosage",
-  POI.effect.type = "additive",
-  covariates = c("age","sex","eth","treatment","severity"),
-  covariate.type = c("numeric","categorical","categorical","categorical","categorical"),
-  covariate.standardize = c(TRUE,FALSE,FALSE,FALSE,FALSE),
-  covariate.levels = c("", "F,M","afr,asi,eur","Placebo,Test","Very Low,Low,Moderate,High,Very High,Extreme"),
-  covariate.ref.level = c("","F","eur","Placebo","Very Low"),
-  POI.covar.interactions = c(""),
-  split.by = c(""),
-  output.dir = "test",
-  compress.results = FALSE
-  ) {
+    phenotype = "bin.resp",
+    regression.type = "logistic",
+    Pvalue.dist = "t.dist",
+    output.exclude.covar = TRUE,
+    maf.threshold = 1e-13,
+    hwe.threshold = 1e-13,
+    no.intercept = FALSE,
+    colinearity.rsq = 1.0,
+    poi.block.size = 0,
+    max.iter = 6,
+    rel.conv.tolerance = 0.01,
+    abs.conv.tolerance = 0.01,
+    max.threads = 0,
+    pheno.file = "testdata_1k_by_5k.bin.pheno.txt",
+    pheno.rowname.cols = "ind",
+    pheno.file.delim = "tab",
+    covar.file = "testdata_1k_by_5k.covar.txt",
+    covar.rowname.cols = "ind",
+    covar.file.delim = "tab",
+    POI.file.dir = "testdata/",
+    POI.file.delim = "tab",
+    POI.file.format = "h5",
+    POI.type = "dosage",
+    POI.effect.type = "additive",
+    covariates = c("age", "sex", "eth", "treatment", "severity"),
+    covariate.type = c("numeric", "categorical", "categorical", "categorical", "categorical"),
+    covariate.standardize = c(TRUE, FALSE, FALSE, FALSE, FALSE),
+    covariate.levels = c("", "F,M", "afr,asi,eur", "Placebo,Test", "Very Low,Low,Moderate,High,Very High,Extreme"),
+    covariate.ref.level = c("", "F", "eur", "Placebo", "Very Low"),
+    POI.covar.interactions = c(""),
+    split.by = c(""),
+    output.dir = "test",
+    compress.results = FALSE) {
   FastRegCpp(
     phenotype,
     regression.type,

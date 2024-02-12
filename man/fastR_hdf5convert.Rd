@@ -6,7 +6,7 @@
 \usage{
 fastR_hdf5convert(
   dataFile,
-  h5File,
+  h5Dir,
   headerRow = 1,
   idCol = 1,
   dataCol = 2,
@@ -15,13 +15,17 @@ fastR_hdf5convert(
   chunkEdge = 100,
   vcf = FALSE,
   delimiter = " \\t",
-  gz = FALSE
+  gz = FALSE,
+  poiPerFile = -1,
+  singleFile = FALSE,
+  serverThreads = -1,
+  serverMem = -1
 )
 }
 \arguments{
 \item{dataFile}{file name of the text data}
 
-\item{h5File}{file name of the result}
+\item{h5Dir}{file dir to write hdf5 files to}
 
 \item{headerRow}{row containing the header}
 
@@ -40,6 +44,14 @@ fastR_hdf5convert(
 \item{delimiter}{delimiter used in the dataFile}
 
 \item{gz}{bool to gzip the h5 dataset or not}
+
+\item{poiPerFile}{=-1}
+
+\item{singleFile}{=FALSE}
+
+\item{serverThreads}{=-1}
+
+\item{serverMem}{=-1.0}
 }
 \value{
 Boolean stating if the result file was created succesfully

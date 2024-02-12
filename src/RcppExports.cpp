@@ -54,11 +54,11 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP hdf5convert(void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *);
+SEXP fastR_hdf5convert_cpp(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge, SEXP vcf, SEXP delim, SEXP gz, SEXP poiPerFile, SEXP singleFile, SEXP serverThreads, SEXP serverMem);
 
 static const R_CallMethodDef CallEntries[] = {
     {"_FastReg_FastRegCpp", (DL_FUNC) &_FastReg_FastRegCpp, 33},
-    {"hdf5convert", (DL_FUNC) &hdf5convert, 11},
+    {"fastR_hdf5convert_cpp", (DL_FUNC) &fastR_hdf5convert_cpp, 15},
     {NULL, NULL, 0}
 };
 
