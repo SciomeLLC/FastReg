@@ -132,7 +132,7 @@ int Chunker::get_parallel_chunk_size() {
     return parallel_chunk_size;
 }
 
-ChunkConfig Chunker::estimate_num_files(int num_poi, int num_ind) {
+ChunkConfig Chunker::estimate_num_files(int num_poi, int num_ind, int usr_threads, float usr_mem) {
     int num_procs = 0;
     #ifdef _WIN32
     SYSTEM_INFO sysinfo;
@@ -182,12 +182,39 @@ ChunkConfig Chunker::estimate_num_files(int num_poi, int num_ind) {
     double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
     double chunks = (data_size) / static_cast<double>(memfree);
     int chunked_dim1 = std::floor(num_poi / chunks);
+	
+	int max_processes;
+	unsigned long long max_mem;
+	unsigned long long single_poi_size;
+	int max_chunk;
+	int blas_threads = 2;
+	
+	//total available threads minus 1 to run OS and 1 to run fastR main process divided by count of BLAS threads per process
+	
+	if(usr_threads != -1) {
+		max_processes = (usr_threads - 2) / blas_threads;
+	} else {
+		max_processes = (num_procs - 2) / blas_threads;
+	}
+	
+	if(usr_mem != -1.0) {
+		max_mem = static_cast<unsigned long long>((usr_mem * 1024 * 1024 *1024) - 524288000ULL);
+	} else {
+		max_mem = memfree - 524288000ULL;
+	}
+	
+	single_poi_size = 4 * num_ind * float_size;
+	max_chunk = max_mem / (single_poi_size * max_processes);
+	
+	if(max_mem > (single_poi_size * num_poi)) {
+		max_chunk = num_poi / max_processes;
+	}
 
     ChunkConfig chunk_config;
-    chunk_config.num_files = std::ceil(chunks);
-    chunk_config.num_poi = chunked_dim1;
+    chunk_config.num_files = (num_poi / max_chunk) + ((num_poi % max_chunk) > 0 ? 1 : 0);
+    chunk_config.num_poi = max_chunk;
     return chunk_config;
-}   
+}
 
 int Chunker::get_threads() {
     return num_threads;
