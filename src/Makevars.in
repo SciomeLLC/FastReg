@@ -1,21 +1,21 @@
 CCACHE=ccache
-CXX_STD =$(CCACHE) CXX11
+CXX_STD=$(CCACHE) CXX11
 
 RHDF5_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
 RHDF5_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="Rhdf5lib","include"))')
-RCPP_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
-    'cat(system.file(package="Rcpp","include"))')
+# RCPP_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+#     'cat(system.file(package="Rcpp","include"))
 ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="RcppArmadillo","include"))')
 
 ifeq ($(UNAME), Darwin)
-    PKG_CXXFLAGS = -I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
-    PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) 
+    PKG_CXXFLAGS=-I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
+    PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) 
 else
-    PKG_CXXFLAGS = -I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
-    PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@
+    PKG_CXXFLAGS=-I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
+    PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@
 endif
 
 MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)

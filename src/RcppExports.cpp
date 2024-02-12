@@ -11,6 +11,31 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// fastR_hdf5convert_cpp
+int fastR_hdf5convert_cpp(SEXP dataFileSEXP, SEXP h5FileSEXP, SEXP headerRowSEXP, SEXP idColSEXP, SEXP dataColSEXP, SEXP buffSizeSEXP, SEXP transposeSEXP, SEXP chunkEdgeSEXP, SEXP vcfSEXP, SEXP delimSEXP, SEXP gzSEXP, SEXP poiPerFileSEXP, SEXP singleFileSEXP, SEXP serverThreadsSEXP, SEXP serverMemSEXP);
+RcppExport SEXP _FastReg_fastR_hdf5convert_cpp(SEXP dataFileSEXPSEXP, SEXP h5FileSEXPSEXP, SEXP headerRowSEXPSEXP, SEXP idColSEXPSEXP, SEXP dataColSEXPSEXP, SEXP buffSizeSEXPSEXP, SEXP transposeSEXPSEXP, SEXP chunkEdgeSEXPSEXP, SEXP vcfSEXPSEXP, SEXP delimSEXPSEXP, SEXP gzSEXPSEXP, SEXP poiPerFileSEXPSEXP, SEXP singleFileSEXPSEXP, SEXP serverThreadsSEXPSEXP, SEXP serverMemSEXPSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type dataFileSEXP(dataFileSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type h5FileSEXP(h5FileSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type headerRowSEXP(headerRowSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type idColSEXP(idColSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type dataColSEXP(dataColSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type buffSizeSEXP(buffSizeSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type transposeSEXP(transposeSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type chunkEdgeSEXP(chunkEdgeSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type vcfSEXP(vcfSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type delimSEXP(delimSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type gzSEXP(gzSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type poiPerFileSEXP(poiPerFileSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type singleFileSEXP(singleFileSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type serverThreadsSEXP(serverThreadsSEXPSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type serverMemSEXP(serverMemSEXPSEXP);
+    rcpp_result_gen = Rcpp::wrap(fastR_hdf5convert_cpp(dataFileSEXP, h5FileSEXP, headerRowSEXP, idColSEXP, dataColSEXP, buffSizeSEXP, transposeSEXP, chunkEdgeSEXP, vcfSEXP, delimSEXP, gzSEXP, poiPerFileSEXP, singleFileSEXP, serverThreadsSEXP, serverMemSEXP));
+    return rcpp_result_gen;
+END_RCPP
+}
 // FastRegCpp
 void FastRegCpp(const std::string phenotype, const std::string regression_type, const std::string pvalue_dist, bool output_exclude_covar, double maf_threshold, double hwe_threshold, bool no_intercept, double colinearity_rsq, int poi_block_size, int max_iter, double rel_conv_tolerance, double abs_conv_tolderance, int max_threads, const std::string pheno_file, const std::string pheno_rowname_cols, const std::string pheno_file_delim, const std::string covar_file, const std::string covar_rowname_cols, const std::string covar_file_delim, const std::string poi_file_dir, const std::string poi_file_delim, const std::string poi_file_format, const std::string poi_type, const std::string poi_effect_type, const Rcpp::StringVector covariates, const Rcpp::StringVector covariate_type, const Rcpp::LogicalVector covariate_standardize, const Rcpp::StringVector covariate_levels, const Rcpp::StringVector covariate_ref_level, const Rcpp::StringVector POI_covar_interactions_str, const Rcpp::StringVector split_by_str, const std::string output_dir, bool compress_results);
 RcppExport SEXP _FastReg_FastRegCpp(SEXP phenotypeSEXP, SEXP regression_typeSEXP, SEXP pvalue_distSEXP, SEXP output_exclude_covarSEXP, SEXP maf_thresholdSEXP, SEXP hwe_thresholdSEXP, SEXP no_interceptSEXP, SEXP colinearity_rsqSEXP, SEXP poi_block_sizeSEXP, SEXP max_iterSEXP, SEXP rel_conv_toleranceSEXP, SEXP abs_conv_tolderanceSEXP, SEXP max_threadsSEXP, SEXP pheno_fileSEXP, SEXP pheno_rowname_colsSEXP, SEXP pheno_file_delimSEXP, SEXP covar_fileSEXP, SEXP covar_rowname_colsSEXP, SEXP covar_file_delimSEXP, SEXP poi_file_dirSEXP, SEXP poi_file_delimSEXP, SEXP poi_file_formatSEXP, SEXP poi_typeSEXP, SEXP poi_effect_typeSEXP, SEXP covariatesSEXP, SEXP covariate_typeSEXP, SEXP covariate_standardizeSEXP, SEXP covariate_levelsSEXP, SEXP covariate_ref_levelSEXP, SEXP POI_covar_interactions_strSEXP, SEXP split_by_strSEXP, SEXP output_dirSEXP, SEXP compress_resultsSEXP) {
@@ -54,11 +79,9 @@ BEGIN_RCPP
 END_RCPP
 }
 
-SEXP fastR_hdf5convert_cpp(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge, SEXP vcf, SEXP delim, SEXP gz, SEXP poiPerFile, SEXP singleFile, SEXP serverThreads, SEXP serverMem);
-
 static const R_CallMethodDef CallEntries[] = {
+    {"_FastReg_fastR_hdf5convert_cpp", (DL_FUNC) &_FastReg_fastR_hdf5convert_cpp, 15},
     {"_FastReg_FastRegCpp", (DL_FUNC) &_FastReg_FastRegCpp, 33},
-    {"fastR_hdf5convert_cpp", (DL_FUNC) &fastR_hdf5convert_cpp, 15},
     {NULL, NULL, 0}
 };
 

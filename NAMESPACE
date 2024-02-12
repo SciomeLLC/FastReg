@@ -3,6 +3,7 @@
 export(FastReg)
 export(fastR_hdf5convert)
 export(perform.GLM.test)
+useDynLib(FastReg, .registration=TRUE)
 import(Rcpp)
 import(RcppArmadillo)
 import(data.table)

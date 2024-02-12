@@ -316,7 +316,7 @@ std::vector<std::string> Config::split(std::string val, std::string delim, std::
 void Config::get_poi_files() {
     // get all files in the directory POI_file_dir
     Rcpp::Rcout << "getting poi files" << std::endl;
-    for(auto& entry : std::filesystem::directory_iterator(POI_file_dir)) {
+    for(auto& entry : fs::directory_iterator(POI_file_dir)) {
         Rcpp::Rcout << "File found: " << entry.path().string() << std::endl;
         poi_files.push_back(entry.path().string());
     }
