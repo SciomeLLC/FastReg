@@ -323,7 +323,11 @@ void process_poi_file(
     stratums.stratify(config.split_by, covar_df, intersected_ind);
     // Rcpp::Rcout << "Successfully Stratified" << std::endl;
 
-
+    
+    double memory_allocation_time = 0.0;
+    double file_writing_time = 0.0;
+    double poi_reading_time = 0.0;
+    double regression_time = 0.0;
     for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
         std::string outfile_suffix = stratums.ids[stratum];
         if (!config.split_by[0].empty()) {
@@ -399,12 +403,8 @@ void process_poi_file(
         double total_filtered_pois = 0.0;
         
         int num_parallel_poi_blocks = (int) std::ceil((double)num_poi/(double)chunk_size);
-        int total_nonconvergence_status = 0.0;
+        int total_nonconvergence_status = 0;
         double sum_total_filtered_pois = 0.0;
-        int memory_allocation_time = 0;
-        int file_writing_time = 0;
-        int poi_reading_time = 0;
-        int regression_time = 0;
 
         FRMatrix poi_matrix;
         // Rcpp::Rcout << "Started process: " << process_id + 1 << std::endl;
@@ -444,7 +444,7 @@ void process_poi_file(
             
             srt_cols_2 = poi_matrix.sort_map(false);
             auto end_time = std::chrono::high_resolution_clock::now();
-            poi_reading_time = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count(); // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
+            poi_reading_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count(); // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
             //Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             if (config.POI_type == "genotype") {
@@ -480,9 +480,7 @@ void process_poi_file(
                 std::string summary_name = "POI_Summary_" + std::to_string(process_id + 1 );
                 filtered.write_summary(config.output_dir, summary_name, stratum);
                 end_time = std::chrono::high_resolution_clock::now();
-                // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-                file_writing_time = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-                //Rcpp::Rcout << "Wrting POI Summary timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";  
+                file_writing_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
                 //Rcpp::Rcout << "Effective block size after filtering: " << poi_matrix.data.n_cols << std::endl;
             }
 
@@ -534,57 +532,45 @@ void process_poi_file(
                 }
             }
             
-            // Rcpp::Rcout << "Completed allocating weigth matrices for regression for: " << process_id + 1  << std::endl;
             end_time = std::chrono::high_resolution_clock::now();
-            // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-            memory_allocation_time = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-            //Rcpp::Rcout << "Memory allocation timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
+            memory_allocation_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
 
             start_time = std::chrono::high_resolution_clock::now();
             std::unique_ptr<RegressionBase> regression;
 
 
             if (config.regression_type == "logistic") {
-                //Rcpp::Rcout << "Started logistic regression" << std::endl;
                 regression.reset(new LogisticRegression());
             }
             else {
-                //Rcpp::Rcout << "Started linear regression" << std::endl;
                 regression.reset(new LinearRegression ());
             }
             // Rcpp::Rcout << "Started regression for " << process_id + 1 << std::endl;
             regression->run(
-                covar_matrix, 
-                pheno_matrix, 
-                poi_matrix, 
-                covar_poi_interaction_matrix, 
-                W2, 
-                beta_est, 
-                se_beta, 
-                neglog10_pvl, 
+                covar_matrix,
+                pheno_matrix,
+                poi_matrix,
+                covar_poi_interaction_matrix,
+                W2,
+                beta_est,
+                se_beta,
+                neglog10_pvl,
                 beta_rel_errs,
                 beta_abs_errs,
-                config.max_iter, 
+                config.max_iter,
                 config.p_value_type == "t.dist"
             );
-            
-            // Rcpp::Rcout << "Completed regression for " << process_id + 1  << std::endl;
             end_time = std::chrono::high_resolution_clock::now();
-            // Rcpp::Rcout << "regression timing for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
-            // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-            regression_time = (int)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
+            regression_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
             start_time = std::chrono::high_resolution_clock::now();
-            std::string results_file_prefix = "Results_" + std::to_string(process_id + 1 );
-            FRMatrix::write_results(beta_est, se_beta, neglog10_pvl, W2, srt_cols, config.output_dir, results_file_prefix, stratum, config.output_exclude_covar, process_id + 1 );
+            FRMatrix::write_results(beta_est, se_beta, neglog10_pvl, W2, srt_cols, config.output_dir, "Results", stratum, config.output_exclude_covar, process_id + 1 );
             end_time = std::chrono::high_resolution_clock::now();
-            // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
             file_writing_time += std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count();
-            // Rcpp::Rcout << "Writing results for block " << process_id + 1 <<  "/" << num_poi_blocks << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
             poi_matrix.col_names.clear();
 
             if (config.regression_type == "logistic") {
                 start_time = std::chrono::high_resolution_clock::now();
-                std::string convergence_file_prefix = "convergence_";
+                std::string convergence_file_prefix = "Convergence";
                 FRMatrix::write_convergence_results(beta_est, srt_cols, config.output_dir, convergence_file_prefix, beta_rel_errs, beta_abs_errs, stratum, process_id + 1 );
                 end_time = std::chrono::high_resolution_clock::now();
             }
@@ -597,30 +583,17 @@ void process_poi_file(
                 Rcpp::Rcout << "See convergence_" << stratum << ".tsv for additional details." << std::endl;
             }
         }
-        FRMatrix::concatenate_results(config.output_dir, "Results_", stratum);
-        FRMatrix::concatenate_results(config.output_dir, "POI_Summary_", stratum);
-        if (config.regression_type == "logistic") {
-            FRMatrix::concatenate_results(config.output_dir, "convergence_", stratum);
-        }
-    }
-    if (config.compress_results) {
-        FRMatrix::zip_results(config.output_dir);
     }
     
     poi.close_all();
 
     auto end = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     Rcpp::Rcout << "Timing Summary for process: " << process_id + 1 << std::endl;
-    Rcpp::Rcout << "Reading HDF5: " << timing_results[2] / 1000.0 << "s" << std::endl;
-    Rcpp::Rcout << "Writing results: " << timing_results[1] / 1000.0 << "s" << std::endl;
-    Rcpp::Rcout << "Memory allocation: " << timing_results[0] / 1000.0 << "s" << std::endl;
-    Rcpp::Rcout << "Regression: " << timing_results[3] / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Reading HDF5: " << poi_reading_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Writing results: " << file_writing_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Memory allocation: " << memory_allocation_time / 1000.0 << "s" << std::endl;
+    Rcpp::Rcout << "Regression: " << regression_time / 1000.0 << "s" << std::endl;
     Rcpp::Rcout << "Completed process " << process_id + 1 << " at: " << std::ctime(&end) << std::endl;
-    // {memory_allocation_time, file_writing_time, poi_reading_time, regression_time}
-    // timing_results[0] = memory_allocation_time;
-    // timing_results[1] = file_writing_time;
-    // timing_results[2] = poi_reading_time;
-    // timing_results[3] = regression_time;
 }
 
 // [[Rcpp::export]]
@@ -765,8 +738,9 @@ void FastRegCpp(
                 close(pipe_file_descriptors[i*2]); // close read pipe
                 int timing_results[] = {0, 0, 0, 0};
                 // Rcpp::Rcout << "Started processing for " << i + 1 << std::endl;
+                int process_id = i + num_processes_completed;
                 process_poi_file(
-                    i,
+                    process_id,
                     config,
                     pheno_df,
                     covar_df,
@@ -794,5 +768,12 @@ void FastRegCpp(
             }
         }
 
+    }
+    
+    FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
+    FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
+    
+    if (config.compress_results) {
+        FRMatrix::zip_results(config.output_dir);
     }
 }

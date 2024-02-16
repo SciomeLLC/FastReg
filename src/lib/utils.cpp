@@ -156,9 +156,9 @@ FRMatrix create_design_matrix(
     if (covariates.empty()) return X;
 
     for(auto &cv : covariates) {
-    //   Rcpp::Rcout << "adding " << cv.name << " to design matrix" << std::endl;
-      cv.add_to_matrix(df, X, colinearity_rsq);
+        Rcpp::Rcout << "adding " << cv.name << " to design matrix" << std::endl;
+        cv.add_to_matrix(df, X, colinearity_rsq);
     }
-    // Rcpp::Rcout << "Created design matrix" << std::endl;
+    //Rcpp::Rcout << "Created design matrix" << std::endl;
     return X;
 }

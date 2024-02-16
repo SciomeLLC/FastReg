@@ -101,7 +101,7 @@ void Chunker::estimate_chunks_threads() {
         num_workers = num_procs;
     }
 
-    int max_num_matrix = 4 * num_workers;
+    int max_num_matrix = 3 * num_workers;
     int float_size = 8; // 8 bytes per number assuming 64-bit numbers
     double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
     double chunks = (data_size) / static_cast<double>(memfree);

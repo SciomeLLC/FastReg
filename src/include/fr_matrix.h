@@ -67,7 +67,7 @@ public:
     static void concatenate_results(
         std::string output_dir,
         std::string file_name_prefix,
-        int stratum
+        std::string file_concatenation_prefix
     );
     static void zip_results(std::string output_dir);
 };

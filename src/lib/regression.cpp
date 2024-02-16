@@ -30,7 +30,6 @@ void LogisticRegression::run(
     int max_iter, 
     bool is_t_dist) {
     arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
-
     // create a pointer to the specified distribution function
     arma::colvec (*dist_func)(arma::colvec, int) = is_t_dist == true ? t_dist : norm_dist;
     // arma::colvec (*dist_func)(arma::colvec, int) = t_dist;

@@ -430,28 +430,84 @@ void FRMatrix::zip_results(std::string output_dir) {
     }
 }
 
-void FRMatrix::concatenate_results(std::string output_dir, std::string file_name_prefix, int stratum) {
-    std::string outputFile = output_dir + "/" + file_name_prefix + "_stratum_" + std::to_string(stratum + 1) + ".tsv";
-
-    std::ofstream out(outputFile, std::ios::binary);
-
-    if (!out.is_open()) {
-        std::cerr << "Failed to open the output file: " << outputFile << std::endl;
-        return;
-    }
-
+void FRMatrix::concatenate_results(std::string output_dir, std::string file_name_prefix, std::string file_concatenation_prefix) {
+    std::set<int> stratums;
     for (const auto& entry : fs::directory_iterator(output_dir)) {
-        if (entry.path().extension() == ".tsv" && entry.path().filename().string().rfind(file_name_prefix, 0) == 0) {
-            std::ifstream in(entry.path(), std::ios::binary);
-
-            if (!in.is_open()) {
-                std::cerr << "Failed to open " << entry.path() << std::endl;
-                continue; 
+        if (entry.path().extension() == ".tsv" && entry.path().filename().string().find(file_name_prefix) != std::string::npos) {
+            // Extract stratum from filename
+            std::string filename = entry.path().filename().stem().string();
+            std::vector<std::string> tokens;
+            std::stringstream ss(filename);
+            std::string token;
+            while (std::getline(ss, token, '_')) {
+                tokens.push_back(token);
             }
-
-            out << in.rdbuf();  // Stream the file content directly
+            if (tokens.size() >= 2) {
+                try {
+                    int stratum = std::stoi(tokens[tokens.size() - 2]); // Second-to-last token
+                    stratums.insert(stratum);
+                } catch (const std::invalid_argument& ex) {
+                    std::cerr << "Invalid stratum found in filename: " << filename << std::endl;
+                }
+            }
         }
     }
 
-    out.close();
+    // Concatenate files for each unique stratum
+    for (int stratum : stratums) {
+        std::string outputFile = output_dir + "/" + file_concatenation_prefix + "_" + file_name_prefix + "_stratum_" + std::to_string(stratum) + ".tsv";
+
+        // Check if the output file already exists
+        if (fs::exists(outputFile)) {
+            std::cerr << "Output file already exists: " << outputFile << ". It will be overwritten.\n";
+        }
+
+        std::ofstream out(outputFile); // Open in text mode by default
+
+        if (!out.is_open()) {
+            std::cerr << "Failed to open the output file: " << outputFile << std::endl;
+            continue;
+        }
+
+        std::string pattern = file_name_prefix + "_stratum_" + std::to_string(stratum) + "_*.tsv";
+
+        for (const auto& entry : fs::directory_iterator(output_dir)) {
+            if (entry.path() != outputFile && entry.path().extension() == ".tsv" && entry.path().filename().string().find(pattern) != std::string::npos) {
+                std::ifstream in(entry.path());
+
+                if (!in.is_open()) {
+                    std::cerr << "Failed to open " << entry.path() << std::endl;
+                    continue; 
+                }
+
+                out << in.rdbuf();  // Stream the file content directly
+            }
+        }
+
+        out.close();
+    }
+    // std::stringstream ss;
+    // ss << output_dir << "/" << file_concatenation_prefix << "_" << file_name_prefix << "_stratum_" <<  ".tsv";
+    // std::string result_file = ss.str();
+    // std::ofstream out(result_file);
+
+    // if (!out.is_open()) {
+    //     std::cerr << "Failed to open the output file: " << result_file << std::endl;
+    //     return;
+    // }
+    // std::string pattern = file_name_prefix + "_stratum_" + std::to_string(stratum + 1) + "*.tsv";
+    // for (const auto& entry : fs::directory_iterator(output_dir)) {
+    //     if (entry.path() != result_file && entry.path().filename().string().find(pattern) != std::string::npos) {
+    //         std::ifstream in(entry.path());
+
+    //         if (!in.is_open()) {
+    //             std::cerr << "Failed to open " << entry.path() << std::endl;
+    //             continue; 
+    //         }
+
+    //         out << in.rdbuf();  // Stream the file content directly
+    //     }
+    // }
+
+    // out.close();
 }
