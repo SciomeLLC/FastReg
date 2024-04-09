@@ -1,9 +1,23 @@
-PKG_CXXFLAGS =  -I./lib/ -I./include/ $(SHLIB_OPENMP_CXXFLAGS) -DR_COMPILATION -O3 -Wall $(RHDF5_CFLAGS) -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_USE_HDF5
-PKG_LIBS = $(LAPACK_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) -lstdc++fs @OPENMP@ 
+CCACHE=ccache
+CXX_STD=$(CCACHE) CXX11
 
-MAIN         = $(wildcard *.cpp)
-MAIN_CODE    = $(wildcard lib/*.cpp)
-OBJECTS      = $(MAIN:.cpp=.o) $(MAIN_CODE:.cpp=.o)
+RHDF5_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+    'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
+RHDF5_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+    'cat(system.file(package="Rhdf5lib","include"))')
+ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+    'cat(system.file(package="RcppArmadillo","include"))')
+UNAME=($shell uname -s)
+ifeq ($(UNAME),Darwin)
+    PKG_CXXFLAGS=-I/opt/homebrew/include -I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD
+    PKG_LIBS=-L/opt/homebrew/lib $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) 
+else
+    PKG_CXXFLAGS=-I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
+    PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) @OPENMP@
+endif
+
+MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
+OBJECTS      = $(MAIN:.cpp=.o)
 
 # Include all C++ files in src/ and its subdirectories
 # SOURCES=@SRC_SOURCES@ 

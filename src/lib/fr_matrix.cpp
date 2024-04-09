@@ -7,7 +7,9 @@
 #include <vector>
 #include <list>
 #include <algorithm>
+#include <regex>
 #include <sys/stat.h>
+#include <chrono>
 
 #ifndef __has_include
 static_assert(false, "__has_include not supported");
@@ -58,6 +60,10 @@ void FRMatrix::load_from_csv(std::string& filename, std::string& delim, std::str
     std::string line;
 
     std::getline(file_stream, line);
+    // remove carriage returns for windows
+    if (line[line.size() - 1] == '\r') {
+        line.erase(line.size() - 1);
+    }
     std::stringstream ss(line);
 
     char delim_char;
@@ -115,7 +121,6 @@ void FRMatrix::load_from_csv(std::string& filename, std::string& delim, std::str
             try {
                 data(row_count, i - 1) = std::stod(row_items[i]);
             } catch (const std::invalid_argument &e) {
-
                 str_data[row_count].push_back(row_items[i]);
                 col_names_str[col_headers.at(i)] = str_col_count;
                 str_col_count++; 
@@ -192,8 +197,6 @@ std::vector<std::string> FRMatrix::split(const std::string& str_tokens, char del
     std::stringstream ss(str_tokens);
     std::string item;
     while (std::getline(ss, item, delim)) {
-        // emplace_back
-        item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
         tokens.push_back(item);
     }
     return tokens;
@@ -202,7 +205,7 @@ std::vector<std::string> FRMatrix::split(const std::string& str_tokens, char del
 std::vector<std::string> FRMatrix::get_col_str(const std::string& col_name) {
     bool exists = col_names_str.find(col_name) != col_names_str.end();
     if(!exists) {
-      Rcpp::stop("Column name doesn't match any non-numeric columns");
+      Rcpp::stop("Column name " + col_name + " doesn't match any non-numeric columns.");
     }
     int col_idx = col_names_str[col_name];
     std::vector<std::string> col_vals;
@@ -234,10 +237,10 @@ std::vector<std::string> FRMatrix::sort_map(bool rows) {
     return sorted_arr;
 }
 
-void FRMatrix::write_summary(std::string dir, std::string name, int stratum) {
+void FRMatrix::write_summary(std::string dir, std::string name, int stratum, int process_id) {
     fs::create_directory(dir);
     std::stringstream ss;
-    ss << dir << "/" << name << "_stratum_" << stratum + 1 << ".tsv";
+    ss << dir << "/" << name << "_stratum_" << stratum + 1 << "_" << process_id << ".tsv";
     std::string file_name = ss.str();
 
     arma::mat temp = data.t();
@@ -254,10 +257,11 @@ void FRMatrix::write_summary(std::string dir, std::string name, int stratum) {
         outfile << std::endl;
     }
     
+    outfile << std::fixed << std::setprecision(17);
     std::stringstream buffer;
-    buffer << std::fixed << std::setprecision(17);
     std::vector<std::string> ordered_col_names = sort_map(false);
     int row_idx = 0;
+    buffer << "POI\t";
     for (const auto& col_name : ordered_col_names) {
         buffer << col_name;
         for (size_t col_idx = 0; col_idx < temp.n_cols; ++col_idx) {
@@ -284,7 +288,6 @@ void FRMatrix::print() {
     }
 }
 
-
 void FRMatrix::write_results(
     FRMatrix& beta, 
     FRMatrix& se_beta, 
@@ -294,19 +297,22 @@ void FRMatrix::write_results(
     std::string dir, 
     std::string file_name, 
     int stratum, 
-    bool exclude_covars) 
+    bool exclude_covars,
+    int process_id) 
 {
     int n_parms = beta.data.n_rows;
 
     std::vector<std::string> sorted_row_names = beta.sort_map(true);
     // create dir if it doesn't exist
     fs::create_directory(dir);
+    // Rcpp::Rcout << "Dir created or already exists" << std::endl;
     if (poi_names.size() != beta.data.n_cols) {
         Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
+        // return;
     }
 
     std::stringstream ss;
-    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << ".tsv";
+    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << "_" << process_id << ".tsv";
     std::string result_file = ss.str();
     std::ofstream outfile;
 
@@ -324,11 +330,12 @@ void FRMatrix::write_results(
             return;
         }
         outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val" << std::endl;
-        Rcpp::Rcout << "File created for writing." << std::endl;
+        // Rcpp::Rcout << "File created for writing." << std::endl;
     }
+
+    outfile << std::fixed << std::setprecision(17);
     
     std::stringstream buffer;
-    buffer << std::fixed << std::setprecision(17);
     for (int col = 0; col < (int)beta.data.n_cols; col++) {
         std::string poi_name = poi_names[col];
         arma::uvec w2_col = W2.col(col);
@@ -347,9 +354,147 @@ void FRMatrix::write_results(
             double std_error = se_beta.data.at(row, col);
             double neglog10_pval = neglog10.data.at(row, col);
             
-            buffer << poi_name << "\t" << N << "\t" << df << "\t" << effect_name << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval << std::endl;
+            buffer << poi_name << "\t" << N << "\t" << df << "\t" << effect_name << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval << "\t" << std::endl;
         }
     }
     outfile << buffer.str();
     outfile.close();
+}
+
+void FRMatrix::write_convergence_results(
+    FRMatrix& beta, 
+    std::vector<std::string> poi_names, 
+    std::string dir, 
+    std::string file_name, 
+    arma::colvec& rel_err,
+    arma::colvec& abs_err,
+    int stratum,
+    int process_id
+    ) 
+{
+    std::vector<std::string> sorted_row_names = beta.sort_map(true);
+    // create dir if it doesn't exist
+    fs::create_directory(dir);
+    // Rcpp::Rcout << "Dir created or already exists" << std::endl;
+    if (poi_names.size() != beta.data.n_cols) {
+        Rcpp::Rcout << "Error: The size of poi_names does not match the number of columns in the beta matrix." << std::endl;
+        // return;
+    }
+
+    std::stringstream ss;
+    ss << dir << "/" << file_name << "_stratum_" << stratum + 1 << "_" << process_id << ".tsv";
+    std::string result_file = ss.str();
+    std::ofstream outfile;
+
+    if(fs::exists(result_file)) {
+        outfile.open(result_file, std::ios::app);
+        if (!outfile.is_open()) {
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            return;
+        }
+        // Rcpp::Rcout << "File already exists and opened for writing/appending." << std::endl;
+    } else {
+        outfile.open(result_file);
+        if (!outfile.is_open()) {
+            Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file << std::endl;
+            return;
+        }
+        outfile << "POI\tAbs Err\tRel Err" << std::endl;
+        // Rcpp::Rcout << "File created for writing." << std::endl;
+    }
+
+    outfile << std::fixed << std::setprecision(17);
+    
+    std::stringstream buffer;
+    for (int col = 0; col < (int)beta.data.n_cols; col++) {
+        std::string poi_name = poi_names[col];
+        
+        double abs_err_val = abs_err.at(col);
+        double rel_err_val = rel_err.at(col);
+        
+        buffer << poi_name << "\t" << abs_err_val << "\t" << rel_err_val << std::endl;
+    }
+    outfile << buffer.str();
+    outfile.close();
+}
+
+void FRMatrix::zip_results(std::string output_dir) {
+    Rcpp::Environment utils_env("package:utils");
+    Rcpp::Function zip = utils_env["zip"];
+    if(fs::exists(output_dir)) {
+        std::string parent_path = fs::path(output_dir).parent_path().string();
+        const auto time_now = std::chrono::system_clock::now();
+        const auto time_secs = std::chrono::duration_cast<std::chrono::seconds>(time_now.time_since_epoch()).count();
+        Rcpp::Rcout << parent_path << std::endl;
+        
+        std::string archive_name = parent_path + "/results_" + std::to_string(time_secs) + ".zip";
+        zip(archive_name, output_dir);
+    }
+}
+
+void FRMatrix::concatenate_results(std::string output_dir, std::string file_name_prefix, std::string file_concatenation_prefix) {
+    std::set<int> stratums;
+    std::map<int, std::set<std::string>> stratum_files;
+    for (const auto& entry : fs::directory_iterator(output_dir)) {
+        if (entry.path().extension() == ".tsv" && entry.path().filename().string().find(file_name_prefix) != std::string::npos) {
+            // Extract stratum from filename
+            std::string filename = entry.path().filename().stem().string();
+            std::vector<std::string> tokens;
+            std::stringstream ss(filename);
+            std::string token;
+            while (std::getline(ss, token, '_')) {
+                tokens.push_back(token);
+            }
+            if (tokens.size() >= 2) {
+                try {
+                    int stratum = std::stoi(tokens[tokens.size() - 2]); // Second-to-last token
+                    stratums.insert(stratum);
+                    stratum_files[stratum].insert(filename);
+                } catch (const std::invalid_argument& ex) {
+                    std::cerr << "Invalid stratum found in filename: " << filename << std::endl;
+                }
+            }
+        }
+    }
+
+    // Concatenate files for each unique stratum
+    for (int stratum : stratums) {
+        std::string outputFile = output_dir + "/" + file_concatenation_prefix + "_" + file_name_prefix + "_stratum_" + std::to_string(stratum) + ".tsv";
+
+        // Check if the output file already exists
+        if (fs::exists(outputFile)) {
+            std::cerr << "Output file already exists: " << outputFile << ". It will be overwritten.\n";
+        }
+
+        std::ofstream out(outputFile);
+
+        if (!out.is_open()) {
+            std::cerr << "Failed to open the output file: " << outputFile << std::endl;
+            continue;
+        }
+        bool header_written = false;
+        for (const auto& filename : stratum_files[stratum]) {
+            fs::path file_path = output_dir + "/" + filename + ".tsv";
+            std::ifstream in(file_path.string());
+
+            if (!in.is_open()) {
+                std::cerr << "Failed to open " << file_path << std::endl;
+                continue; 
+            }
+            // Skip header line if it has already been written
+            if (header_written) {
+                std::string headerLine;
+                std::getline(in, headerLine);
+            } else {
+                std::string headerLine;
+                std::getline(in, headerLine);
+                out << headerLine << std::endl;
+                header_written = true;
+            }
+            out << in.rdbuf();
+            in.close();
+            fs::remove(file_path);
+        }
+        out.close();
+    }
 }

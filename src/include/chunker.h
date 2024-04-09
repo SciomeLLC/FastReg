@@ -4,88 +4,47 @@
 #include <cmath>
 #include <thread>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
-unsigned long long getTotalSystemMemory() {
-#ifdef _WIN32
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(status);
-    GlobalMemoryStatusEx(&status);
-    return status.ullAvailPhys;
-#elif defined(__APPLE__)
-    uint64_t memsize;
-    size_t len = sizeof(memsize);
-    if (sysctlbyname("hw.memsize", &memsize, &len, NULL, 0) == 0) {
-        return (unsigned long long) memsize;
-    } else {
-        return 0;
-    }
-#else
-    long pages = sysconf(_SC_PHYS_PAGES);
-    long page_size = sysconf(_SC_PAGE_SIZE);
-    return pages * page_size;
-#endif
-}
+struct ChunkConfig {
+    int num_files;
+    int num_poi;
+};
 
-
-std::vector<int> estimate_poi_block_size(int num_poi, int num_ind, std::string poi_type, int max_cores = -1, int poi_block_size = 0) {
-    std::vector<int> res;
-    Rcpp::Rcout << "Estimating block size" << std::endl;
-    int num_threads = std::thread::hardware_concurrency();
-    if (max_cores > 0) {
-        if (num_threads > max_cores) {
-            // Check for hyper threading
-            if (num_threads % 2 == 0) {
-                num_threads = max_cores * 2;
-            } else {
-                num_threads = max_cores;
-            }
+class Chunker{
+    public:
+    int num_threads, chunk_size, _num_poi, _num_ind, _poi_block_size, _max_threads, num_procs, num_chunks, _num_files, _max_workers, num_workers, total_workers_required;
+    unsigned long long memfree, master_thread_memory;
+    Chunker(int num_poi, int num_ind, int max_openmp_threads, int poi_block_size, int num_files, int max_workers) {
+        _num_poi = num_poi;
+        _num_ind = num_ind;
+        _max_threads = max_openmp_threads;
+        _max_workers = max_workers;
+        _poi_block_size = poi_block_size;
+        master_thread_memory = 524288000ULL; // 500mb
+        memfree = getTotalSystemMemory();
+        _num_files = num_files;
+        chunk_size = 100;
+        get_num_cpus();
+        
+        if (_max_workers == 0) {
+            _max_workers = num_available_workers;
         }
+        get_num_threads();
+        Rcpp::Rcout << num_available_workers << " processors detected." << std::endl;
+        Rcpp::Rcout << num_available_threads << " threads detected." << std::endl;
+        Rcpp::Rcout << "Free memory: " << memfree/(1024*1024*1024) << "GB" << std::endl;
+        estimate_chunks();
     }
-
-    std::string os = "";
-    #ifdef _WIN32
-    os = "Windows";
-    #elif defined(__APPLE__)
-    os = "Darwin";
-    #else
-    os = "Linux";
-    #endif
-
-    unsigned long long memfree = getTotalSystemMemory();
-    
-    Rcpp::Rcout << "Free memory: " << memfree/(1024*1024*1024) << "GB" << std::endl;
-
-    // Keep one thread idle
-    if (num_threads > 1) {
-        num_threads--;
-        Rcpp::Rcout << "Keeping 1 thread idle, num_threads: " << num_threads << std::endl;
-    }
-
-    double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
-    int float_size = 8; // 8 bytes per number assuming 64-bit numbers
-    double data_size = std::exp(std::log(matrix_size) + std::log(float_size));
-    unsigned long long master_thread_memory = 524288000ULL; // 500mb
-    double chunks = (data_size + master_thread_memory) / static_cast<double>(memfree);
-    int chunked_dim1 = std::floor(num_poi / chunks);
-    // int chunked_parallel = std::floor(chunked_dim1 / num_threads);
-    // Rcpp::Rcout << "chunked_parallel: " << chunked_parallel << std::endl;
-
-    if (chunked_dim1 > num_poi) {
-        chunked_dim1 = num_poi;
-    }
-
-    if (poi_block_size > 0 && chunked_dim1 > poi_block_size) {
-        chunked_dim1 = poi_block_size;
-    } else {
-        Rcpp::Rcout << "Configured POI block size too large for available memory - setting block size to " << chunked_dim1 << std::endl;
-    }
-
-    res.push_back(chunked_dim1);
-    res.push_back(num_threads);
-    return res;
-}
+    unsigned long long getTotalSystemMemory();
+    int get_chunk_size();
+    int get_num_workers();
+    int get_openmp_threads();
+    int get_total_workers();
+    static ChunkConfig estimate_num_files(int num_poi, int num_ind, int usr_threads, float usr_mem);
+    private:
+    int num_available_workers, num_available_threads;
+    double get_data_size();
+    void estimate_chunks();
+    void get_num_threads();
+    void get_num_cpus();
+};

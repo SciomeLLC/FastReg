@@ -1,0 +1,24 @@
+---
+title: "Linear Regression"
+author: "Matt Wheeler, Deepak Mav, John House, Shail Choksi, Adam Burkholder"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{FastReg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+## Installation
+```r
+library(devtools)
+install_github("SciomeLLC/FastReg", ref="multiprocess")
+```

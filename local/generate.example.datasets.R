@@ -1,11 +1,11 @@
-num.poi <- 50;
-num.ind <- 5;
+num.poi <- 5000;
+num.ind <- 500;
 covariates <- c("age", "sex", "eth", "treatment", "severity");
 
 seed <- 12133;
 poi.type <- "genotypes";
 poi.chunks <- 100;
-data.dir <- "E:/Development";
+data.dir <- "C:/Users/shail.choksi/Development/";
 setwd(data.dir);
 
 prefix <- "test";

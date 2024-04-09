@@ -1,0 +1,66 @@
+---
+title: "FastReg: Efficient Logistic Regression"
+author: "Matt Wheeler, Deepak Mav, John House, Shail Choksi, Adam Burkholder"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{FastReg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+## Installation
+
+### Installing dependencies
+```r
+install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager"))
+
+```
+```r
+library(devtools)
+install_github("SciomeLLC/FastReg", ref="multiprocess")
+```
+
+## Loading the package
+```r
+library(FastReg)
+prefix <- "testdata_500_by_1k"
+# disucss further complex examples with John. Talk with Betsy about complex Exwas models
+FastReg::FastReg(
+    phenotype="bin.resp", 
+    max.iter = 6, 
+    covariates = c("age","sex","treatment"),
+    covariate.levels = ";F,M;Placebo,Test", # vectors / list of vectors 
+    covariate.ref.level = ",F,Placebo", 
+    covariate.type = "numeric,categorical,categorical",
+    covariate.standardize = "1,0,0",
+    covar.file= data(paste0(prefix, ".covar.txt"), package=FastReg),
+    poi.file = data(paste0(prefix, ".poi.txt"), package=FastReg),
+    pheno.file= data(paste0(prefix, ".bin.pheno.txt"), package=FastReg),
+    regression.type="logistic",
+    output.dir = "."
+)
+
+# Logistic Formula: bin.resp ~ 1 + Age + Sex + Treatment + Geno
+# Geno = column added to the covariates
+# Assuming an additive model 
+
+# create one vignette that shows interactions vs not (covariate v genotype)
+summary_file <- "POI_Summary_1_stratum_1.tsv"
+summary_df <- read.table(summary_file, n=6, header=TRUE, sep="\t", check.names = FALSE, stringsAsFactors = FALSE)
+print(summary_df)
+
+results_file <- "Results_stratum_1.tsv"
+results_df <- read.table(summary_file, n=6, header=TRUE, sep="\t", check.names = FALSE, stringsAsFactors = FALSE)
+print(results_df)
+```
+
+## Running 

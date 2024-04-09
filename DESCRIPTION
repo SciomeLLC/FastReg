@@ -1,8 +1,9 @@
 Package: FastReg
 Type: Package
-Title: This is easy to use package to perform high throughput logistic and linear regression (FastReg)
-Version: 0.4.8
-Authors@R:
+Title: Fast Regression
+Description: Efficiently perform large scale simple linear and logistic regression analysis.
+Version: 0.5.2
+Authors@R: 
     c(
     person(given = "Shail",
            family = "Choksi",
@@ -13,7 +14,8 @@ Authors@R:
            role = "aut"),
     person(given = "Deepak",
            family = "Mav",
-           role = "aut"),
+           role = "aut",
+           email = "deepak.mav@sciome.com"),
     person(given = "John",
            family = "House",
             role="ctb"),
@@ -21,14 +23,20 @@ Authors@R:
            family = "Burkholder",
            role = "ctb")
     )
-Maintainer: Deepak Mav<deepak.mav@sciome.com>
-Description: Efficiently perform large scale simple linear and logistic regression analysis
-License: What license is it under?
+Maintainer: Deepak Mav<software.support@sciome.com>
+License: GPL (>= 2)
 Encoding: UTF-8
-LazyData: true
 Depends: R (>= 4.0), RcppArmadillo
 biocViews:
-Imports: RcppArmadillo, rhdf5, Rcpp
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel
 LinkingTo: Rcpp, RcppArmadillo
+Suggests: testthat (>= 3.0.0), stats
+Config/testthat/edition: 3
 NeedsCompilation: yes
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
+Packaged: 2024-03-28 19:28:43 UTC; shail.choksi
+Author: Shail Choksi [aut, cre],
+  Matt Wheeler [aut],
+  Deepak Mav [aut],
+  John House [ctb],
+  Adam Burkholder [ctb]

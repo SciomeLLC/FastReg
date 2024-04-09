@@ -33,7 +33,7 @@ Create a configuration file. All available configuration options are listed belo
 
 -   **pheno.file.delim** - delimiter used in phenotype file - tab\|space\|comma
 
--   **pheno.rownames.cols** - column to be treated as the subject identifier when matching across files. Can be multiple columns.
+-   **pheno.rownames.cols** - column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 
 -   **subject.subset.rowname.cols** - column to be treated as the subject identifier when matching across files
 
@@ -81,7 +81,7 @@ Create a configuration file. All available configuration options are listed belo
 
 -   **maf.threshold** - 0.00-1.00
 
--   **POI.type** - genotypes\|numerical (dosage value data type)
+-   **POI.type** - genotype\|numerical (dosage value data type)
 
 -   **POI.effect.type** - additive\|dominant\|recessive
 
@@ -99,47 +99,11 @@ Create a configuration file. All available configuration options are listed belo
 
 -   **verbose** - 0\|1, for debugging
 
-### Example Configuration File
-
-    pheno.file  example.bin.pheno.txt
-    covar.file  example.covar.txt
-    POI.file    example.poi.h5
-    phenotype   bin.resp
-    regression.type logistic
-    pheno.rowname.cols  ind
-    covar.rowname.cols  ind
-    pheno.file.delim    tab
-    covar.file.delim    tab
-    subject.subset.delim    tab
-    POI.subset.file.delim   tab
-    POI.file.format h5
-    POI.file.delim  tab
-    subject.subset.rowname.cols ind
-    POI.subset.rowname.col  rsID
-    covariates  age,sex,eth,treatment,severity
-    covariate.type  numeric,categorical,categorical,categorical,categorical
-    covariate.standardize   1,0,0,0,0
-    covariate.levels    ;F,M;afr,asi,eur;Placebo,Test;Very Low,Low,Moderate,High,Very High,Extreme
-    covariate.ref.level ,F,eur,Placebo,Very Low
-    output.dir  example.bin.output
-    output.file.format  long
-    output.exclude.covar    0
-    hwe.threshold   0.05
-    maf.threshold   0.01
-    POI.type    genotypes
-    POI.effect.type additive
-    no.intercept  0
-    colinearity.rsq 0.95
-    poi.block.size  50000
-    max.iter    6
-    compress.results    1
-    verbose 1
-
 ## Installation
 
 Change the path below to where you have downloaded the tar.gz package.
 
-install.packages(\"../../FastReg_0.4.2.tar.gz\", repos = NULL, type = \"source\");
+install.packages(\"../../FastReg_0.4.15.tar.gz\", repos = NULL, type = \"source\");
 
 library(\"FastReg\");
 
