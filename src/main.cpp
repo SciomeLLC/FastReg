@@ -496,10 +496,9 @@ void FastRegCpp(
 
     // setup parallel processing
     int num_processes_total = chunker.get_total_workers();
-    int num_processes = chunker.get_num_workers();
+    int max_processes = chunker.get_num_workers();
     int parallel_chunk_size = chunker.get_chunk_size();
     int num_threads = chunker.get_openmp_threads();
-    int max_processes = num_processes;
     #ifdef _WIN32
     for(int i = 0; i < num_poi_files; i++) {
         int timing_results[] = {0, 0, 0, 0};
@@ -524,8 +523,8 @@ void FastRegCpp(
     int num_processes_started = 0;
     int num_processes_completed = 0;
 
-    while(num_processes_completed < num_poi_files) {
-        while(num_processes_started < max_processes && num_processes_started - num_processes_completed < num_processes_total) {
+    while(num_processes_completed < num_processes_total) {
+        while(num_processes_started < max_processes) {
             int i = num_processes_started;
             if (pipe(&pipe_file_descriptors[i*2]) == -1) {
                 perror("pipe");

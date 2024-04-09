@@ -87,10 +87,10 @@ double Chunker::get_data_size() {
 }
 void Chunker::estimate_chunks() {
     num_threads = std::floor(num_available_threads/num_available_workers);
-    num_workers = std::min(std::min(_num_files, num_available_workers), _max_workers);
+    this->num_workers = std::min(std::min(_num_files, num_available_workers), _max_workers);
 
     if (num_workers == num_available_workers) {
-        num_workers--; // keep 1 process idle 
+        this->num_workers--; // keep 1 process idle 
     }
 
     std::string os = "";
@@ -110,7 +110,7 @@ void Chunker::estimate_chunks() {
     }
 
     if (os == "Windows") {
-        num_workers = 1;
+        this->num_workers = 1;
     }
 
     double data_size = get_data_size();

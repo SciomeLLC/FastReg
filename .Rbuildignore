@@ -9,3 +9,5 @@
 \.o$
 \.so$
 \.git/
+^doc$
+^Meta$
