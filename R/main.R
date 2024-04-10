@@ -11,7 +11,7 @@
 #' @param max.iter Default: 6. Number of logistic regression iterations. Doesn't apply when regression.type = linear.
 #' @param rel.conv.tolerance Default: 0.01. Relative convergence threshold for POIs.
 #' @param abs.conv.tolerance Default: 0.01. Absolute convergence threshold for POIs.
-#' @param max.openmp.threads Default: 0. Overrides number of threads used. By default FastReg will use 2 openmp threads on Ubuntu otherwise 1. 
+#' @param max.openmp.threads Default: 0. Overrides number of threads used. By default FastReg will use 2 openmp threads on Ubuntu otherwise 1.
 #' @param pheno.file relative path to phenotype file. Contains outcomes that will be modelled.
 #' @param pheno.rowname.cols Default: ind. column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 #' @param pheno.file.delim tab|space|comma. Default: tab. delimiter used in phenotype file.
@@ -39,7 +39,6 @@
 #' @import Rcpp
 #' @import RcppArmadillo
 #' @import parallel
-
 FastReg <- function(
     phenotype = "bin.resp",
     regression.type = "logistic",
@@ -123,7 +122,7 @@ FastReg <- function(
 #' @param transpose Default: FALSE. Boolean value that indicates whether text data should be transposed. Set TRUE when columns represent individuals and rows represent POIs.
 #' @param chunkEdge Default: 100. Specify size of data chunks to be applied to output hdf5 files. Must be less than or equal to values of poiPerFile and greater than zero.
 #' @param vcf Default: FALSE. Indicate whether input file is in vcf format. If TRUE, headerRow, idCol, dataCol and transpose values are ignored.
-#' @param delimiter Default: " \t". Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
+#' @param delimiter Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
 #' @param gz Default: FALSE. Indicate whether input text file is gzip-compressed.
 #' @param poiPerFile Default: -1. Indicate the number of POIs to write to each output hdf5 file. A value of -1 indicates the count should be calculated based on available system resources.
 #' @param singleFile Default: FALSE. Indicate whether a single hdf5 file should be produced rather than a series.

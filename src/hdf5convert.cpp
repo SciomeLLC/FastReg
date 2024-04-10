@@ -189,8 +189,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
   i = 0;
   j = 0;
   k = 0;
-  Rcpp::Rcout << "Pre-processing input file...";
-  fflush(stdout);
+  Rcpp::Rcout << "Pre-processing input file..." << std::endl;
   // set column data set name based on matrix orientation
   if (par->transpose == 1)
   {
@@ -550,8 +549,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     }
   }
   // create output HDF5 files
-  Rcpp::Rcout << "Initializing H5 files...";
-  fflush(stdout);
+  Rcpp::Rcout << "Initializing H5 files..." << std::endl;
   for (i = 0; i < filecount; i++)
   {
     // create file
@@ -634,8 +632,7 @@ static int read_write_rownames_values(
   size_t fdummy = 0;
   herr_t status;
   int done = 0;
-  Rcpp::Rcout << "Writing H5 files...";
-  fflush(stdout);
+  Rcpp::Rcout << "Writing H5 files..." << std::endl;
   // flip data buffer index variable if matrix is transposed
   if (par->transpose == 1)
   {
