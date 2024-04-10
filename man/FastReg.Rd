@@ -17,7 +17,7 @@ FastReg(
   max.iter = 6,
   rel.conv.tolerance = 0.01,
   abs.conv.tolerance = 0.01,
-  max.threads = 0,
+  max.openmp.threads = 0,
   pheno.file = "testdata_1k_by_5k.bin.pheno.txt",
   pheno.rowname.cols = "ind",
   pheno.file.delim = "tab",
@@ -39,7 +39,8 @@ FastReg(
   POI.covar.interactions = c(""),
   split.by = c(""),
   output.dir = "test",
-  compress.results = FALSE
+  compress.results = FALSE,
+  max.workers = 0
 )
 }
 \arguments{
@@ -67,7 +68,7 @@ FastReg(
 
 \item{abs.conv.tolerance}{Default: 0.01. Absolute convergence threshold for POIs.}
 
-\item{max.threads}{Default: 0. Overrides number of threads used. By default FastReg will use the max number of threads available - 1.}
+\item{max.openmp.threads}{Default: 0. Overrides number of threads used. By default FastReg will use 2 openmp threads on Ubuntu otherwise 1.}
 
 \item{pheno.file}{relative path to phenotype file. Contains outcomes that will be modelled.}
 
@@ -109,7 +110,7 @@ FastReg(
 
 \item{compress.results}{TRUE|FALSE. Default: FALSE. Compress results inside the output directory.}
 
-\item{config.file}{deprecated. No effect.}
+\item{max.workers}{Default: 0. Number of processes FastReg will spawn. By default FastReg will spawn min(# of poi files, # of available workers)}
 }
 \value{
 numeric denoting elapsed.time

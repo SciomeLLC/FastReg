@@ -16,9 +16,11 @@ simulate_test_dataset(
   poi.chunk.size = 100,
   poi.compression.level = 7,
   data.dir = ".",
+  data.num.chunks = 10,
   prefix = "testdata_5k_by_50k",
-  verbose = TRUE,
-  poi.file.type = "txt"
+  covariates = c("age", "sex", "treatment"),
+  poi.file.type = "txt",
+  verbose = TRUE
 )
 }
 \arguments{
@@ -44,11 +46,15 @@ simulate_test_dataset(
 
 \item{data.dir}{output directory}
 
+\item{data.num.chunks}{number of files to split the data into}
+
 \item{prefix}{prefix for all files created}
 
-\item{verbose}{logical to control display of progress messages (default=TRUE)}
+\item{covariates}{list of covariates to generate. Supported types are: age, sex, treatment, eth, severity}
 
 \item{poi.file.type}{'h5' or 'txt'}
+
+\item{verbose}{logical to control display of progress messages (default=TRUE)}
 }
 \value{
 a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response

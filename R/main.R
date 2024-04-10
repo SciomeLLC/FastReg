@@ -1,5 +1,4 @@
 #' FastReg a function to perform fast simple linear or logistic regression
-#' @param config.file an optional character denoting configuration filename (default=NULL)
 #' @param phenotype bin.resp | num.resp. Default: bin.resp
 #' @param regression.type logistic | linear. Default: logistic
 #' @param Pvalue.dist t.dist | norm.dist. Default: t.dist
@@ -34,7 +33,6 @@
 #' @param output.dir Default: results. Relative path to directory for output. Directory will be created if it doesn't exist
 #' @param compress.results TRUE|FALSE. Default: FALSE. Compress results inside the output directory.
 #' @param max.workers Default: 0. Number of processes FastReg will spawn. By default FastReg will spawn min(# of poi files, # of available workers)
-#' @param config.file deprecated. No effect.
 #' @return numeric denoting elapsed.time
 #' @export
 #' @import rhdf5

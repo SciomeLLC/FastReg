@@ -10,8 +10,8 @@
 #' @param poi.chunk.size an integer denoting poi chunk size used during H5 file generation
 #' @param poi.compression.level an integer denoting compression level used during H5 file creation
 #' @param data.dir output directory
+#' @param data.num.chunks number of files to split the data into
 #' @param prefix prefix for all files created
-#' @param data.num.chunks number of h5 files to divide the poi data into
 #' @param covariates list of covariates to generate. Supported types are: age, sex, treatment, eth, severity
 #' @param poi.file.type 'h5' or 'txt'
 #' @param verbose logical to control display of progress messages (default=TRUE)
@@ -19,6 +19,7 @@
 #' @import parallel
 #' @import data.table
 #' @import rhdf5
+#' @import utils
 #' @return a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response
 simulate_test_dataset <- function(num.poi = 50000,
                                   num.ind = 5000,
