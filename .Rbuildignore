@@ -1,13 +1,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^\.DS_Store$
-^\.(RData|Rhistory)$
-^\.gitignore$
-^\.git$
-\.vscode
+^\.(RData|Rhistory|lintr|gitignore|github|git|vscode|Rproj|DS_Store)$
 \.\.Rcheck/
 \.o$
 \.so$
-\.git/
 ^doc$
 ^Meta$

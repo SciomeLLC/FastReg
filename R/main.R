@@ -38,9 +38,7 @@
 #' @import rhdf5
 #' @import Rcpp
 #' @import RcppArmadillo
-#' @import stats
 #' @import parallel
-#' @import data.table
 
 FastReg <- function(
     phenotype = "bin.resp",

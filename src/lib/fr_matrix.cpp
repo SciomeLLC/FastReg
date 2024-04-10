@@ -451,7 +451,7 @@ void FRMatrix::concatenate_results(std::string output_dir, std::string file_name
                     stratums.insert(stratum);
                     stratum_files[stratum].insert(filename);
                 } catch (const std::invalid_argument& ex) {
-                    std::cerr << "Invalid stratum found in filename: " << filename << std::endl;
+                    Rcpp::Rcerr << "Invalid stratum found in filename: " << filename << std::endl;
                 }
             }
         }
@@ -463,13 +463,13 @@ void FRMatrix::concatenate_results(std::string output_dir, std::string file_name
 
         // Check if the output file already exists
         if (fs::exists(outputFile)) {
-            std::cerr << "Output file already exists: " << outputFile << ". It will be overwritten.\n";
+            Rcpp::Rcerr << "Output file already exists: " << outputFile << ". It will be overwritten.\n";
         }
 
         std::ofstream out(outputFile);
 
         if (!out.is_open()) {
-            std::cerr << "Failed to open the output file: " << outputFile << std::endl;
+            Rcpp::Rcerr << "Failed to open the output file: " << outputFile << std::endl;
             continue;
         }
         bool header_written = false;
@@ -478,7 +478,7 @@ void FRMatrix::concatenate_results(std::string output_dir, std::string file_name
             std::ifstream in(file_path.string());
 
             if (!in.is_open()) {
-                std::cerr << "Failed to open " << file_path << std::endl;
+                Rcpp::Rcerr << "Failed to open " << file_path << std::endl;
                 continue; 
             }
             // Skip header line if it has already been written
