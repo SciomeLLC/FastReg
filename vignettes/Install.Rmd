@@ -1,0 +1,34 @@
+---
+title: "Install FastReg"
+author: "Shail Choksi"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Install}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Pre-requisites
+
+### Intel MKL
+- Install BLAS/MKL from (https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html)
+
+### Windows
+- Rtools for Windows (https://cran.r-project.org/bin/windows/Rtools/)
+
+### MacOS
+- Ensure that xcode command line tools are installed. Open Terminal and type: `xcode-select -p`. 
+  - If you see the following: /Library/Developer/CommandLineTools
+  command line tools are installed
+  - If not, check for system updates: `System Settings > General > Software Update`
+- Install the latest gfortran compiler (https://cran.r-project.org/bin/macosx/tools/)
+
+## Install FastReg
+```r
+install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager"))
+Biocmanager::install("rhdf5")
+library(devtools)
+install_github("SciomeLLC/FastReg")
+```

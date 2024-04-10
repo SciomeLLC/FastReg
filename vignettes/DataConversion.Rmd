@@ -17,8 +17,3 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
-## Installation
-```r
-library(devtools)
-install_github("SciomeLLC/FastReg", ref="multiprocess")
-```
