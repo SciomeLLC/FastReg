@@ -28,7 +28,7 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.0), RcppArmadillo
 biocViews:
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel, knitr
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: testthat (>= 3.0.0), stats
 Config/testthat/edition: 3
