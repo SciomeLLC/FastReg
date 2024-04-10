@@ -26,7 +26,7 @@ Authors@R:
 Maintainer: Deepak Mav<software.support@sciome.com>
 License: GPL (>= 2)
 Encoding: UTF-8
-Depends: R (>= 4.0), RcppArmadillo
+Depends: R (>= 4.0)
 biocViews:
 Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel
 LinkingTo: Rcpp, RcppArmadillo
