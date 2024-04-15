@@ -226,7 +226,7 @@ void process_poi_file(
             //Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             if (config.POI_type == "genotype") {
-                Rcpp::Rcout << "Filtering MAF and HWE" << std::endl;
+                // Rcpp::Rcout << "Filtering MAF and HWE" << std::endl;
 
                 FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
                 arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
@@ -495,7 +495,9 @@ void FastRegCpp(
     poi.close_all();
 
     // setup parallel processing
+    // total_num_chunks
     int num_processes_total = chunker.get_total_workers();
+
     int max_processes = chunker.get_num_workers();
     int parallel_chunk_size = chunker.get_chunk_size();
     int num_threads = chunker.get_openmp_threads();
@@ -524,7 +526,10 @@ void FastRegCpp(
     int num_processes_completed = 0;
 
     while(num_processes_completed < num_processes_total) {
-        while(num_processes_started < max_processes) {
+        while((num_processes_started - num_processes_completed) < max_processes) {
+            if (num_processes_started == num_processes_total) {
+                break;
+            }
             int i = num_processes_started;
             if (pipe(&pipe_file_descriptors[i*2]) == -1) {
                 perror("pipe");
@@ -551,7 +556,7 @@ void FastRegCpp(
                     num_threads,
                     timing_results
                 );
-                Rcpp::Rcout << "Completed processing for " << i + 1 << std::endl;
+                
                 close(pipe_file_descriptors[i*2 + 1]);
                 _exit(EXIT_SUCCESS);
                 return;
@@ -565,6 +570,7 @@ void FastRegCpp(
             if(process_ids[i] != 0) { // parent process
                 if(!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
                     close(pipe_file_descriptors[i*2]);
+                    Rcpp::Rcout << "Completed processing for " << i + 1 << std::endl;
                     num_processes_completed++;
                 }
             }
