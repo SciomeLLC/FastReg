@@ -86,7 +86,6 @@ double Chunker::get_data_size() {
     return data_size;
 }
 void Chunker::estimate_chunks() {
-    num_threads = std::floor(num_available_threads/num_available_workers);
     this->num_workers = std::min(std::min(_num_files, num_available_workers), _max_workers);
 
     if (num_workers == num_available_workers) {
@@ -107,6 +106,8 @@ void Chunker::estimate_chunks() {
                     "Mac detected - using 1 thread.\n" \
                     "**********");
         num_threads = 1;
+    } else {
+        num_threads = _max_threads;
     }
 
     if (os == "Windows") {

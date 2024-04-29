@@ -11,7 +11,7 @@
 #' @param max.iter Default: 6. Number of logistic regression iterations. Doesn't apply when regression.type = linear.
 #' @param rel.conv.tolerance Default: 0.01. Relative convergence threshold for POIs.
 #' @param abs.conv.tolerance Default: 0.01. Absolute convergence threshold for POIs.
-#' @param max.openmp.threads Default: 0. Overrides number of threads used. By default FastReg will use 2 openmp threads on Ubuntu otherwise 1.
+#' @param max.openmp.threads Default: 2. Overrides number of threads used. By default FastReg will use 2 openmp threads on Ubuntu otherwise 1.
 #' @param pheno.file relative path to phenotype file. Contains outcomes that will be modelled.
 #' @param pheno.rowname.cols Default: ind. column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 #' @param pheno.file.delim tab|space|comma. Default: tab. delimiter used in phenotype file.
@@ -52,7 +52,7 @@ FastReg <- function(
     max.iter = 6,
     rel.conv.tolerance = 0.01,
     abs.conv.tolerance = 0.01,
-    max.openmp.threads = 0,
+    max.openmp.threads = 2,
     pheno.file = "testdata_1k_by_5k.bin.pheno.txt",
     pheno.rowname.cols = "ind",
     pheno.file.delim = "tab",
@@ -74,6 +74,15 @@ FastReg <- function(
     output.dir = "test",
     compress.results = FALSE,
     max.workers = 0) {
+  if (max.openmp.threads <= 0) {
+    cat("Error: max.openmp.threads must be a positive integer.\n")
+    return(FALSE)
+  }
+
+  if (max.workers < 0) {
+    cat("Error: max.workers must be a positive integer.\n")
+    return(FALSE)
+  }
   FastRegCpp(
     phenotype,
     regression.type,

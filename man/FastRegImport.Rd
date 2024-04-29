@@ -41,7 +41,7 @@ FastRegImport(
 
 \item{vcf}{Default: FALSE. Indicate whether input file is in vcf format. If TRUE, headerRow, idCol, dataCol and transpose values are ignored.}
 
-\item{delimiter}{Default: " \t". Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.}
+\item{delimiter}{Default: " \\t". Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.}
 
 \item{gz}{Default: FALSE. Indicate whether input text file is gzip-compressed.}
 
