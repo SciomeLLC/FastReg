@@ -114,6 +114,63 @@ ssize_t get_full_line(char **restrict lineptr, size_t *restrict n, FILE *restric
 	}
 }
 
+//implements POSIX function strsep for portability
+char *separate(char **restrict stringp, const char *restrict delim) {
+	size_t span;
+	char *first, *last;
+	if(*stringp==NULL) {
+		return(NULL);
+	}
+	first=*stringp;
+	span=strcspn(first, delim);
+	last=first+span;
+	if(*last=='\0') {
+		*stringp=NULL;
+	} else {
+		*last='\0';
+		*stringp=last+1;
+	}
+	return(first);
+}
+
+//implements POSIX function getline for portability
+ssize_t get_full_line(char **restrict lineptr, size_t *restrict n, FILE *restrict stream) {
+	char *res, *start, *mark;
+	size_t i, prev=0, count;
+	if(*lineptr==NULL || *n==0) {
+		*lineptr=(char*)malloc(10485760);
+		*n=10485760;
+		if(*lineptr==NULL) {
+			return(-1);
+		}
+	}
+	start=*lineptr;
+	count=*n;
+	res=fgets(start, (int)count, stream);
+	if(res==NULL) {
+		return(-1);
+	} else {
+		while(1) {
+			mark=(char*)memchr((void*)start, '\n', count);
+			if(mark!=NULL) {
+				return((ssize_t)(mark-*lineptr)+1);
+			}
+			prev=*n;
+			*n=2*prev;
+			*lineptr=(char*)realloc(*lineptr, *n);
+			if(*lineptr==NULL) {
+				return(-1);
+			}
+			start=*lineptr+prev-1;
+			count=prev+1;
+			res=fgets(start, (int)count, stream);
+			if(res==NULL) {
+				return(-1);
+			}
+		}
+	}
+}
+
 //initialize all dimensions
 static void init_dims(struct dim_vars *dv, int chunk) {
 	dv->vals_dataspace_dims[0]=0;
@@ -138,6 +195,7 @@ static int read_header_write_cols(FILE *datafile, struct hdf5_vars *h5vars, stru
 	ssize_t nread;
 	char *line=NULL;
 	char *buff, *pch=NULL;
+	char *buff, *pch=NULL;
 	char **colnames, *collabel;
 	size_t colnamessize;
 	size_t len=0;
@@ -156,6 +214,7 @@ static int read_header_write_cols(FILE *datafile, struct hdf5_vars *h5vars, stru
 	colnamessize=1;
 	//toss lines until hear row is read
 	nread=get_full_line(&line, &len, datafile);
+	nread=get_full_line(&line, &len, datafile);
 	i++;
 	if(nread==-1) {
 		fprintf(stderr, "Error: could not read specified header row from input file\n");
@@ -165,6 +224,7 @@ static int read_header_write_cols(FILE *datafile, struct hdf5_vars *h5vars, stru
 		free(line);
 		line=NULL;
 		len=0;
+		nread=get_full_line(&line, &len, datafile);
 		nread=get_full_line(&line, &len, datafile);
 		i++;
 		if(nread==-1) {
@@ -181,6 +241,7 @@ static int read_header_write_cols(FILE *datafile, struct hdf5_vars *h5vars, stru
 	//toss fields before first data point
 	while(k<par->data_column) {
 		pch=separate(&buff,"\t ");
+		pch=separate(&buff,"\t ");
 		k++;
 	}
 	while(pch!=NULL) {
@@ -191,9 +252,11 @@ static int read_header_write_cols(FILE *datafile, struct hdf5_vars *h5vars, stru
 			colnames=(char**)realloc(colnames, colnamessize*sizeof(char*));
 		}
 		pch=separate(&buff,"\t ");
+		pch=separate(&buff,"\t ");
 	}
 	dv->col_dim=j;
 	//write column names to HDF5 file
+	h5vars->col_dataspace=H5Screate_simple(1, &dv->col_dim, &dv->unlimited_single_dim);
 	h5vars->col_dataspace=H5Screate_simple(1, &dv->col_dim, &dv->unlimited_single_dim);
 	h5vars->col_datatype=H5Tcopy(H5T_C_S1);
 	H5Tset_size(h5vars->col_datatype, H5T_VARIABLE);
@@ -306,6 +369,7 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 	//read input file line by line and fill data buffer
 	i=0;
 	nread=get_full_line(&line, &len, datafile);
+	nread=get_full_line(&line, &len, datafile);
 	if(nread==-1) {
 		fprintf(stderr, "Error: could not read first data row from input file\n");
 		return(1);
@@ -316,10 +380,12 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 		k=0;
 		while(k<par->name_column) {
 			pch=separate(&buff,"\t ");
+			pch=separate(&buff,"\t ");
 			k++;
 		}
 		readbuff->row_buffer[i]=strdup(pch);
 		while(k<par->data_column) {
+			pch=separate(&buff,"\t ");
 			pch=separate(&buff,"\t ");
 			k++;
 		}
@@ -336,6 +402,7 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 				}
 				readbuff->val_buffer[*indptr][*predptr]=val;
 			}
+			pch=separate(&buff,"\t ");
 			pch=separate(&buff,"\t ");
 			j++;
 		}
@@ -375,6 +442,7 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 		line=NULL;
 		len=0;
 		nread=get_full_line(&line, &len, datafile);
+		nread=get_full_line(&line, &len, datafile);
 		buff=line;
 	}
 	//when end of file is reached, shrink dimensions to match final block to be written
@@ -386,6 +454,7 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 	H5Dset_extent(h5vars->row_dataset, &dv->vals_dataspace_dims[dv->growdim]);
 	H5Sset_extent_simple(h5vars->row_dataspace, 1, &dv->vals_dataspace_dims[dv->growdim], &dv->vals_dataspace_dims[dv->growdim]);
 	H5Sset_extent_simple(h5vars->row_memspace, 1, &dv->vals_memspace_dims[dv->growdim], &dv->vals_memspace_dims[dv->growdim]);
+	H5Sselect_hyperslab(h5vars->vals_dataspace, H5S_SELECT_SET, dv->vals_hyperslab_pos, NULL, dv->vals_memspace_dims, NULL);
 	H5Sselect_hyperslab(h5vars->vals_dataspace, H5S_SELECT_SET, dv->vals_hyperslab_pos, NULL, dv->vals_memspace_dims, NULL);
 	status=H5Dwrite(h5vars->vals_dataset, H5T_NATIVE_FLOAT, h5vars->vals_memspace, h5vars->vals_dataspace, H5P_DEFAULT, dstart);
 	if(status<0) {
@@ -456,9 +525,12 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
 }
 
 SEXP hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge) {
+SEXP hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP dataCol, SEXP buffSize, SEXP transpose, SEXP chunkEdge) {
 	struct fastR_user_params par;
 	int retval;
 	SEXP result=PROTECT(allocVector(LGLSXP, 1));
+	par.infile_name=strdup(CHAR(asChar(dataFile)));
+	par.h5file_name=strdup(CHAR(asChar(h5File)));
 	par.infile_name=strdup(CHAR(asChar(dataFile)));
 	par.h5file_name=strdup(CHAR(asChar(h5File)));
 	strcat(par.h5file_name, ".h5");
@@ -474,6 +546,8 @@ SEXP hdf5convert(SEXP dataFile, SEXP h5File, SEXP headerRow, SEXP idCol, SEXP da
 	} else {
 		LOGICAL(result)[0]=0;
 	}
+	free(par.infile_name);
+	free(par.h5file_name);
 	free(par.infile_name);
 	free(par.h5file_name);
 	UNPROTECT(1);
