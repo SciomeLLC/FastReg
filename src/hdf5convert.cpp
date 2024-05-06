@@ -209,8 +209,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
     i++;
     if (nread == -1)
     {
-      fprintf(stderr,
-              "Error: could not read specified header row from input file\n");
+      Rprintf("Error: could not read specified header row from input file\n");
       free(line);
       return (1);
     }
@@ -223,8 +222,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
       i++;
       if (nread == -1)
       {
-        fprintf(stderr,
-                "Error: could not read specified header row from input file\n");
+        Rprintf("Error: could not read specified header row from input file\n");
         free(line);
         return (1);
       }
@@ -236,8 +234,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
     i++;
     if (nread == -1)
     {
-      fprintf(stderr,
-              "Error: could not read specified header row from input file\n");
+      Rprintf("Error: could not read specified header row from input file\n");
       free(line);
       return (1);
     }
@@ -250,8 +247,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
       i++;
       if (nread == -1)
       {
-        fprintf(stderr,
-                "Error: could not read specified header row from input file\n");
+        Rprintf("Error: could not read specified header row from input file\n");
         free(line);
         return (1);
       }
@@ -359,8 +355,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                    pre->dimensions[1] * sizeof(float));
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      fprintf(stderr,
-              "Warning: sub-optimal data buffer size selected. For best "
+      Rprintf("Warning: sub-optimal data buffer size selected. For best "
               "performance specify\n    %.2f Gb or higher\n",
               gb);
     }
@@ -370,8 +365,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
               filecount * sizeof(float *) + pre->dimensions[1] * sizeof(float);
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      fprintf(stderr,
-              "Error: selected data buffer size too small to retain a single "
+      Rprintf("Error: selected data buffer size too small to retain a single "
               "row. Select\n    %.2f Gb or higher\n",
               gb);
       return (-1);
@@ -478,8 +472,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                                  pre->dimensions[1] * sizeof(float));
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      fprintf(stderr,
-              "Warning: sub-optimal data buffer size selected. For best "
+      Rprintf("Warning: sub-optimal data buffer size selected. For best "
               "performance specify\n    %.2f Gb or higher\n",
               gb);
     }
@@ -489,8 +482,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
               pre->dimensions[1] * sizeof(float);
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      fprintf(stderr,
-              "Error: selected data buffer size too small to retain a single "
+      Rprintf("Error: selected data buffer size too small to retain a single "
               "row. Select\n    %.2f Gb or higher\n",
               gb);
       return (-1);
@@ -592,7 +584,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     total += (*dvars)[i].vals_dataspace_dims[pre->fixdim];
     if (status < 0)
     {
-      fprintf(stderr, "Error: unable to write column names to HDF5 file\n");
+      Rprintf("Error: unable to write column names to HDF5 file\n");
       return (-1);
     }
     // create values dataset
@@ -669,7 +661,7 @@ static int read_write_rownames_values(
     nread = get_full_line(&line, &len, datafile, par->gz, gzdatafile);
     if (nread == -1)
     {
-      fprintf(stderr, "Error: could not read first data row from input file\n");
+      Rprintf("Error: could not read first data row from input file\n");
       free(dstarts);
       free(line);
       return (1);
@@ -680,7 +672,7 @@ static int read_write_rownames_values(
   {
     if (done != 0)
     {
-      fprintf(stderr, "Warning: additional data found at end of input file,\n  "
+      Rprintf("Warning: additional data found at end of input file,\n  "
                       " contents may have changed during processing\n");
       free(dstarts);
       free(line);
@@ -845,7 +837,7 @@ static int read_write_rownames_values(
     // buffer with NAN
     if (j != 0)
     {
-      fprintf(stderr, "Warning: fields missing in input file line %zu\n",
+      Rprintf("Warning: fields missing in input file line %zu\n",
               iadj + i + skip);
       i -= 1;
       while (j < dv[f].vals_memspace_dims[jdim])
@@ -859,8 +851,7 @@ static int read_write_rownames_values(
     }
     else if (pch != NULL)
     {
-      fprintf(
-          stderr,
+      Rprintf(
           "Warning: more fields than expected found in input file line %zu\n",
           iadj + i + skip);
     }
@@ -882,7 +873,7 @@ static int read_write_rownames_values(
                           H5P_DEFAULT, dstarts[k]);
         if (status < 0)
         {
-          fprintf(stderr, "Error: unable to write data block to HDF5 file\n");
+          Rprintf("Error: unable to write data block to HDF5 file\n");
           free(dstarts);
           free(line);
           return (1);
@@ -898,8 +889,7 @@ static int read_write_rownames_values(
                           H5P_DEFAULT, readbuff->row_buffer);
         if (status < 0)
         {
-          fprintf(stderr,
-                  "Error: unable to write row name block to HDF5 file\n");
+          Rprintf("Error: unable to write row name block to HDF5 file\n");
           free(dstarts);
           free(line);
           return (1);
@@ -966,7 +956,7 @@ static int read_write_rownames_values(
                           H5P_DEFAULT, dstarts[k]);
         if (status < 0)
         {
-          fprintf(stderr, "Error: unable to write data block to HDF5 file\n");
+          Rprintf("Error: unable to write data block to HDF5 file\n");
           free(dstarts);
           free(line);
           return (1);
@@ -982,8 +972,7 @@ static int read_write_rownames_values(
                           H5P_DEFAULT, readbuff->row_buffer);
         if (status < 0)
         {
-          fprintf(stderr,
-                  "Error: unable to write row name block to HDF5 file\n");
+          Rprintf("Error: unable to write row name block to HDF5 file\n");
           free(dstarts);
           free(line);
           return (1);
@@ -1073,7 +1062,7 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up)
     gzinfile = gzopen(up->infile_name, "r");
     if (gzinfile == NULL)
     {
-      fprintf(stderr, "Error: cannot open input file \"%s\"\n",
+      Rprintf("Error: cannot open input file \"%s\"\n",
               up->infile_name);
       return (1);
     }
@@ -1091,7 +1080,7 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up)
     infile = fopen(up->infile_name, "r");
     if (infile == NULL)
     {
-      fprintf(stderr, "Error: cannot open input file \"%s\"\n",
+      Rprintf("Error: cannot open input file \"%s\"\n",
               up->infile_name);
       return (1);
     }
