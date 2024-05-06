@@ -109,7 +109,7 @@ ssize_t get_full_line(char **lineptr, size_t *n, FILE *stream, int gzflag,
                       gzFile gzstream)
 {
   char *res, *start, *mark;
-  size_t i, prev = 0, count;
+  size_t prev = 0, count;
   if (*lineptr == NULL || *n == 0)
   {
     *lineptr = (char *)malloc(10485760);
@@ -184,7 +184,6 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
   char *buff, *pch = NULL;
   size_t colnamessize;
   size_t len = 0;
-  int idim, jdim;
   hsize_t i, j, k;
   i = 0;
   j = 0;
@@ -332,7 +331,8 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
           par->server_memory);
       file_poi = chunked.num_poi;
     }
-    if (file_poi < par->chunk_edge)
+
+    if (file_poi < (int)par->chunk_edge)
     {
       par->chunk_edge = file_poi;
     }
@@ -380,7 +380,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     pre->fixdim = 1;
     *dvars = (struct dim_vars *)malloc(filecount * sizeof(struct dim_vars));
     *h5vars = (struct hdf5_vars *)malloc(filecount * sizeof(struct hdf5_vars));
-    for (i = 0; i < (filecount - 1); i++)
+    for (i = 0; (int)i < (filecount - 1); i++)
     {
       (*dvars)[i].vals_memspace_dims[0] = pre->row_dim;
       (*dvars)[i].vals_memspace_dims[1] = file_poi;
@@ -418,7 +418,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     readbuff->val_buffer = (float ***)malloc(datasize);
     tablep = (float **)(readbuff->val_buffer + filecount);
     rowp = (float *)(tablep + filecount * pre->row_dim);
-    for (i = 0; i < filecount; i++)
+    for (i = 0; (int)i < filecount; i++)
     {
       readbuff->val_buffer[i] = (float **)(tablep + i * pre->row_dim);
       for (j = 0; j < pre->row_dim; j++)
@@ -452,7 +452,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
           par->server_memory);
       file_poi = chunked.num_poi;
     }
-    if (file_poi < par->chunk_edge)
+    if (file_poi < (int)par->chunk_edge)
     {
       par->chunk_edge = file_poi;
     }
@@ -500,7 +500,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     *dvars = (struct dim_vars *)malloc(filecount * sizeof(struct dim_vars));
     *h5vars = (struct hdf5_vars *)malloc(filecount * sizeof(struct hdf5_vars));
     // flip row and column dimension if matrix is transposed
-    for (i = 0; i < (filecount - 1); i++)
+    for (i = 0; (int)i < (filecount - 1); i++)
     {
       (*dvars)[i].vals_memspace_dims[0] = pre->dimensions[1];
       (*dvars)[i].vals_memspace_dims[1] = pre->row_dim;
@@ -550,7 +550,7 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
   }
   // create output HDF5 files
   Rcpp::Rcout << "Initializing H5 files..." << std::endl;
-  for (i = 0; i < filecount; i++)
+  for (i = 0; (int)i < filecount; i++)
   {
     // create file
     name = (char *)malloc(2 * strlen(par->h5file_base) + 100);
@@ -625,8 +625,8 @@ static int read_write_rownames_values(
   float **dstarts, val;
   hsize_t position_zero[2] = {0, 0};
   ssize_t nread;
-  char *line = NULL;
-  char *buff, *pch, *vcfbuff;
+  char *line, *pch = NULL;
+  char *buff, *vcfbuff;
   size_t len = 0;
   size_t skip = 0;
   size_t fdummy = 0;
@@ -653,7 +653,7 @@ static int read_write_rownames_values(
   // H5Dwrite needs pointer to start of data matrix rather than block of row
   // pointers
   dstarts = (float **)malloc(filecount * sizeof(float *));
-  for (f = 0; f < filecount; f++)
+  for (f = 0; (int)f < filecount; f++)
   {
     dstarts[f] = &readbuff->val_buffer[*fptr][0][0];
   }
@@ -919,7 +919,7 @@ static int read_write_rownames_values(
       {
         x = 0;
         fmin++;
-        if (par->transpose == 0 || (par->transpose == 1 && fmin == filecount))
+        if ((int)par->transpose == 0 || ((int)par->transpose == 1 && (int)fmin == filecount))
         {
           done = 1;
         }
@@ -936,7 +936,7 @@ static int read_write_rownames_values(
   if (done == 0)
   {
     l = 0;
-    for (k = fmin; k < filecount; k++)
+    for (k = fmin; (int)k < filecount; k++)
     {
       l += dv[k].vals_dataspace_dims[idim];
     }
@@ -1020,7 +1020,7 @@ static void final_cleanup(struct read_buffers *readbuff,
   }
   free(readbuff->row_buffer);
   free(readbuff->val_buffer);
-  for (i = 0; i < filecount; i++)
+  for (i = 0; (int)i < filecount; i++)
   {
     H5Sclose((*h5vars)[i].vals_dataspace);
     H5Sclose((*h5vars)[i].col_dataspace);
@@ -1051,8 +1051,8 @@ static void final_cleanup(struct read_buffers *readbuff,
 
 static int execute_fastR_hdf5convert(struct fastR_user_params *up)
 {
-  FILE *infile;
-  gzFile gzinfile;
+  FILE *infile = NULL;
+  gzFile gzinfile = NULL;
   struct hdf5_vars *h5v;
   struct dim_vars *dims;
   struct read_buffers rb;

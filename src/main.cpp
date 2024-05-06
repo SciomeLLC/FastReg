@@ -177,17 +177,18 @@ void process_poi_file(
                 ];
             }
         );
-        double nonconvergence_status = 0.0;
-        double total_filtered_pois = 0.0;
         
         int num_parallel_poi_blocks = (int) std::ceil((double)num_poi/(double)chunk_size);
+
         int total_nonconvergence_status = 0;
+        double nonconvergence_status = 0.0;
+        double total_filtered_pois = 0.0;
         double sum_total_filtered_pois = 0.0;
 
         FRMatrix poi_matrix;
         // Rcpp::Rcout << "Started process: " << process_id + 1 << std::endl;
         auto start_time = std::chrono::high_resolution_clock::now();
-        int start_poi = process_id * chunk_size;
+        // int start_poi = process_id * chunk_size;
         poi.set_memspace(poi.individuals.size(), chunk_size); // allocate memory space for H5 file to read into
         for (int block = 0; block < num_parallel_poi_blocks; block++) {
             // Rcpp::Rcout << "Processing POI block: " << block + 1 << "/" << num_parallel_poi_blocks << " with a chunk size of: " << chunk_size << " for process " << process_id  + 1 << std::endl;
@@ -531,9 +532,6 @@ void FastRegCpp(
 
     // setup parallel processing
     // total_num_chunks
-    int num_processes_total = chunker.get_total_workers();
-
-    int max_processes = chunker.get_num_workers();
     int parallel_chunk_size = chunker.get_chunk_size();
     int num_threads = chunker.get_openmp_threads();
     #ifdef _WIN32
@@ -551,6 +549,9 @@ void FastRegCpp(
         );
     }
     #else
+    
+    int num_processes_total = chunker.get_total_workers();
+    int max_processes = chunker.get_num_workers();
     // Rcpp::Rcout << "Chunker num_procs_total: " << num_processes_total << " num_procs: " << num_processes << " parallel_chunk_size: " << parallel_chunk_size << " num_threads: " << num_threads << std::endl;
     // int max_processes = std::min(num_processes, num_poi_files);
     std::vector<int> pipe_file_descriptors(num_processes_total * 2); 

@@ -171,14 +171,14 @@ ChunkConfig Chunker::estimate_num_files(int num_poi, int num_ind, int usr_thread
     memfree = pages * page_size;
     #endif
     
-    int threads = std::thread::hardware_concurrency();
+    // int threads = std::thread::hardware_concurrency();
 
-    int max_num_matrix = 4 * num_procs;
-    double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
+    // int max_num_matrix = 4 * num_procs;
+    // double matrix_size = std::exp(std::log(num_poi) + std::log(num_ind));
     int float_size = 8; // 8 bytes per number assuming 64-bit numbers
-    double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
-    double chunks = (data_size) / static_cast<double>(memfree);
-    int chunked_dim1 = std::floor(num_poi / chunks);
+    // double data_size = std::exp(std::log(matrix_size) + std::log(float_size) + std::log(max_num_matrix));
+    // double chunks = (data_size) / static_cast<double>(memfree);
+    // int chunked_dim1 = std::floor(num_poi / chunks);
 	
 	int max_processes;
 	unsigned long long max_mem;
