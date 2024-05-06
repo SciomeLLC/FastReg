@@ -2,7 +2,7 @@ Package: FastReg
 Type: Package
 Title: Fast Regression
 Description: Efficiently perform large scale simple linear and logistic regression analysis.
-Version: 0.5.5
+Version: 0.5.6
 Authors@R: 
     c(
     person(given = "Shail",

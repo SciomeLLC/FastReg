@@ -547,14 +547,14 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
   {
     // create file
     // name = (char *)malloc(2 * strlen(par->h5file_base) + 100);
-    char name2[2 * strlen(par->h5file_base) + 100];
-    Rcpp::Rcout << par->h5file_base << "/" << par->h5file_base << "." << i << ".h5" << std::endl;
+    int name_length = 2 * strlen(par->h5file_base) + 100;
+    char name2[name_length];
     snprintf(name2, sizeof(name2), "%s%s%s%s%zu%s", par->h5file_base, "/", par->h5file_base, ".", i, ".h5");
 
     Rcpp::Rcout << "Creating file: " << name2 << std::endl;
     (*h5vars)[i].file =
         H5Fcreate(name2, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    free(name);
+    // free(name);
     // create row dataspace
     (*h5vars)[i].row_dataspace = H5Screate_simple(
         1, &((*dvars)[i].vals_dataspace_dims[pre->growdim]), NULL);

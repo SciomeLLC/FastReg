@@ -41,6 +41,7 @@ jobs:
             any::rcmdcheck
             any::knitr
             any::rmarkdown
+            any::tinytex
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
