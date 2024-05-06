@@ -589,9 +589,6 @@ void FastRegCpp(
     
     int num_processes_total = chunker.get_total_workers();
     int max_processes = chunker.get_num_workers();
-    
-    int num_processes_total = chunker.get_total_workers();
-    int max_processes = chunker.get_num_workers();
     // Rcpp::Rcout << "Chunker num_procs_total: " << num_processes_total << " num_procs: " << num_processes << " parallel_chunk_size: " << parallel_chunk_size << " num_threads: " << num_threads << std::endl;
     // int max_processes = std::min(num_processes, num_poi_files);
     std::vector<int> pipe_file_descriptors(num_processes_total * 2); 
