@@ -43,7 +43,7 @@ struct hdf5_vars
   int written;
 };
 
-// consolidates per-HDF5 file dimension variables
+// consolidates per-HDF5 file dimension variable
 struct dim_vars
 {
   hsize_t vals_dataspace_dims[2];
@@ -188,6 +188,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
   i = 0;
   j = 0;
   k = 0;
+  Rcpp::Rcout << "Pre-processing input file..." << std::endl;
   Rcpp::Rcout << "Pre-processing input file..." << std::endl;
   // set column data set name based on matrix orientation
   if (par->transpose == 1)
@@ -545,10 +546,14 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
   for (i = 0; (int)i < filecount; i++)
   {
     // create file
-    name = (char *)malloc(2 * strlen(par->h5file_base) + 100);
-    Rcpp::Rcout << name << par->h5file_base << "/" << par->h5file_base << "." << i << ".h5" << std::endl;
+    // name = (char *)malloc(2 * strlen(par->h5file_base) + 100);
+    char name2[2 * strlen(par->h5file_base) + 100];
+    Rcpp::Rcout << par->h5file_base << "/" << par->h5file_base << "." << i << ".h5" << std::endl;
+    snprintf(name2, sizeof(name2), "%s%s%s%s%zu%s", par->h5file_base, "/", par->h5file_base, ".", i, ".h5");
+
+    Rcpp::Rcout << "Creating file: " << name2 << std::endl;
     (*h5vars)[i].file =
-        H5Fcreate(name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        H5Fcreate(name2, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     free(name);
     // create row dataspace
     (*h5vars)[i].row_dataspace = H5Screate_simple(
@@ -625,6 +630,7 @@ static int read_write_rownames_values(
   herr_t status;
   int done = 0;
   Rcpp::Rcout << "Writing H5 files..." << std::endl;
+  Rcpp::Rcout << "Writing H5 files..." << std::endl;
   // flip data buffer index variable if matrix is transposed
   if (par->transpose == 1)
   {
@@ -673,7 +679,7 @@ static int read_write_rownames_values(
     if (done != 0)
     {
       Rprintf("Warning: additional data found at end of input file,\n  "
-                      " contents may have changed during processing\n");
+              " contents may have changed during processing\n");
       free(dstarts);
       free(line);
       return (0);
@@ -773,34 +779,14 @@ static int read_write_rownames_values(
           {
             val = NAN;
           }
-        }
-        else
-        {
-          // genotype is missing if not 0/0, 0|0, 0|1, 1|0, 0/1, 1|1, or 1/1
-          switch ((char)*(pch + 1))
+          else
           {
-          case '|':
-          case '/':
-            switch ((int)*pch + (int)*(pch + 2) - 96)
+            // genotype is missing if not 0/0, 0|0, 0|1, 1|0, 0/1, 1|1, or 1/1
+            switch ((char)*(pch + 1))
             {
-            case 0:
-              val = 0.0;
-              break;
-            case 1:
-              val = 1.0;
-              break;
-            case 2:
-              val = 2.0;
-              break;
-            default:
-              val = NAN;
-              break;
-            }
-            break;
-          default:
-            if (*(pch + 1) == '\0')
-            {
-              switch ((int)*pch - 48)
+            case '|':
+            case '/':
+              switch ((int)*pch + (int)*(pch + 2) - 96)
               {
               case 0:
                 val = 0.0;
@@ -808,177 +794,137 @@ static int read_write_rownames_values(
               case 1:
                 val = 1.0;
                 break;
+              case 2:
+                val = 2.0;
+                break;
               default:
                 val = NAN;
                 break;
               }
+              break;
+            default:
+              if (*(pch + 1) == '\0')
+              {
+                switch ((int)*pch - 48)
+                {
+                case 0:
+                  val = 0.0;
+                  break;
+                case 1:
+                  val = 1.0;
+                  break;
+                default:
+                  val = NAN;
+                  break;
+                }
+              }
+              else
+              {
+                val = NAN;
+              }
+              break;
             }
-            else
-            {
-              val = NAN;
-            }
-            break;
           }
+          readbuff->val_buffer[*fptr][*indptr][*predptr] = val;
         }
-        readbuff->val_buffer[*fptr][*indptr][*predptr] = val;
+        pch = separate(&buff, par->delim);
+        j++;
+        y++;
+        if (j == dv[f].vals_memspace_dims[jdim])
+        {
+          j = 0;
+          f++;
+        }
       }
-      pch = separate(&buff, par->delim);
-      j++;
-      y++;
-      if (j == dv[f].vals_memspace_dims[jdim])
+      i++;
+      x++;
+      // ensure each line contains the expect field count; fill remainder of
+      // buffer with NAN
+      if (j != 0)
       {
+        Rprintf("Warning: fields missing in input file line %zu\n",
+                iadj + i + skip);
+        i -= 1;
+        while (j < dv[f].vals_memspace_dims[jdim])
+        {
+          readbuff->val_buffer[*fptr][*indptr][*predptr] = NAN;
+          j++;
+        }
         j = 0;
         f++;
+        i++;
       }
-    }
-    i++;
-    x++;
-    // ensure each line contains the expect field count; fill remainder of
-    // buffer with NAN
-    if (j != 0)
-    {
-      Rprintf("Warning: fields missing in input file line %zu\n",
-              iadj + i + skip);
-      i -= 1;
-      while (j < dv[f].vals_memspace_dims[jdim])
+      else if (pch != NULL)
       {
-        readbuff->val_buffer[*fptr][*indptr][*predptr] = NAN;
-        j++;
+        Rprintf(
+            "Warning: more fields than expected found in input file line %zu\n",
+            iadj + i + skip);
       }
-      j = 0;
-      f++;
-      i++;
-    }
-    else if (pch != NULL)
-    {
-      Rprintf(
-          "Warning: more fields than expected found in input file line %zu\n",
-          iadj + i + skip);
-    }
-    // write to HDF5 file once buffer is full or current file/files are full
-    if (i == pre->row_dim || x == dv[fmin].vals_dataspace_dims[idim])
-    {
-      for (k = fmin; k < f; k++)
+      // write to HDF5 file once buffer is full or current file/files are full
+      if (i == pre->row_dim || x == dv[fmin].vals_dataspace_dims[idim])
       {
-        dv[k].vals_memspace_dims[idim] = i;
-        h5vars[k].written = 1;
-        H5Sselect_hyperslab(h5vars[k].vals_memspace, H5S_SELECT_SET,
-                            position_zero, NULL, dv[k].vals_memspace_dims,
-                            NULL);
-        H5Sselect_hyperslab(h5vars[k].vals_dataspace, H5S_SELECT_SET,
-                            dv[k].vals_hyperslab_pos, NULL,
-                            dv[k].vals_memspace_dims, NULL);
-        status = H5Dwrite(h5vars[k].vals_dataset, H5T_NATIVE_FLOAT,
-                          h5vars[k].vals_memspace, h5vars[k].vals_dataspace,
-                          H5P_DEFAULT, dstarts[k]);
-        if (status < 0)
+        for (k = fmin; k < f; k++)
         {
-          Rprintf("Error: unable to write data block to HDF5 file\n");
-          free(dstarts);
-          free(line);
-          return (1);
+          dv[k].vals_memspace_dims[idim] = i;
+          h5vars[k].written = 1;
+          H5Sselect_hyperslab(h5vars[k].vals_memspace, H5S_SELECT_SET,
+                              position_zero, NULL, dv[k].vals_memspace_dims,
+                              NULL);
+          H5Sselect_hyperslab(h5vars[k].vals_dataspace, H5S_SELECT_SET,
+                              dv[k].vals_hyperslab_pos, NULL,
+                              dv[k].vals_memspace_dims, NULL);
+          status = H5Dwrite(h5vars[k].vals_dataset, H5T_NATIVE_FLOAT,
+                            h5vars[k].vals_memspace, h5vars[k].vals_dataspace,
+                            H5P_DEFAULT, dstarts[k]);
+          if (status < 0)
+          {
+            Rprintf("Error: unable to write data block to HDF5 file\n");
+            free(dstarts);
+            free(line);
+            return (1);
+          }
+          H5Sselect_hyperslab(h5vars[k].row_memspace, H5S_SELECT_SET,
+                              &(position_zero[0]), NULL,
+                              &(dv[k].vals_memspace_dims[pre->growdim]), NULL);
+          H5Sselect_hyperslab(h5vars[k].row_dataspace, H5S_SELECT_SET,
+                              &(dv[k].vals_hyperslab_pos[pre->growdim]), NULL,
+                              &(dv[k].vals_memspace_dims[pre->growdim]), NULL);
+          status = H5Dwrite(h5vars[k].row_dataset, h5vars[k].row_datatype,
+                            h5vars[k].row_memspace, h5vars[k].row_dataspace,
+                            H5P_DEFAULT, readbuff->row_buffer);
+          if (status < 0)
+          {
+            Rprintf("Error: unable to write row name block to HDF5 file\n");
+            free(dstarts);
+            free(line);
+            return (1);
+          }
+          dv[k].vals_hyperslab_pos[pre->growdim] += i;
         }
-        H5Sselect_hyperslab(h5vars[k].row_memspace, H5S_SELECT_SET,
-                            &(position_zero[0]), NULL,
-                            &(dv[k].vals_memspace_dims[pre->growdim]), NULL);
-        H5Sselect_hyperslab(h5vars[k].row_dataspace, H5S_SELECT_SET,
-                            &(dv[k].vals_hyperslab_pos[pre->growdim]), NULL,
-                            &(dv[k].vals_memspace_dims[pre->growdim]), NULL);
-        status = H5Dwrite(h5vars[k].row_dataset, h5vars[k].row_datatype,
-                          h5vars[k].row_memspace, h5vars[k].row_dataspace,
-                          H5P_DEFAULT, readbuff->row_buffer);
-        if (status < 0)
+        // clean up row name buffer before refilling - sizes of identifiers may
+        // vary
+        for (k = 0; k < i; k++)
         {
-          Rprintf("Error: unable to write row name block to HDF5 file\n");
-          free(dstarts);
-          free(line);
-          return (1);
+          free(readbuff->row_buffer[k]);
+          readbuff->row_buffer[k] = NULL;
         }
-        dv[k].vals_hyperslab_pos[pre->growdim] += i;
-      }
-      // clean up row name buffer before refilling - sizes of identifiers may
-      // vary
-      for (k = 0; k < i; k++)
-      {
-        free(readbuff->row_buffer[k]);
-        readbuff->row_buffer[k] = NULL;
-      }
-      iadj += i;
-      i = 0;
-      if (x == dv[fmin].vals_dataspace_dims[idim])
-      {
-        x = 0;
-        fmin++;
-        if ((int)par->transpose == 0 || ((int)par->transpose == 1 && (int)fmin == filecount))
+        iadj += i;
+        i = 0;
+        if (x == dv[fmin].vals_dataspace_dims[idim])
         {
-          done = 1;
+          x = 0;
+          fmin++;
+          if ((int)par->transpose == 0 || ((int)par->transpose == 1 && (int)fmin == filecount))
+          {
+            done = 1;
+          }
         }
       }
-    }
-    free(line);
-    line = NULL;
-    len = 0;
-    nread = get_full_line(&line, &len, datafile, par->gz, gzdatafile);
-    buff = line;
-  }
-  // at end of file, check for any unwritten data, write and modify data set
-  // dimensions as necessary
-  if (done == 0)
-  {
-    l = 0;
-    for (k = fmin; (int)k < filecount; k++)
-    {
-      l += dv[k].vals_dataspace_dims[idim];
-    }
-    if (l != (x + skip))
-    {
-      Rcpp::Rcout << "Warning: fewer data entries found in input file than expected, \n"
-                  << "contents may have changed during processing" << std::endl;
-    }
-    if (i > 0)
-    {
-      for (k = fmin; k < f; k++)
-      {
-        h5vars[k].written = 1;
-        dv[k].vals_memspace_dims[idim] = i;
-        dv[k].vals_dataspace_dims[idim] = x;
-        H5Dset_extent(h5vars[k].vals_dataset, dv[k].vals_dataspace_dims);
-        H5Dset_extent(h5vars[k].row_dataset,
-                      &dv[k].vals_dataspace_dims[pre->growdim]);
-        H5Sselect_hyperslab(h5vars[k].vals_memspace, H5S_SELECT_SET,
-                            position_zero, NULL, dv[k].vals_memspace_dims,
-                            NULL);
-        H5Sselect_hyperslab(h5vars[k].vals_dataspace, H5S_SELECT_SET,
-                            dv[k].vals_hyperslab_pos, NULL,
-                            dv[k].vals_memspace_dims, NULL);
-        status = H5Dwrite(h5vars[k].vals_dataset, H5T_NATIVE_FLOAT,
-                          h5vars[k].vals_memspace, h5vars[k].vals_dataspace,
-                          H5P_DEFAULT, dstarts[k]);
-        if (status < 0)
-        {
-          Rprintf("Error: unable to write data block to HDF5 file\n");
-          free(dstarts);
-          free(line);
-          return (1);
-        }
-        H5Sselect_hyperslab(h5vars[k].row_memspace, H5S_SELECT_SET,
-                            &(position_zero[0]), NULL,
-                            &(dv[k].vals_memspace_dims[pre->growdim]), NULL);
-        H5Sselect_hyperslab(h5vars[k].row_dataspace, H5S_SELECT_SET,
-                            &dv[k].vals_hyperslab_pos[pre->growdim], NULL,
-                            &dv[k].vals_memspace_dims[pre->growdim], NULL);
-        status = H5Dwrite(h5vars[k].row_dataset, h5vars[k].row_datatype,
-                          h5vars[k].row_memspace, h5vars[k].row_dataspace,
-                          H5P_DEFAULT, readbuff->row_buffer);
-        if (status < 0)
-        {
-          Rprintf("Error: unable to write row name block to HDF5 file\n");
-          free(dstarts);
-          free(line);
-          return (1);
-        }
-        dv[k].vals_hyperslab_pos[pre->growdim] += i;
-      }
+      free(line);
+      line = NULL;
+      len = 0;
+      nread = get_full_line(&line, &len, datafile, par->gz, gzdatafile);
+      buff = line;
     }
   }
   Rcpp::Rcout << "done." << std::endl;
@@ -1026,6 +972,9 @@ static void final_cleanup(struct read_buffers *readbuff,
     if ((*h5vars)[i].written == 0)
     {
       name = (char *)malloc(2 * strlen(par->h5file_base) + 100);
+      Rcpp::Rcout << name << par->h5file_base << "/" << par->h5file_base << "." << i << ".h5" << std::endl;
+      // sprintf(name, "%s/%s.%03d.h5", par->h5file_base, par->h5file_base,
+      //         (int)i);
       Rcpp::Rcout << name << par->h5file_base << "/" << par->h5file_base << "." << i << ".h5" << std::endl;
       // sprintf(name, "%s/%s.%03d.h5", par->h5file_base, par->h5file_base,
       //         (int)i);
@@ -1139,6 +1088,7 @@ int FastRegImportCpp(std::string dataFile, std::string h5File, int headerRow,
   par.chunk_edge = (hsize_t)chunkEdge;
   par.vcf = (int)vcf;
   par.delim = strdup(delim.c_str());
+  par.gz = (int)gz;
   par.gz = (int)gz;
   par.single = (int)singleFile;
   par.server_threads = serverThreads;

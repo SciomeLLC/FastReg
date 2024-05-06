@@ -189,6 +189,7 @@ void process_poi_file(
         // Rcpp::Rcout << "Started process: " << process_id + 1 << std::endl;
         auto start_time = std::chrono::high_resolution_clock::now();
         // int start_poi = process_id * chunk_size;
+        // int start_poi = process_id * chunk_size;
         poi.set_memspace(poi.individuals.size(), chunk_size); // allocate memory space for H5 file to read into
         for (int block = 0; block < num_parallel_poi_blocks; block++) {
             // Rcpp::Rcout << "Processing POI block: " << block + 1 << "/" << num_parallel_poi_blocks << " with a chunk size of: " << chunk_size << " for process " << process_id  + 1 << std::endl;
@@ -227,6 +228,7 @@ void process_poi_file(
             //Rcpp::Rcout << "Reading POI timing: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time-start_time).count() << " milliseconds\n";
 
             if (config.POI_type == "genotype") {
+                // Rcpp::Rcout << "Filtering MAF and HWE" << std::endl;
                 // Rcpp::Rcout << "Filtering MAF and HWE" << std::endl;
 
                 FRMatrix filtered = filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
@@ -489,6 +491,41 @@ void FastRegCpp(
     Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
     Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
     Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
+    Rcpp::Rcout << "Running FastReg with configuration: " << std::endl;
+    Rcpp::Rcout << "phenotype: " << phenotype << std::endl;
+    Rcpp::Rcout << "regression_type: " << regression_type << std::endl;
+    Rcpp::Rcout << "pvalue_dist: " << pvalue_dist << std::endl;
+    Rcpp::Rcout << "output_exclude_covar: " << output_exclude_covar << std::endl;
+    Rcpp::Rcout << "maf_threshold: " << maf_threshold << std::endl;
+    Rcpp::Rcout << "hwe_threshold: " << hwe_threshold << std::endl;
+    Rcpp::Rcout << "no_intercept: " << no_intercept << std::endl;
+    Rcpp::Rcout << "colinearity_rsq: " << colinearity_rsq << std::endl;
+    Rcpp::Rcout << "poi_block_size: " << poi_block_size << std::endl;
+    Rcpp::Rcout << "max_iter: " << max_iter << std::endl;
+    Rcpp::Rcout << "rel_conv_tolerance: " << rel_conv_tolerance << std::endl;
+    Rcpp::Rcout << "abs_conv_tolderance: " << abs_conv_tolderance << std::endl;
+    Rcpp::Rcout << "max_openmp_threads: " << max_openmp_threads << std::endl;
+    Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
+    Rcpp::Rcout << "pheno_rowname_cols: " << pheno_rowname_cols << std::endl;
+    Rcpp::Rcout << "pheno_file_delim: " << pheno_file_delim << std::endl;
+    Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
+    Rcpp::Rcout << "covar_rowname_cols: " << covar_rowname_cols << std::endl;
+    Rcpp::Rcout << "covar_file_delim: " << covar_file_delim << std::endl;
+    Rcpp::Rcout << "poi_file_dir: " << poi_file_dir << std::endl;
+    Rcpp::Rcout << "poi_file_delim: " << poi_file_delim << std::endl;
+    Rcpp::Rcout << "poi_file_format: " << poi_file_format << std::endl;
+    Rcpp::Rcout << "poi_type: " << poi_type << std::endl;
+    Rcpp::Rcout << "poi_effect_type: " << poi_effect_type << std::endl;
+    Rcpp::Rcout << "covariates: " << covariates << std::endl;
+    Rcpp::Rcout << "covariate_type: " << covariate_type << std::endl;
+    Rcpp::Rcout << "covariate_standardize: " << covariate_standardize << std::endl;
+    Rcpp::Rcout << "covariate_levels: " << covariate_levels << std::endl;
+    Rcpp::Rcout << "covariate_ref_level: " << covariate_ref_level << std::endl;
+    Rcpp::Rcout << "POI_covar_interactions_str: " << POI_covar_interactions_str << std::endl;
+    Rcpp::Rcout << "split_by_str: " << split_by_str << std::endl;
+    Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
+    Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
+    Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
     // Clean up previous run
     if(dir_exists(config.output_dir)) {
         delete_dir(config.output_dir);
@@ -549,6 +586,9 @@ void FastRegCpp(
         );
     }
     #else
+    
+    int num_processes_total = chunker.get_total_workers();
+    int max_processes = chunker.get_num_workers();
     
     int num_processes_total = chunker.get_total_workers();
     int max_processes = chunker.get_num_workers();

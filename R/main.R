@@ -83,6 +83,15 @@ FastReg <- function(
     cat("Error: max.workers must be a positive integer.\n")
     return(FALSE)
   }
+  if (max.openmp.threads <= 0) {
+    cat("Error: max.openmp.threads must be a positive integer.\n")
+    return(FALSE)
+  }
+
+  if (max.workers < 0) {
+    cat("Error: max.workers must be a positive integer.\n")
+    return(FALSE)
+  }
   FastRegCpp(
     phenotype,
     regression.type,
@@ -131,6 +140,7 @@ FastReg <- function(
 #' @param transpose Default: FALSE. Boolean value that indicates whether text data should be transposed. Set TRUE when columns represent individuals and rows represent POIs.
 #' @param chunkEdge Default: 100. Specify size of data chunks to be applied to output hdf5 files. Must be less than or equal to values of poiPerFile and greater than zero.
 #' @param vcf Default: FALSE. Indicate whether input file is in vcf format. If TRUE, headerRow, idCol, dataCol and transpose values are ignored.
+#' @param delimiter Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
 #' @param delimiter Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
 #' @param gz Default: FALSE. Indicate whether input text file is gzip-compressed.
 #' @param poiPerFile Default: -1. Indicate the number of POIs to write to each output hdf5 file. A value of -1 indicates the count should be calculated based on available system resources.
@@ -248,3 +258,4 @@ FastRegImport <- function(
     serverMem
   )
 }
+
