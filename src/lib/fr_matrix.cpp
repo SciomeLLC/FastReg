@@ -338,7 +338,7 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
                   << std::endl;
       return;
     }
-    outfile << "POI\tN\tDF\tEffect\tEstimate\tStd Error\tNegLog10 P-val"
+    outfile << "POI\tN\tDF\tEffect\tEstimate\tSE\tmlog10P"
             << std::endl;
     // Rcpp::Rcout << "File created for writing." << std::endl;
   }
