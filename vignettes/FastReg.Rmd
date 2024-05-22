@@ -1,149 +1,226 @@
 ---
 title: "FastReg"
-author: "Matt Wheeler, Deepak Mav, John House, Shail Choksi, Adam Burkholder"
+author: "Matt Wheeler, Shail Choksi, Adam Burkholder, John House, Deepak Mav"
 output: 
-  rmarkdown::html_vignette:
+  rmarkdown::html_document:
     toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: united
 vignette: >
   %\VignetteIndexEntry{FastReg}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
+# Introduction
+
+In Biostatistics, data science, and informatics, regression using generalized linear models (McCullagh 2019) is often the primary workhorse for scientists seeking to understand the relationship between measured covariates and observed responses.  In the era of “big data,” one may be required to compute thousands or millions of regressions.  Computing this large number of regressions requires significant computational resources, and this fact is exacerbated with logistic regression, whose solution requires an iterative algorithm verses a single solve that is standard with linear regression for continuous data.  
+
+Traditional software solutions to regression analyses available in the programming language R (R Core Team 2023) are a one-at-a-time approach, which analyzes each dataset as a unique analysis. Though such analyses occur in a fraction of a second, their focus on a single dataset at a time creates code inefficiencies resulting in duplicating effort when many regressions are needed. This creates noticeable bottlenecks when millions of regressions are required.  For example, if part of the covariate matrix is the same across regressions, computer operations that require the allocation of matrix memory or matrix multiplication will be needlessly duplicated.
+
+FastReg tries to solve this by using the iteratively weighted least squares (IRLS) algorithm to perform logistic regression. It assumes that the data to be analyzed are available in text format, and that each response is saved in column format (a standard GWAS format). FastReg converts the data to the HDF5 format as it allows for random access from multiple threads, memory efficiencies and faster read times. Once converted, we use the iteratively reweighted least squares algorithm to perform logistic regression. The algorithm typically converges within a handful of iterations, and for speed, we cap the number of iterations (defaults to six). The output contains the summary with significance p-value, the maximum likelihood estimate, and the covariance estimates.
+
+# Pre-requisites and Installation
+
+## Install BLAS
+
+-   **Recommended**: [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html "Intel OneAPI")
+-   [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS "OpenBLAS github")
+
+## Windows
+
+-   Install [**Rtools for Windows**](https://cran.r-project.org/bin/windows/Rtools/ "Rtools for Windows")
+
+## MacOS
+
+-   Ensure that **Xcode Command Line Tools** are installed. Open **Terminal** and type: **`xcode-select -p`**.
+    -   If you see the following: **/Library/Developer/CommandLineTools** command line tools are installed
+    -   If not, check for system updates: **`System Settings > General > Software Update`**
+-   Install the latest [**gfortran** **compiler**](https://cran.r-project.org/bin/macosx/tools/ "gfortran compiler")
+
+## Installing FastReg
+
+```
+# install dependencies
+install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools"))
+Biocmanager::install("rhdf5")
+library(devtools)
+# install the package from github
+install_github("SciomeLLC/FastReg")
+library(FastReg)
+```
+
+# Dataset preparation
+
+Let's look at an example GWAS dataset of 500 individuals x 5000 POIs stored as text files:
+
+-   testdata.bin.pheno.txt - contains 500 individual ids and the binary response for each
+
+    ```{r include=TRUE}
+    # Binary phenotype data
+    read.csv("../inst/extdata/testdata_500_by_1k.bin.pheno.txt", sep = "\t", nrows = 10)
+    ```
+
+-   testdata.covar.txt - contains the individual ids, and 3 covariates (age, sex and treatment)
+
+    ```{r include=TRUE}
+    # Covariate data
+    read.csv("../inst/extdata/testdata_500_by_1k.covar.txt", sep = "\t", nrows = 10)
+    ```
+
+-   testdata.poi.txt - contains 500 individual ids and 5000 Predictors of Interest
+<details>
+  <summary>Click to see contents (large output)</summary>
+    ```{r eval=TRUE, include=TRUE}
+    # POI data
+    read.csv("../inst/extdata/testdata_500_by_1k.poi.txt", sep = "\t", nrows = 2)
+    ```
+</details>
+
+## Converting to HDF5
+FastReg provides functionality to convert the POI text dataset into HDF5 dataset(s). 
+Lets create a HDF5 dataset using the poi text data:
+
+```{r include=TRUE, eval=FALSE}
+library(FastReg)
+TextToH5("testdata", "./FastRegData", delimiter="\t")
+```
+
+This will create n (where n is optimized according to your machine configuration) HDF5 datasets in the "FastRegData" directory.
+# Regression 
+Now we are ready to run fast regression on the dataset. 
+
+## Logistic Regression
+With the text file converted to HDF5 format, we are ready to run logistic regression on the full dataset.
+
+```{r include=TRUE, eval=FALSE}
+FastReg(
+  regression.type="logistic",
+  pheno.file="inst/extdata/testdata.bin.pheno.txt",
+  pheno.rowname.cols="ind",
+  phenotype = "bin.resp",
+  covar.file="inst/extdata/testdata.covar.txt",
+  covariates=c("age", "sex", "treatment"),
+  covariate.type = c("numeric", "categorical", "categorical"),
+  covariate.standardize = c(TRUE, FALSE, FALSE),
+  covariate.levels = c("", "F,M", "Placebo,Test"),
+  covariate.ref.level = c("", "F", "Placebo"),
+  POI.file.dir = "./FastRegData"
+  POI.type = "dosage",
+  POI.effect.type = "additive",
+  output.dir = "FastRegResults"
+)
+```
+The parameters for the covariates define the structure, data type, standardization, levels and reference levels. These parameters are all a list of the same size and need to be defined in the same order for each. The regression will try and spawn n processes and process the dataset in parallel. Two files will be created in the "FastRegResults" directory - one for the convergence and the other with the results of the logistic regression.
+
+```{r include=TRUE, eval=FALSE}
+read.csv("FastRegResults/Full_Convergence_stratum_1.tsv", delimiter="\t", nrows=10)
+read.csv("FastRegResults/Full_Results_stratum_1.tsv", delimited="\t", nrwos=10)
+```
+
+## Linear Regression
+
+```{r include=TRUE, eval=FALSE}
+FastReg::FastReg(
+    phenotype="bin.resp", 
+    max.iter = 6, 
+    covariates = c("age","sex","treatment"),
+    covariate.levels = ";F,M;Placebo,Test", # vectors / list of vectors 
+    covariate.ref.level = ",F,Placebo", 
+    covariate.type = "numeric,categorical,categorical",
+    covariate.standardize = "1,0,0",
+    covar.file= data(paste0(prefix, ".covar.txt"), package=FastReg),
+    poi.file = data(paste0(prefix, ".poi.txt"), package=FastReg),
+    pheno.file= data(paste0(prefix, ".bin.pheno.txt"), package=FastReg),
+    regression.type="linear",
+    output.dir = "."
 )
 ```
 
-## Pre-requisites
+## Optimization and OS specific settings
 
--   BLAS/MKL libraries installed. We recommend using Intel MKL (https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html)
--   HDF5 library - https://www.hdfgroup.org/downloads/hdf5/
--   Rtools for Windows
+### OpenMP Threads
 
-## Configuration file
+FastReg makes use of OpenMP threads and allows the user to set OpenMP threads per worker. The `max.openmp.threads` parameter can be passed to the FastReg function to set the number of OpenMP threads that will be used. Our benchmarking suggests that the default value of 1 openMP thread is usually optimal: 
 
-Create a configuration file. All available configuration options are listed below:
+```{r include=TRUE, eval=FALSE}
+FastReg(
+  regression.type="logistic",
+  pheno.file="inst/extdata/testdata.bin.pheno.txt",
+  pheno.rowname.cols="ind",
+  phenotype = "bin.resp",
+  covar.file="inst/extdata/testdata.covar.txt",
+  covariates=c("age", "sex", "treatment"),
+  covariate.type = c("numeric", "categorical", "categorical"),
+  covariate.standardize = c(TRUE, FALSE, FALSE),
+  covariate.levels = c("", "F,M", "Placebo,Test"),
+  covariate.ref.level = c("", "F", "Placebo"),
+  POI.file.dir = "./FastRegData"
+  POI.type = "dosage",
+  POI.effect.type = "additive",
+  output.dir = "FastRegResults",
+  max.openmp.threads = 4
+)
+```
+NOTE: MacOS doesn't support OpenMP natively currently and this parameter will be defaulted to 1 on a MacOS system.
 
--   **pheno.file** - relative path to phenotype file. Contains outcomes that will be modelled.
+### Workers
 
--   **phenotype** - column name to be modelled from the phenotype file
+FastReg will spawn min(Total POI files, # cores-1) of workers by default when running regressions. If you need granular control on how many workers are created, you can use the `max.workers` parameter to limit the workers.
 
--   **pheno.file.delim** - delimiter used in phenotype file - tab\|space\|comma
+```{r include=TRUE, eval=FALSE}
+FastReg(
+  regression.type="logistic",
+  pheno.file="inst/extdata/testdata.bin.pheno.txt",
+  pheno.rowname.cols="ind",
+  phenotype = "bin.resp",
+  covar.file="inst/extdata/testdata.covar.txt",
+  covariates=c("age", "sex", "treatment"),
+  covariate.type = c("numeric", "categorical", "categorical"),
+  covariate.standardize = c(TRUE, FALSE, FALSE),
+  covariate.levels = c("", "F,M", "Placebo,Test"),
+  covariate.ref.level = c("", "F", "Placebo"),
+  POI.file.dir = "./FastRegData"
+  POI.type = "dosage",
+  POI.effect.type = "additive",
+  output.dir = "FastRegResults",
+  max.workers = 4
+)
+```
+NOTE: This parameter doesn't have any effect on Windows system as windows doesn't support fork().
 
--   **pheno.rownames.cols** - column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
+### Windows optimization
 
--   **subject.subset.rowname.cols** - column to be treated as the subject identifier when matching across files
+Since Windows doesn't natively support fork(), we recommend using `max.openmp.threads` and setting this value to what you would have set for `max.workers`. Our testing suggests that this is similar in performance to `max.workers` on Linux systems. E.g. if the system has 10 cores: 
 
--   **subject.subset.file (optional)** - relative path to subset subject file
+```{r include=TRUE, eval=FALSE}
+FastReg(
+  regression.type="logistic",
+  pheno.file="inst/extdata/testdata.bin.pheno.txt",
+  pheno.rowname.cols="ind",
+  phenotype = "bin.resp",
+  covar.file="inst/extdata/testdata.covar.txt",
+  covariates=c("age", "sex", "treatment"),
+  covariate.type = c("numeric", "categorical", "categorical"),
+  covariate.standardize = c(TRUE, FALSE, FALSE),
+  covariate.levels = c("", "F,M", "Placebo,Test"),
+  covariate.ref.level = c("", "F", "Placebo"),
+  POI.file.dir = "./FastRegData"
+  POI.type = "dosage",
+  POI.effect.type = "additive",
+  output.dir = "FastRegResults",
+  max.openmp.threads = 10
+)
+```
 
--   **subject.subset.delim** - delimiter used in subject subset file - tab\|space\|comma
+Windows users may get an error related to the HDF5 library: 
+```
+***HDF5 library version mismatched error***
+```
 
--   **covar.file** - relative path to covariates file
-
--   **covar.rowname.cols** - column to be treated as the subject identifier when matching across files
-
--   **covar.file.delim** - delimiter used in covariates file - tab\|space\|comma
-
--   **POI.file** - relative path to POI file
-
--   **POI.subset.file (optional)** - relative path to subset POI file
-
--   **POI.subset.file.delim** - delimiter used in POI subset file - tab\|space\|comma
-
--   **POI.file.delim** - delimiter used in POI file - tab\|space\|comma
-
--   **POI.file.format** - file format - text\|h5
-
--   **POI.subset.rowname.col** - column to be treated as the subject identifier when matching across files
-
--   **regression.type** - logistic\|linear
-
--   **covariates (optional)** column names of the covariates file - comma separated
-
--   **covariate.type (optional)** - column data type for covariates file - comma separated (numeric\|categorical)
-
--   **covariate.standardize (optional)** - which covariate to be standardized (1\|0 - comma separated)
-
--   **covariate.levels (optional)** - how many unique values for categorical columns. (; separated for covariate, comma separated for each unique value)
-
--   **covariate.ref.level (optional)** - First alphabetically sorted value (comma separated)
-
--   **output.dir** - relative path to directory for output. Directory will be created if it doesn't exist
-
--   **output.file.format** - long\|tall
-
--   **output.exclude.covar** - 0\|1
-
--   **hwe.threshold** - 0.00-1.00 \| default 1e-14
-
--   **maf.threshold** - 0.00-1.00
-
--   **POI.type** - genotype\|numerical (dosage value data type)
-
--   **POI.effect.type** - additive\|dominant\|recessive
-
--   **no.intercept** - 0\|1 - to include the intercept term or not in the model
-
--   **colinearity.rsq** - r-squared threshold value to be used during the iterative addition of covariates (default - 0.99)
-
--   **poi.block.size (optional)** - block size. This is dynamically calculated by the package if its not provided
-
--   **max.iter** - max iterations. Default - 6
-
--   **max.cores (optional)** - max cores to use
-
--   **compress.results (optional)** - 0\|1, Default - 1
-
--   **verbose** - 0\|1, for debugging
-
-### Example Configuration File
-
-    pheno.file  example.bin.pheno.txt
-    covar.file  example.covar.txt
-    POI.file    example.poi.h5
-    phenotype   bin.resp
-    regression.type logistic
-    pheno.rowname.cols  ind
-    covar.rowname.cols  ind
-    pheno.file.delim    tab
-    covar.file.delim    tab
-    subject.subset.delim    tab
-    POI.subset.file.delim   tab
-    POI.file.format h5
-    POI.file.delim  tab
-    subject.subset.rowname.cols ind
-    POI.subset.rowname.col  rsID
-    covariates  age,sex,eth,treatment,severity
-    covariate.type  numeric,categorical,categorical,categorical,categorical
-    covariate.standardize   1,0,0,0,0
-    covariate.levels    ;F,M;afr,asi,eur;Placebo,Test;Very Low,Low,Moderate,High,Very High,Extreme
-    covariate.ref.level ,F,eur,Placebo,Very Low
-    output.dir  example.bin.output
-    output.file.format  long
-    output.exclude.covar    0
-    hwe.threshold   0.05
-    maf.threshold   0.01
-    POI.type    genotypes
-    POI.effect.type additive
-    no.intercept  0
-    colinearity.rsq 0.95
-    poi.block.size  50000
-    max.iter    6
-    compress.results    1
-    verbose 1
-
-## Installation
-
-Change the path below to where you have downloaded the tar.gz package.
-
-install.packages(\"../../FastReg_0.4.15.tar.gz\", repos = NULL, type = \"source\");
-
-library(\"FastReg\");
-
-Create the configuration file and call the FastReg function with the path to the configuration file.
-
-FastReg(config.file=\"vignette.example.config\")
-
+You can set the following environment variable to safely disable the warning: 
+```
+Sys.setenv(HDF5_DISABLE_VERSION_CHECK='2')
+```
+FastReg will work as intended. 

@@ -13,7 +13,7 @@ class FRMatrix {
 public:
     FRMatrix() {};
 
-    arma::mat data;
+    arma::fmat data;
     // NamesMap row_names;
     // NamesMap col_names;
     // NamesMap col_names_str;
@@ -38,7 +38,7 @@ public:
     int get_col_idx(const std::string &col_name);
     int get_row_idx(const std::string &row_name);
     std::vector<std::string> get_col_str(const std::string &col_name);
-    void write_summary(std::string dir, std::string name, int stratum);
+    void write_summary(std::string dir, std::string name, int stratum, int process_id);
     bool file_exists(const std::string& name);
     std::vector<std::string> sort_map(bool rows);
     void print();
@@ -59,8 +59,8 @@ public:
         std::vector<std::string> poi_names, 
         std::string dir, 
         std::string file_name, 
-        arma::colvec& rel_err,
-        arma::colvec& abs_err,
+        arma::fcolvec& rel_err,
+        arma::fcolvec& abs_err,
         int stratum,
         int process_id
     ); 

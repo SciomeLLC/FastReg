@@ -30,7 +30,7 @@ class Config {
 
     bool no_intercept, verbose, compress_results, output_exclude_covar;
     double hwe_threshold, maf_threshold, colinearity_rsq, rel_conv_tolerance, abs_conv_tolerance;
-    int max_iter, max_threads, poi_block_size;
+    int max_iter, max_openmp_threads, poi_block_size, max_workers;
 
     // optional
     std::string subject_subset_rowname_cols,
@@ -55,7 +55,7 @@ class Config {
         int max_iter_int,
         double rel_conv_tolerance_dbl,
         double abs_conv_tolderance_dbl, 
-        int max_threads_int,
+        int max_openmp_threads_int,
         std::string pheno_file_str,
         std::string pheno_rowname_cols_str,
         std::string pheno_file_delim_str,
@@ -75,7 +75,8 @@ class Config {
         Rcpp::StringVector POI_covar_interactions_str,
         Rcpp::StringVector split_by_str,
         std::string output_dir_str,
-        bool compress_results_bool
+        bool compress_results_bool,
+        int max_workers_int
     ) {
         phenotype = phenotype_str;
         regression_type = regression_type_str;
@@ -89,7 +90,7 @@ class Config {
         max_iter = max_iter_int;
         rel_conv_tolerance = rel_conv_tolerance_dbl;
         abs_conv_tolerance = abs_conv_tolderance_dbl;
-        max_threads = max_threads_int;
+        max_openmp_threads = max_openmp_threads_int;
         pheno_file = pheno_file_str;
         pheno_rowname_cols = pheno_rowname_cols_str;
         pheno_file_delim = pheno_file_delim_str;
@@ -104,6 +105,7 @@ class Config {
         split_by = convert_stringV_to_string_arr(split_by_str);
         output_dir = output_dir_str;
         compress_results = compress_results_bool;
+        max_workers = max_workers_int;
         validate_covariate_config(covariates_str, covariate_type_str, covariate_standardize_str, covariate_levels_str, covariate_ref_level_str, POI_covar_interactions_str);
 
         validate_required_files();
@@ -134,5 +136,4 @@ class Config {
     );
     void get_poi_files();
     std::vector<std::string> split(std::string val, std::string delim, std::string default_str_val, unsigned int size);
-
 };

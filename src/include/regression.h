@@ -26,14 +26,14 @@ class RegressionBase {
             FRMatrix& beta_est,
             FRMatrix& se_beta,
             FRMatrix& neglog10_pvl,
-            arma::colvec& beta_rel_errs,
-            arma::colvec& beta_abs_errs,
+            arma::fcolvec& beta_rel_errs,
+            arma::fcolvec& beta_abs_errs,
             int max_iter, 
             bool is_t_dist
         ) = 0;
     protected:
-        static arma::colvec t_dist(arma::colvec abs_z, int df);
-        static arma::colvec norm_dist(arma::colvec abs_z, int df);
+        static arma::fcolvec t_dist(arma::fcolvec abs_z, int df);
+        static arma::fcolvec norm_dist(arma::fcolvec abs_z, int df);
 };
 
 class LogisticRegression : public RegressionBase {
@@ -47,8 +47,8 @@ class LogisticRegression : public RegressionBase {
             FRMatrix& beta_est,
             FRMatrix& se_beta,
             FRMatrix& neglog10_pvl,
-            arma::colvec& beta_rel_errs,
-            arma::colvec& beta_abs_errs,
+            arma::fcolvec& beta_rel_errs,
+            arma::fcolvec& beta_abs_errs,
             int max_iter, 
             bool is_t_dist
         );
@@ -65,8 +65,8 @@ class LinearRegression : public RegressionBase {
             FRMatrix& beta_est,
             FRMatrix& se_beta,
             FRMatrix& neglog10_pvl,
-            arma::colvec& beta_rel_errs,
-            arma::colvec& beta_abs_errs,
+            arma::fcolvec& beta_rel_errs,
+            arma::fcolvec& beta_abs_errs,
             int max_iter, 
             bool is_t_dist
         );

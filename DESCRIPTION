@@ -2,7 +2,7 @@ Package: FastReg
 Type: Package
 Title: Fast Regression
 Description: Efficiently perform large scale simple linear and logistic regression analysis.
-Version: 0.5.0
+Version: 1.0.0
 Authors@R: 
     c(
     person(given = "Shail",
@@ -26,15 +26,16 @@ Authors@R:
 Maintainer: Deepak Mav<software.support@sciome.com>
 License: GPL (>= 2)
 Encoding: UTF-8
-Depends: R (>= 4.0), RcppArmadillo
+Depends: R (>= 4.0)
 biocViews:
 Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel
 LinkingTo: Rcpp, RcppArmadillo
-Suggests: testthat (>= 3.0.0), stats
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 NeedsCompilation: yes
+VignetteBuilder: knitr
 RoxygenNote: 7.3.1
-Packaged: 2023-08-28 14:46:25 UTC; Home
+Packaged: 2024-04-15 09:09:01 UTC; shail.choksi
 Author: Shail Choksi [aut, cre],
   Matt Wheeler [aut],
   Deepak Mav [aut],

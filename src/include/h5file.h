@@ -13,7 +13,7 @@
 #endif
 
 #pragma once
-class H5File {
+class POI {
 public:
     std::vector<std::string> names;
     std::vector<std::string> individuals;
@@ -30,7 +30,7 @@ public:
 
     std::string file_path;
     
-    H5File(const std::string& file_name) {
+    POI(const std::string& file_name) {
         file_path = file_name;
         // H5Pset_fclose_degree(H5F_CLOSE_STRONG);
         // H5set_free_list_limits(0, 0, 0, 0, 0, 0);
@@ -43,19 +43,19 @@ public:
         // get_POI_names();
         // values_type_class = get_POI_data_type();
     }
-    H5File(){}
-    ~H5File() {
+    POI(){}
+    ~POI() {
         H5garbage_collect();
         H5close();
     }
-    void open_file(bool read_only = false);
+    void open(bool read_only = false);
     void get_values_dataset_id();
     void close_all();
-    void get_POI_individuals();
-    void get_POI_names();
-    void get_POI_data_type();
+    void get_individuals();
+    void get_names();
+    void get_data_type();
     void set_memspace(size_t rows, size_t cols);
-    void get_POI_matrix(
+    void load_data_chunk(
         FRMatrix& G,
         const std::vector<std::string>& poi_individuals,
         const std::vector<std::string>& poi_names,

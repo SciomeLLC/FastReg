@@ -45,7 +45,7 @@ void create_Z_matrix(FRMatrix& df, const std::vector<std::string>& poi_covar_int
 
 
 template <typename T>
-std::vector<T> fr_unique(const rowvec &vec);
+std::vector<T> fr_unique(const frowvec &vec);
 
 
 FRMatrix create_design_matrix(

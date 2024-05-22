@@ -11,7 +11,7 @@
 #endif
 #include <h5file.h>
 
-void H5File::get_POI_individuals() {
+void POI::get_individuals() {
     const char dname[] = "individuals";
     hid_t ind_dataset = H5Dopen(file_id, dname, H5P_DEFAULT);
 
@@ -101,7 +101,7 @@ void H5File::get_POI_individuals() {
     }
 }
 
-void H5File::get_POI_names() {
+void POI::get_names() {
     const char dname[] = "predictors_of_interest";
     hid_t poi_dataset = H5Dopen(file_id, dname, H5P_DEFAULT);
 
@@ -185,7 +185,7 @@ void H5File::get_POI_names() {
     return;
 }
 
-void H5File::set_memspace(size_t rows, size_t cols) {
+void POI::set_memspace(size_t rows, size_t cols) {
     hyperslab_dims[0] = rows;
     hyperslab_dims[1] = cols;
     if (memspace_id > -1) {
@@ -195,7 +195,7 @@ void H5File::set_memspace(size_t rows, size_t cols) {
     memspace_id = H5Screate_simple(rank, hyperslab_dims, NULL);
 }
 
-void H5File::get_POI_data_type() {
+void POI::get_data_type() {
 
     // Get the dataspace
     values_dataspace_id = H5Dget_space(values_dataset_id);
@@ -203,7 +203,7 @@ void H5File::get_POI_data_type() {
     values_type_class = H5Tget_class(values_datatype);
 }
 
-void H5File::get_POI_matrix(
+void POI::load_data_chunk(
     FRMatrix& G,
     const std::vector<std::string>& poi_individuals,
     const std::vector<std::string>& poi_names,
@@ -266,8 +266,8 @@ void H5File::get_POI_matrix(
         // Reading the data directly into the matrix
         H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, tmp.memptr());
         
-        // Convert to arma::mat
-        G.data = arma::conv_to<arma::mat>::from(tmp);
+        // Convert to arma::fmat
+        G.data = arma::conv_to<arma::fmat>::from(tmp);
         G.data.replace(-2147483648, arma::datum::nan);
     }
     else if (values_type_class == H5T_FLOAT) {
@@ -282,7 +282,7 @@ void H5File::get_POI_matrix(
     H5Sclose(memspace_id);
     memspace_id = -1;
 }
-void H5File::close_all() {
+void POI::close_all() {
     if(memspace_id > 0) { 
         H5Sclose(memspace_id);
         memspace_id = -1; 
@@ -312,7 +312,7 @@ void H5File::close_all() {
     // H5close();
 }
 
-void H5File::open_file(bool read_only) {
+void POI::open(bool read_only) {
     if  (read_only == false) {
         file_id = H5Fopen(file_path.c_str(), H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
     }
@@ -324,6 +324,6 @@ void H5File::open_file(bool read_only) {
     }
 }
 
-void H5File::get_values_dataset_id() {
+void POI::get_values_dataset_id() {
     values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
 }

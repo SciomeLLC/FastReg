@@ -1,5 +1,4 @@
 #' FastReg a function to perform fast simple linear or logistic regression
-#' @param config.file an optional character denoting configuration filename (default=NULL)
 #' @param phenotype bin.resp | num.resp. Default: bin.resp
 #' @param regression.type logistic | linear. Default: logistic
 #' @param Pvalue.dist t.dist | norm.dist. Default: t.dist
@@ -12,7 +11,7 @@
 #' @param max.iter Default: 6. Number of logistic regression iterations. Doesn't apply when regression.type = linear.
 #' @param rel.conv.tolerance Default: 0.01. Relative convergence threshold for POIs.
 #' @param abs.conv.tolerance Default: 0.01. Absolute convergence threshold for POIs.
-#' @param max.threads Default: 0. Overrides number of threads used. By default FastReg will use the max number of threads available - 1.
+#' @param max.openmp.threads Default: 1. Overrides number of threads used. By default FastReg will use 1 openmp threads.
 #' @param pheno.file relative path to phenotype file. Contains outcomes that will be modelled.
 #' @param pheno.rowname.cols Default: ind. column to be treated as the subject identifier when matching across files. Can be multiple columns (comma separated).
 #' @param pheno.file.delim tab|space|comma. Default: tab. delimiter used in phenotype file.
@@ -33,16 +32,13 @@
 #' @param split.by Default: c(""). List of covariates values to split by when stratifying the data.
 #' @param output.dir Default: results. Relative path to directory for output. Directory will be created if it doesn't exist
 #' @param compress.results TRUE|FALSE. Default: FALSE. Compress results inside the output directory.
-#' @param config.file deprecated. No effect.
+#' @param max.workers Default: 0. Number of processes FastReg will spawn. By default FastReg will spawn min(# of poi files, # of available workers)
 #' @return numeric denoting elapsed.time
 #' @export
 #' @import rhdf5
 #' @import Rcpp
 #' @import RcppArmadillo
-#' @import stats
 #' @import parallel
-#' @import data.table
-
 FastReg <- function(
     phenotype = "bin.resp",
     regression.type = "logistic",
@@ -56,7 +52,7 @@ FastReg <- function(
     max.iter = 6,
     rel.conv.tolerance = 0.01,
     abs.conv.tolerance = 0.01,
-    max.threads = 0,
+    max.openmp.threads = 1,
     pheno.file = "testdata_1k_by_5k.bin.pheno.txt",
     pheno.rowname.cols = "ind",
     pheno.file.delim = "tab",
@@ -76,7 +72,17 @@ FastReg <- function(
     POI.covar.interactions = c(""),
     split.by = c(""),
     output.dir = "test",
-    compress.results = FALSE) {
+    compress.results = FALSE,
+    max.workers = 0) {
+  if (max.openmp.threads <= 0) {
+    cat("Error: max.openmp.threads must be a positive integer.\n")
+    return(FALSE)
+  }
+
+  if (max.workers < 0) {
+    cat("Error: max.workers must be a positive integer.\n")
+    return(FALSE)
+  }
   FastRegCpp(
     phenotype,
     regression.type,
@@ -90,7 +96,7 @@ FastReg <- function(
     max.iter,
     rel.conv.tolerance,
     abs.conv.tolerance,
-    max.threads,
+    max.openmp.threads,
     pheno.file,
     pheno.rowname.cols,
     pheno.file.delim,
@@ -110,30 +116,31 @@ FastReg <- function(
     POI.covar.interactions,
     split.by,
     output.dir,
-    compress.results
+    compress.results,
+    max.workers
   )
 }
 
-#' hdf5convert a function to convert textual data to hdf5 format supported by FastReg()
-#' @param dataFile file name of the text data
-#' @param h5Dir file dir to write hdf5 files to
-#' @param headerRow row containing the header
-#' @param idCol column with the ids
-#' @param dataCol start of the data columns in the text data
-#' @param buffSize buffer size
-#' @param transpose boolean to transpose the data
-#' @param chunkEdge chunk size for the hdf5 file
-#' @param vcf TRUE or FALSE
-#' @param delimiter delimiter used in the dataFile
-#' @param gz bool to gzip the h5 dataset or not
-#' @param poiPerFile =-1
-#' @param singleFile =FALSE
-#' @param serverThreads =-1
-#' @param serverMem =-1.0
-#' @return Boolean stating if the result file was created succesfully
+#' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()
+#' @param dataFile Path of the input text file.
+#' @param h5Dir Path of a new directory to write generated hdf5 files.
+#' @param headerRow Default: 1. Row number of header line.
+#' @param idCol Default 1. Column number that contains identifiers.
+#' @param dataCol Default: 2. Column number that contains first data entry.
+#' @param buffSize Default: 1.0. Size in Gb of memory available for data conversion.
+#' @param transpose Default: FALSE. Boolean value that indicates whether text data should be transposed. Set TRUE when columns represent individuals and rows represent POIs.
+#' @param chunkEdge Default: 100. Specify size of data chunks to be applied to output hdf5 files. Must be less than or equal to values of poiPerFile and greater than zero.
+#' @param vcf Default: FALSE. Indicate whether input file is in vcf format. If TRUE, headerRow, idCol, dataCol and transpose values are ignored.
+#' @param delimiter Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
+#' @param gz Default: FALSE. Indicate whether input text file is gzip-compressed.
+#' @param poiPerFile Default: -1. Indicate the number of POIs to write to each output hdf5 file. A value of -1 indicates the count should be calculated based on available system resources.
+#' @param singleFile Default: FALSE. Indicate whether a single hdf5 file should be produced rather than a series.
+#' @param serverThreads Default: -1. Indicate the total number of CPU threads available for FastReg - utilized to determine the optimal number of output files. A value of -1 indicates the count should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
+#' @param serverMem Default: -1.0. Indicate the total memory in Gb available for FastReg - utilized to determine the optimal number of output files. A value of -1.0 indicates the total should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
+#' @return 0 = success, 1 = failure
 #' @export
 
-fastR_hdf5convert <- function(
+TextToH5 <- function(
     dataFile,
     h5Dir,
     headerRow = 1,
@@ -223,7 +230,7 @@ fastR_hdf5convert <- function(
     return(FALSE)
   }
   serverMem <- as.double(serverMem)
-  fastR_hdf5convert_cpp(
+  FastRegImportCpp(
     dataFile,
     h5Dir,
     headerRow,
