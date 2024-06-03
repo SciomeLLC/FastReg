@@ -556,7 +556,7 @@ void FastRegCpp(
         close(pipe_file_descriptors[i * 2]); // close read pipe
         int timing_results[] = {0, 0, 0, 0};
         // Rcpp::Rcout << "Started processing for " << i + 1 << std::endl;
-        process_poi_file(i, config, pheno_df, covar_df, poi_file_path,
+        process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                          parallel_chunk_size, num_threads, timing_results);
 
         close(pipe_file_descriptors[i * 2 + 1]);
