@@ -2,6 +2,8 @@ RHDF5_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
 # RCPP_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
 #     'cat(system.file(package="Rcpp","include"))
+RHDF5_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+    'cat(system.file(package="Rhdf5lib","include"))')
 RCPP_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="Rcpp","include"))')
 ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
@@ -9,7 +11,7 @@ ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
 
 PKG_CFLAGS=$(RHDF5_CFLAGS) -I./lib -I./include/
 CXX_STD=CXX11
-PKG_CXXFLAGS=-I./lib -I./include/ $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
+PKG_CXXFLAGS=-I./lib -I./include/ $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) $(BLAS_LIBS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
 PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(RHDF5_LIBS) $(RHDF5_CXXFLAGS) -lstdc++fs
 
 MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
