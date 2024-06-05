@@ -12,7 +12,6 @@
 #include <h5file.h>
 #include <iostream>
 #include <iterator>
-#include <job.h>
 #include <regression.h>
 #include <strata.h>
 #include <string>

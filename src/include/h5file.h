@@ -32,16 +32,6 @@ public:
     
     POI(const std::string& file_name) {
         file_path = file_name;
-        // H5Pset_fclose_degree(H5F_CLOSE_STRONG);
-        // H5set_free_list_limits(0, 0, 0, 0, 0, 0);
-        // file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-        // values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
-        // if (file_id < 0) {
-        //     Rcpp::stop("Failed to open HDF5 file.");
-        // }
-        // get_POI_individuals();
-        // get_POI_names();
-        // values_type_class = get_POI_data_type();
     }
     POI(){}
     ~POI() {
@@ -62,8 +52,3 @@ public:
         const int chunk_size
     );
 };
-
-
-// cmake -G "Unix Makefiles" -DHDF5_ENABLE_THREADSAFE=ON -DCMAKE_INSTALL_PREFIX="mnt/e/Development/hdf5-parallel/hdf5-threadsafe" -DHDF5_BUILD_CPP_LIB=ON -DALLOW_UNSUPPORTED=ON ..
-
-// cmake -G "Visual Studio 17 2022" -DHDF5_ENABLE_THREADSAFE=ON -DCMAKE_INSTALL_PREFIX="mnt/e/Development/hdf5-parallel/hdf5-threadsafe" -DHDF5_BUILD_CPP_LIB=ON -DALLOW_UNSUPPORTED=ON ..
