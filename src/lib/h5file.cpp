@@ -182,6 +182,7 @@ void POI::get_names() {
         delete[] buffer;
         H5Sclose(space);
     }
+    
     return;
 }
 
@@ -241,15 +242,17 @@ void POI::load_data_chunk(
         close_all();
         Rcpp::stop("Dimensions of the dataset do not match the sizes of poi_individuals. Please check the hdf5 file dataset dimensions.");
         return;
-    }    
+    }   
 
     hsize_t hyperslab_dims[2] = {poi_individuals.size(), poi_names.size()};
     
     // Define the hyperslab for the entire range of columns needed
     hsize_t src_offset[2] = {0, col_indices[0]};
+    G.data.set_size(poi_individuals.size(), poi_names.size());
     if (transpose) {
         std::swap(hyperslab_dims[0], hyperslab_dims[1]);
         std::swap(src_offset[0], src_offset[1]);
+        // G.data.set_size(poi_names.size(), poi_individuals.size());
     }
     hsize_t dst_offset[2] = {0, 0};
     // n x m
@@ -258,11 +261,9 @@ void POI::load_data_chunk(
     // Create a memory dataspace
     hid_t memspace_id = H5Screate_simple(2, hyperslab_dims, NULL);
     H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, dst_offset, NULL, hyperslab_dims, NULL);
-
-    G.data.set_size(poi_individuals.size(), poi_names.size());
     // Read the data
     if (values_type_class == H5T_INTEGER) {
-        arma::Mat<int32_t> tmp(poi_individuals.size(), poi_names.size(), arma::fill::zeros);
+        arma::Mat<int32_t> tmp(hyperslab_dims[0], hyperslab_dims[1], arma::fill::zeros);
         // Reading the data directly into the matrix
         H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, tmp.memptr());
         
@@ -276,8 +277,11 @@ void POI::load_data_chunk(
         H5Dread(values_dataset_id, H5T_NATIVE_DOUBLE, memspace_id, values_dataspace_id, H5P_DEFAULT, G.data.memptr());
     }
     else {
-        H5Sclose(memspace_id);
         Rcpp::stop("HDF5 dataset type class is not float or int");
+    }
+    
+    if (transpose) {
+        arma::inplace_trans(G.data); 
     }
     H5Sclose(memspace_id);
     memspace_id = -1;
@@ -322,8 +326,11 @@ void POI::open(bool read_only) {
     if (file_id < 0) {
         Rcpp::stop("Failed to open HDF5 file.");
     }
+    Rcpp::Rcout << "poi file opened" << std::endl;
 }
 
 void POI::get_values_dataset_id() {
     values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
+    Rcpp::Rcout << "poi file values dataset read" << std::endl;
+
 }

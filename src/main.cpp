@@ -19,9 +19,7 @@
 #include <utility>
 #include <vector>
 
-#ifndef UTILS_H
 #include <utils.h>
-#endif
 
 #if !defined(__APPLE__) && !defined(__MACH__)
 #include <omp.h>
@@ -67,7 +65,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   poi.get_values_dataset_id();
   poi.get_data_type();
   poi.get_names();
-  poi.get_individuals();
+  poi.get_individuals(); 
 
   // Find common individuals
   std::vector<std::string> poi_names = poi.names;
@@ -75,7 +73,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
-
   // Rcout << intersected_ind.size() << " unique subjects were found to be
   // common in pheno.file, covar.file, and POI.file" << std::endl;
   if (intersected_ind.empty()) {
@@ -98,7 +95,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   // Stratify data
   Strata stratums;
   stratums.stratify(config.split_by, covar_df, intersected_ind);
-
   double memory_allocation_time = 0.0;
   double file_writing_time = 0.0;
   double poi_reading_time = 0.0;
@@ -116,7 +112,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       ind_set_idx[ct] = pheno_df.get_row_idx(ind);
       ct++;
     }
-
     // initialize matrices
     FRMatrix pheno_matrix = pheno_df.get_submat_by_cols(
         ind_set_idx, {config.phenotype}); // check col names
@@ -135,7 +130,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                     covar_poi_interaction_matrix);
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
-
+    
     // identify missing values for covar, pheno matrix
     for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
       arma::uvec covar_nan_idx = arma::find_nonfinite(covar_matrix.data.row(i));
@@ -156,13 +151,11 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         std::unordered_map<std::string, int>(ind_set_filtered.size());
     pheno_matrix.row_names =
         std::unordered_map<std::string, int>(ind_set_filtered.size());
-
     for (size_t j = 0; j < covar_matrix.data.n_rows; j++) {
       covar_matrix.row_names[ind_set_filtered[j]] = j;
       pheno_matrix.row_names[ind_set_filtered[j]] = j;
       covar_poi_interaction_matrix.row_names[ind_set_filtered[j]] = j;
     }
-
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
         ind_set_filtered.begin(), ind_set_filtered.end(),
@@ -195,9 +188,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                                                poi_names.begin() + end_chunk);
       poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk,
                           chunk_size);
-      // #if !defined(__APPLE__) && !defined(__MACH__)
-      //       omp_set_num_threads(num_threads);
-      // #endif
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
           set_diff(poi.individuals, strat_individuals);
@@ -222,7 +212,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
-
+      
       if (config.POI_type == "genotype") {
         FRMatrix filtered =
             filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
@@ -319,7 +309,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
-
+      
+      #if !defined(__APPLE__) && !defined(__MACH__)
+      omp_set_num_threads(num_threads);
+      #endif
       if (config.regression_type == "logistic") {
         regression.reset(new LogisticRegression());
       } else {
@@ -426,7 +419,7 @@ void FastRegCpp(
       covariate_type, covariate_standardize, covariate_levels,
       covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir,
       compress_results, max_workers);
-
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
   Rcpp::Rcout << "Running FastReg with configuration: " << std::endl;
   Rcpp::Rcout << "phenotype: " << phenotype << std::endl;
   Rcpp::Rcout << "regression_type: " << regression_type << std::endl;
@@ -464,6 +457,7 @@ void FastRegCpp(
   Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
   Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
   Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
   // Clean up previous run
   if (dir_exists(config.output_dir)) {
     delete_dir(config.output_dir);

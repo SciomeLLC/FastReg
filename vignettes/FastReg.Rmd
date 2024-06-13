@@ -97,16 +97,16 @@ With the text file converted to HDF5 format, we are ready to run logistic regres
 ```{r include=TRUE, eval=FALSE}
 FastReg(
   regression.type="logistic",
-  pheno.file="inst/extdata/testdata.bin.pheno.txt",
+  pheno.file="inst/extdata/testdata_500_by_1k.bin.pheno.txt",
   pheno.rowname.cols="ind",
   phenotype = "bin.resp",
-  covar.file="inst/extdata/testdata.covar.txt",
+  covar.file="inst/extdata/testdata_500_by_1k.covar.txt",
   covariates=c("age", "sex", "treatment"),
   covariate.type = c("numeric", "categorical", "categorical"),
   covariate.standardize = c(TRUE, FALSE, FALSE),
   covariate.levels = c("", "F,M", "Placebo,Test"),
   covariate.ref.level = c("", "F", "Placebo"),
-  POI.file.dir = "./FastRegData"
+  POI.file.dir = "./FastRegData",
   POI.type = "dosage",
   POI.effect.type = "additive",
   output.dir = "FastRegResults"
