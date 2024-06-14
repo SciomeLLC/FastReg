@@ -252,7 +252,7 @@ void POI::load_data_chunk(
     if (transpose) {
         std::swap(hyperslab_dims[0], hyperslab_dims[1]);
         std::swap(src_offset[0], src_offset[1]);
-        // G.data.set_size(poi_names.size(), poi_individuals.size());
+        G.data.set_size(poi_names.size(), poi_individuals.size());
     }
     hsize_t dst_offset[2] = {0, 0};
     // n x m
@@ -262,6 +262,7 @@ void POI::load_data_chunk(
     hid_t memspace_id = H5Screate_simple(2, hyperslab_dims, NULL);
     H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, dst_offset, NULL, hyperslab_dims, NULL);
     // Read the data
+    Rcpp::Rcout << "Reading dataset" << std::endl;
     if (values_type_class == H5T_INTEGER) {
         arma::Mat<int32_t> tmp(hyperslab_dims[0], hyperslab_dims[1], arma::fill::zeros);
         // Reading the data directly into the matrix
@@ -270,6 +271,9 @@ void POI::load_data_chunk(
         // Convert to arma::fmat
         G.data = arma::conv_to<arma::fmat>::from(tmp);
         G.data.replace(-2147483648, arma::datum::nan);
+        if (transpose) {
+            arma::inplace_trans(G.data); 
+        }
     }
     else if (values_type_class == H5T_FLOAT) {
         // Reading 64-bit double
@@ -280,9 +284,7 @@ void POI::load_data_chunk(
         Rcpp::stop("HDF5 dataset type class is not float or int");
     }
     
-    if (transpose) {
-        arma::inplace_trans(G.data); 
-    }
+    Rcpp::Rcout << "Read dataset" << std::endl;
     H5Sclose(memspace_id);
     memspace_id = -1;
 }
@@ -326,11 +328,11 @@ void POI::open(bool read_only) {
     if (file_id < 0) {
         Rcpp::stop("Failed to open HDF5 file.");
     }
-    Rcpp::Rcout << "poi file opened" << std::endl;
+    // Rcpp::Rcout << "poi file opened" << std::endl;
 }
 
 void POI::get_values_dataset_id() {
     values_dataset_id = H5Dopen(file_id, "values", H5P_DEFAULT);
-    Rcpp::Rcout << "poi file values dataset read" << std::endl;
+    // Rcpp::Rcout << "poi file values dataset read" << std::endl;
 
 }
