@@ -264,7 +264,7 @@ void POI::load_data_chunk(
     // Read the data
     Rcpp::Rcout << "Reading dataset" << std::endl;
     if (values_type_class == H5T_INTEGER) {
-        arma::Mat<int32_t> tmp(hyperslab_dims[0], hyperslab_dims[1], arma::fill::zeros);
+        arma::Mat<int32_t> tmp(poi_names.size(), poi_individuals.size(), arma::fill::zeros);
         // Reading the data directly into the matrix
         H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id, H5P_DEFAULT, tmp.memptr());
         
