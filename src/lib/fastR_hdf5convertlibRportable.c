@@ -326,13 +326,13 @@ static int read_write_rownames_values(FILE *datafile, struct read_buffers *readb
 		//check explicitly for empty field at the end of each line
 		while(pch!=NULL) {
 			if(pch[0]=='\0' || pch[0]=='\n') {
-				readbuff->val_buffer[*indptr][*predptr]=NAN;
+				readbuff->val_buffer[*indptr][*predptr]=NULL;
 			}
 			else {
 				val=(float)atof(pch);
 				//atof returns 0 if no valid float is identified - in that case, ensure that the value begins with a numeral, otherwise write NAN to buffer
 				if(val==0.0 && (pch[0]<43 || pch[0]>57 || pch[0]==47 || pch[0]==44)) {
-					val=NAN;
+					val=NULL;
 				}
 				readbuff->val_buffer[*indptr][*predptr]=val;
 			}
