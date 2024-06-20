@@ -47,7 +47,6 @@ create_test_dataset <- function(num.poi = 50000,
   bin.pheno.file <- file.path(data.dir, paste0(prefix, ".bin.pheno.txt"))
   poi.txt.file <- file.path(data.dir, paste0(prefix, ".poi.txt"))
   poi.data.dir <- paste0(data.dir, "/h5")
-  dir.create(poi.data.dir, showWarnings = FALSE)
   poi.file <- file.path(poi.data.dir, paste0(c("/", prefix, ".poi.h5")))
   poi.subset.file <- file.path(data.dir, paste0(prefix, ".poi.subset.txt"))
   subject.subset.file <- file.path(data.dir, paste0(prefix, ".sample.subset.txt"))
@@ -145,6 +144,7 @@ create_test_dataset <- function(num.poi = 50000,
   if (verbose) cat("generated phenotype files\n")
   num.poi.blocks <- ceiling(num.poi / poi.chunk.size)
   if (poi.file.type == "h5") {
+    dir.create(poi.data.dir, showWarnings = FALSE)
     write.h5(
       data.num.chunks,
       prefix,
@@ -162,14 +162,14 @@ create_test_dataset <- function(num.poi = 50000,
     
     maf <- runif(num.poi, min = 0.05, max = 0.5)
     miss.rate <- runif(num.poi, min = 0, max = 0.1)
-    for (chunk_start in seq(1, num.poi, by=poi.chunk.size)) {
-      chunk_end <- min(chunk_start + poi.chunk.size - 1, num.poi)
-      chunk_indices <- chunk_start:chunk_end
-      values <- generate_values(num.ind, chunk_indices, poi.type, maf[chunk_indices], miss.rate[chunk_indices])
-      colnames(values) <- poi.id[chunk_indices]
-      df <- data.frame(ID = ind.id, values, stringsAsFactors = FALSE, check.names = FALSE)
-      fwrite(df, file = poi.txt.file, sep = "\t", row.names = FALSE, col.names = (chunk_start == 1), append = (chunk_start != 1), na = "", quote = FALSE)
-    }
+    # for (chunk_start in seq(1, num.poi, by=poi.chunk.size)) {
+      # chunk_end <- min(chunk_start + poi.chunk.size - 1, num.poi)
+    chunk_indices <- 1:num.poi
+    values <- generate_values(num.ind, chunk_indices, poi.type, maf[chunk_indices], miss.rate[chunk_indices])
+    colnames(values) <- poi.id[chunk_indices]
+    df <- data.frame(ID = ind.id, values, stringsAsFactors = FALSE, check.names = FALSE)
+    fwrite(df, file = poi.txt.file, sep = "\t", row.names = FALSE, col.names = (chunk_indices[1] == 1), append = (chunk_indices[1] != 1), na = "", quote = FALSE)
+    # }
     # values <- generate_values(num.ind, 1:num.poi, poi.type, poi.chunk.size)
     # colnames(values) <- poi.id
     # values <- data.frame(ID=ind.id, values, stringsAsFactors = FALSE, check.names = FALSE)
@@ -202,7 +202,6 @@ generate_values <- function(num.ind, chunk.indices, poi.type, maf, miss.rate) {
     values <- matrix(0.000, ncol = length(chunk.indices), nrow = num.ind)
   }
 
-  col.idx <- 1
   for (i in chunk.indices) {
     if (poi.type == "genotype") {
       dosage.val <- runif(num.ind)
@@ -211,13 +210,12 @@ generate_values <- function(num.ind, chunk.indices, poi.type, maf, miss.rate) {
       geno.val[((1 - maf[i])^2 <= dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1
       geno.val[dosage.val >= (1 - maf[i]^2)] <- 2
       geno.val[runif(num.ind) > 1 - miss.rate[i]] <- NA
-      values[, col.idx] <- geno.val
+      values[, i] <- geno.val
     } else {
       geno.val <- ((1 - maf[i])^2) * runif(num.ind, min = 0, max = 0.4) + 2 * (1 - maf[i]) * maf[i] * runif(num.ind, min = 0.25, max = 0.75) + (maf[i]^2) * runif(num.ind, min = 0.6, max = 1)
       geno.val[runif(num.ind) > 1 - miss.rate[i]] <- NA
-      values[, col.idx] <- geno.val
+      values[, i] <- geno.val
     }
-    col.idx <- col.idx + 1
   }
 
   values

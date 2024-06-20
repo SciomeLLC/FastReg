@@ -188,6 +188,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                                                poi_names.begin() + end_chunk);
       poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk,
                           chunk_size);
+      Rcpp::Rcout << "loaded chunk" << std::endl;
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
           set_diff(poi.individuals, strat_individuals);
@@ -254,6 +255,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
       total_filtered_pois = poi_matrix.data.n_cols;
 
+      Rcpp::Rcout << "filtered pois" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       FRMatrix beta_est;
       FRMatrix se_beta;
@@ -307,6 +309,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
               end_time - start_time)
               .count();
 
+      Rcpp::Rcout << "init matrices" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
       
@@ -318,7 +321,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       } else {
         regression.reset(new LinearRegression());
       }
-
+    
+      Rcpp::Rcout << "start regression" << std::endl;
       regression->run(covar_matrix, pheno_matrix, poi_matrix,
                       covar_poi_interaction_matrix, W2, beta_est, se_beta,
                       neglog10_pvl, beta_rel_errs, beta_abs_errs,

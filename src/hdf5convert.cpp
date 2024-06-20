@@ -649,7 +649,7 @@ static int read_write_rownames_values(
     while (pch != NULL && y < pre->dimensions[1]) {
       // check explicitly for empty field at the end of each line
       if (pch[0] == '\0' || pch[0] == '\n') {
-        readbuff->val_buffer[*fptr][*indptr][*predptr] = NAN;
+        readbuff->val_buffer[*fptr][*indptr][*predptr] = NULL;
       } else {
         if (par->vcf == 0) {
           val = (float)atof(pch);
@@ -658,7 +658,7 @@ static int read_write_rownames_values(
           // buffer
           if (val == 0.0 &&
               (pch[0] < 43 || pch[0] > 57 || pch[0] == 47 || pch[0] == 44)) {
-            val = NAN;
+            val = NULL;
           }
         } else {
           // genotype is missing if not 0/0, 0|0, 0|1, 1|0, 0/1, 1|1, or 1/1
@@ -676,7 +676,7 @@ static int read_write_rownames_values(
               val = 2.0;
               break;
             default:
-              val = NAN;
+              val = NULL;
               break;
             }
             break;
@@ -690,11 +690,11 @@ static int read_write_rownames_values(
                 val = 1.0;
                 break;
               default:
-                val = NAN;
+                val = NULL;
                 break;
               }
             } else {
-              val = NAN;
+              val = NULL;
             }
             break;
           }
@@ -718,7 +718,7 @@ static int read_write_rownames_values(
               iadj + i + skip);
       i -= 1;
       while (j < dv[f].vals_memspace_dims[jdim]) {
-        readbuff->val_buffer[*fptr][*indptr][*predptr] = NAN;
+        readbuff->val_buffer[*fptr][*indptr][*predptr] = NULL;
         j++;
       }
       j = 0;
