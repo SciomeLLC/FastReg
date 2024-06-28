@@ -284,10 +284,10 @@ std::vector<std::string> Config::split(std::string val, std::string delim,
 // poi_file_type extension
 void Config::get_poi_files() {
   // get all files in the directory POI_file_dir
-  Rcpp::Rcout << "getting poi files" << std::endl;
+  // Rcpp::Rcout << "getting poi files" << std::endl;
   for (auto &entry : fs::directory_iterator(POI_file_dir)) {
     if (entry.path().extension() == ".h5") {
-        Rcpp::Rcout << "POI file found: " << entry.path().string() << std::endl;
+        // Rcpp::Rcout << "POI file found: " << entry.path().string() << std::endl;
         poi_files.push_back(entry.path().string());
     }
   }

@@ -56,9 +56,9 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                    FRMatrix &covar_df, std::string poi_file_path,
                    int chunk_size, int num_threads, int timing_results[4]) {
 
-  Rcpp::Rcout << "Started process " << process_id + 1
-              << " with chunk size: " << chunk_size
-              << " and openmp threads: " << num_threads << "." << std::endl;
+  // Rcpp::Rcout << "Started process " << process_id + 1
+  //             << " with chunk size: " << chunk_size
+  //             << " and openmp threads: " << num_threads << "." << std::endl;
   // Load POI file
   POI poi(poi_file_path);
   poi.open(true);
@@ -175,20 +175,17 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
     FRMatrix poi_matrix;
     auto start_time = std::chrono::high_resolution_clock::now();
     // allocate memory space for H5 file to read into
-    poi.set_memspace(poi.individuals.size(), chunk_size);
     for (int block = 0; block < num_parallel_poi_blocks; block++) {
       int start_chunk = block * chunk_size;
-      int end_chunk = start_chunk + chunk_size - 1;
-      if (end_chunk > num_poi) {
+      int end_chunk = start_chunk + chunk_size;
+      if (end_chunk >= num_poi) {
         end_chunk = num_poi;
-        // re-allocate for the last chunk
-        poi.set_memspace(poi.individuals.size(), end_chunk - start_chunk);
       }
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
-      poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk,
-                          chunk_size);
-      Rcpp::Rcout << "loaded chunk" << std::endl;
+      // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " << end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks << std::endl;
+      poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk);
+      // Rcpp::Rcout << "loaded chunk" << std::endl;
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
           set_diff(poi.individuals, strat_individuals);
@@ -255,7 +252,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
       total_filtered_pois = poi_matrix.data.n_cols;
 
-      Rcpp::Rcout << "filtered pois" << std::endl;
+      // Rcpp::Rcout << "filtered pois" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       FRMatrix beta_est;
       FRMatrix se_beta;
@@ -309,7 +306,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
               end_time - start_time)
               .count();
 
-      Rcpp::Rcout << "init matrices" << std::endl;
+      // Rcpp::Rcout << "init matrices" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
       
@@ -322,7 +319,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         regression.reset(new LinearRegression());
       }
     
-      Rcpp::Rcout << "start regression" << std::endl;
+      // Rcpp::Rcout << "start regression" << std::endl;
       regression->run(covar_matrix, pheno_matrix, poi_matrix,
                       covar_poi_interaction_matrix, W2, beta_est, se_beta,
                       neglog10_pvl, beta_rel_errs, beta_abs_errs,
@@ -474,7 +471,7 @@ void FastRegCpp(
 
   // Load the first POI file to calculate chunks
   std::string poi_file_path = config.poi_files[0];
-  Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
+  // Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
   POI poi(poi_file_path);
   poi.open(true);
   poi.get_values_dataset_id();
@@ -489,7 +486,7 @@ void FastRegCpp(
       intersect_row_names(common_ind, poi.individuals);
 
   Rcout << intersected_ind.size()
-        << " unique subjects were found to be common in pheno.file, "
+        << " common unique subjects in pheno.file, "
            "covar.file, and POI.file"
         << std::endl;
   if (intersected_ind.empty()) {
@@ -516,11 +513,17 @@ void FastRegCpp(
   // total_num_chunks
   int parallel_chunk_size = chunker.get_chunk_size();
   int num_threads = chunker.get_openmp_threads();
+  const int timing_results_size = 4;
+  double concatenation_time, compression_time = 0.0;
+  int total_timing_results[timing_results_size] = {0, 0, 0, 0};
 #ifdef _WIN32
   for (int i = 0; i < num_poi_files; i++) {
     int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                   parallel_chunk_size, num_threads, timing_results);
+    for (int j = 0; j < timing_results_size; j++) {
+      total_timing_results[j] += timing_results[j];
+    }
   }
 #else
 
@@ -551,11 +554,11 @@ void FastRegCpp(
       std::string poi_file_path = config.poi_files[i];
       if (process_ids[i] == 0) {             // child process
         close(pipe_file_descriptors[i * 2]); // close read pipe
-        int timing_results[] = {0, 0, 0, 0};
+        int timing_results[timing_results_size] = {0, 0, 0, 0};
         // Rcpp::Rcout << "Started processing for " << i + 1 << std::endl;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                          parallel_chunk_size, num_threads, timing_results);
-
+        ssize_t res = write(pipe_file_descriptors[i * 2 + 1], timing_results, sizeof(timing_results));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
         return;
@@ -569,21 +572,61 @@ void FastRegCpp(
       if (process_ids[i] != 0) { // parent process
         if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
           has_completed[i] = true;
+          int timing_results[timing_results_size] = {0, 0, 0, 0};
+          ssize_t res = read(pipe_file_descriptors[i*2], timing_results, sizeof(timing_results));
           close(pipe_file_descriptors[i * 2]);
+          
+          for (int j = 0; j < timing_results_size; j++) {
+            total_timing_results[j] += timing_results[j];
+          }
           num_processes_completed++;
         }
       }
     }
   }
 #endif
-
+  auto start_time = std::chrono::high_resolution_clock::now();
   FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
   FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
   if (config.POI_type == "genotype") {
     FRMatrix::concatenate_results(config.output_dir, "POI_Summary", "Full");
   }
+  auto end_time = std::chrono::high_resolution_clock::now();
+  concatenation_time = (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+              end_time - start_time)
+              .count();
 
+  // timing_results[0] = poi_reading_time;
+  // timing_results[1] = file_writing_time;
+  // timing_results[2] = memory_allocation_time;
+  // timing_results[3] = regression_time;
+  
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  Rcpp::Rcout << "Timing Summary: " << std::endl;
+  Rcpp::Rcout << "Reading HDF5: " << total_timing_results[0] / 1000.0 << "s"
+              << std::endl;
+  Rcpp::Rcout << "Writing results: " << total_timing_results[1] / 1000.0 << "s"
+              << std::endl;
+  Rcpp::Rcout << "Memory allocation: " << total_timing_results[2] / 1000.0 << "s"
+              << std::endl;
+  Rcpp::Rcout << "Regression: " << total_timing_results[3] / 1000.0 << "s" << std::endl;  
+  Rcpp::Rcout << "Results concatenation: " << concatenation_time / 1000.0 << "s" << std::endl;
+    
   if (config.compress_results) {
+    start_time = std::chrono::high_resolution_clock::now();
     FRMatrix::zip_results(config.output_dir);
+    end_time = std::chrono::high_resolution_clock::now();
+    compression_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+              end_time - start_time)
+              .count();
+    Rcpp::Rcout << "Results compression: " << concatenation_time / 1000.0 << "s" << std::endl;
   }
+  auto end =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  Rcpp::Rcout << "Completed " << config.regression_type << " regression -" << std::endl;
+  Rcpp::Rcout << "\t\tnum individuals: " << intersected_ind.size() << std::endl;
+  Rcpp::Rcout << "\t\t~num pois: " << num_poi*num_poi_files << std::endl;
+  Rcpp::Rcout << "\t\twith openmp thread(s): " << num_threads << std::endl;
+  Rcpp::Rcout << "at: " << std::ctime(&end) << std::endl;
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
 }

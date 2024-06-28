@@ -1,6 +1,7 @@
 
 
 // [[Rcpp::depends(RcppArmadillo)]]
+#include "hdf5.h"
 #include <RcppArmadillo.h>
 #include <string>
 #include <iostream>
@@ -25,6 +26,7 @@ public:
     hid_t values_datatype = -1;
     H5T_class_t values_type_class;
     int rank = 2;
+    bool transpose = false;
     hid_t memspace_id = -1;
     hsize_t hyperslab_dims[2];
 
@@ -48,7 +50,8 @@ public:
     void load_data_chunk(
         FRMatrix& G,
         const std::vector<std::string>& poi_individuals,
-        const std::vector<std::string>& poi_names,
-        const int chunk_size
+        const std::vector<std::string>& poi_names
     );
+    void load_int_data_chunk(FRMatrix& G,  hsize_t* hyperslab_dims,  hsize_t* src_offset);
+    void load_float_data_chunk(FRMatrix& G,  hsize_t* hyperslab_dims,  hsize_t* src_offset);
 };

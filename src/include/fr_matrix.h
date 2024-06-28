@@ -27,7 +27,7 @@ public:
         // if (!validate_cols(names)) {
         //     Rcpp::stop("Invalid rowname.cols for file: %s.", filename);
         // }
-        Rcpp::Rcout << "Discovered " << row_names.size() << " non-duplicate subjects in " << filename << " file." << std::endl;
+        Rcpp::Rcout << "Discovered " << row_names.size() << " unique subjects in " << filename << " file." << std::endl;
     };
 
     bool validate_cols(std::string &names);

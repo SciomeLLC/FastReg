@@ -101,6 +101,9 @@ void Chunker::estimate_chunks() {
     num_threads = 1;
   } else {
     num_threads = _max_threads;
+    if (_max_threads*num_available_workers > num_available_workers*2) {
+      Rcpp::Rcout << "WARNING: # openmp threads * cores exceeds the amount supported for hyperthreading. This may cause a slowdown!";
+    }
   }
 
   if (os == "Windows") {

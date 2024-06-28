@@ -23,19 +23,14 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                              arma::fcolvec &beta_abs_errs, int max_iter,
                              bool is_t_dist) {
 
-  // Rcpp::Rcout << "in log regression" << std::endl;
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
-  // Rcpp::Rcout << "added cov and int" << std::endl;
   // create a pointer to the specified distribution function
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist : norm_dist;
-  // arma::fcolvec (*dist_func)(arma::fcolvec, int) = t_dist;
 
 #pragma omp parallel for
   for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
     arma::fmat A(n_parms, n_parms, arma::fill::zeros);
-    // arma::fmat poi_mat =
-    // arma::conv_to<arma::fmat>::from(poi_data.data.col(poi_col));
 
     // Initialize beta
     arma::fcolvec beta(n_parms, arma::fill::zeros);
@@ -43,33 +38,38 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     arma::fmat cov_w_mat = cov.data;
     arma::fmat int_w_mat = interactions.data;
     arma::ucolvec w2_col = W2.col(poi_col);
-    // Rcpp::Rcout << "init intermediate matrices" << std::endl;
-    // Rcpp::Rcout << "interactions size: " << arma::size(interactions.data) << std::endl;
-    // Rcpp::Rcout << "poi_data size: " << arma::size(poi_data.data) << std::endl;
-    // Rcpp::Rcout << "poi_col size: " << arma::size(poi_data.data.col(poi_col)) << std::endl;
     int_w_mat = interactions.data % arma::repmat(poi_data.data.col(poi_col), 1,
                                                  interactions.data.n_cols);
-    // Rcpp::Rcout << "interaction mat mult" << std::endl;
+
     arma::uword first_chunk = cov_w_mat.n_cols - 1;
     arma::uword second_chunk = n_parms - 1;
     arma::span first = arma::span(0, first_chunk);
     arma::span second = arma::span(first_chunk + 1, second_chunk);
-    // Rcpp::Rcout << "pre internal for loop" << std::endl;
+    arma::fcolvec beta_diff = arma::abs(beta - beta_old);
     // arma::span col_1 = arma::span(0,0);
-    for (int iter = 0; iter < max_iter; iter++) {
+    beta_rel_errs.at(poi_col) = 1;
+
+    // if (poi_col < 2) {
+    //   poi_data.data.col(poi_col).print();
+    //   Rcpp::Rcout << "init intermediate matrices" << std::endl;
+    //   Rcpp::Rcout << "interactions size: " << arma::size(interactions.data)
+    //               << std::endl;
+    //   Rcpp::Rcout << "poi_data size: " << arma::size(poi_data.data)
+    //               << std::endl;
+    //   Rcpp::Rcout << "poi_col size: " <<
+    //   arma::size(poi_data.data.col(poi_col))
+    //               << std::endl;
+    // }
+
+    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4;
+         iter++) {
       arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
       eta += cov_w_mat * beta.subvec(first);
       eta += int_w_mat * beta.subvec(second);
-      
-      // Rcpp::Rcout << "created eta" << std::endl;
+
       arma::fmat p = 1 / (1 + arma::exp(-eta));
       arma::fmat W1 = p % (1 - p) % w2_col;
-      
-      // Rcpp::Rcout << "set w1" << std::endl;
-      // cov_w_mat.each_col([&W1](arma::vec &a){a%W1;});
-      // int_w_mat.each_col([&W1](arma::vec &a){a%W1;});
-      // cov_w_mat.each_col() %= W1;
-      // int_w_mat.each_col() %= W1;
+
       arma::fmat temp1 = cov_w_mat % arma::repmat(W1, 1, cov_w_mat.n_cols);
       arma::fmat temp2 = int_w_mat % arma::repmat(W1, 1, int_w_mat.n_cols);
 
@@ -78,22 +78,23 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       A.submat(first, second) = temp1.t() * int_w_mat;       // C'I
       A.submat(second, first) = A.submat(first, second).t(); // I'C
 
-      // Rcpp::Rcout << "done submat" << std::endl;
       arma::fmat z = w2_col % (pheno.data - p);
 
       arma::fmat B = arma::fmat(n_parms, 1, arma::fill::zeros);
       B.submat(first, arma::span(0, 0)) = cov_w_mat.t() * z;
       B.submat(second, arma::span(0, 0)) = int_w_mat.t() * z;
-      // Rcpp::Rcout << "done B" << std::endl;
-      if (iter == max_iter - 2) {
-        beta_old = beta;
-      }
-      // Rcpp::Rcout << " pre solve" << std::endl;
+
+      // if (iter == max_iter - 2) {
+      //   beta_old = beta;
+      // }
       beta = beta + arma::solve(A, B, arma::solve_opts::fast);
-      // Rcpp::Rcout << "done solve" << std::endl;
+      beta_diff = arma::abs(beta - beta_old);
+      beta_abs_errs.at(poi_col) = beta_diff.max();
+      beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta_old)).max();
+      beta_old = beta;
     }
 
-    arma::fcolvec beta_diff = arma::abs(beta - beta_old);
+    // arma::fcolvec beta_diff = arma::abs(beta - beta_old);
     beta_abs_errs.at(poi_col) = beta_diff.max();
     beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
 
@@ -126,9 +127,6 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     arma::fmat cov_w_mat = cov.data;
     arma::fcolvec poi_mat = poi_data.data.col(poi_col);
     arma::ucolvec w2_col = W2.col(poi_col);
-    // arma::fmat int_w_mat = interactions.data;
-    // int_w_mat.each_col([&poi_mat, &w2_col](arma::vec&
-    // a){(a%poi_mat)%w2_col;});
     arma::fmat int_w_mat =
         interactions.data % arma::repmat(poi_mat, 1, interactions.data.n_cols);
     arma::uword first_chunk = cov_w_mat.n_cols - 1;
@@ -151,19 +149,29 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     arma::fmat B = arma::fmat(n_parms, 1, arma::fill::zeros);
     B.submat(first, col_1) = cov_w_mat.t() * z;
     B.submat(second, col_1) = int_w_mat.t() * z;
-    beta = arma::solve(A, B, arma::solve_opts::fast);
-
+    // beta = arma::solve(A, B, arma::solve_opts::fast);
+    arma::fmat AAinv = arma::inv_sympd(A, inv_opts::allow_approx);
+    beta = AAinv * B;
     beta_est.data.col(poi_col) = beta;
-    arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
-    eta += cov_w_mat * beta.submat(first, col_1);
-    eta += int_w_mat * beta.submat(second, col_1);
-    int df = arma::as_scalar(arma::sum(W2.col(poi_col), 0)) - n_parms;
-    double mse = arma::conv_to<double>::from(W2.col(poi_col).t() *
-                                             arma::square(pheno.data - eta)) /
-                 (double)df;
+    arma::fmat eta = cov_w_mat * beta.submat(first, col_1);
+    // arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
+    // eta += cov_w_mat * beta.submat(first, col_1);
+    // eta += int_w_mat * beta.submat(second, col_1);
+    // int df = arma::as_scalar(arma::sum(W2.col(poi_col), 0)) - n_parms;
+    // double mse = arma::conv_to<double>::from(W2.col(poi_col).t() *
+    //                                          arma::square(pheno.data - eta))
+    //                                          /
+    //              (double)df;
 
-    se_beta.data.col(poi_col) =
-        arma::sqrt(mse * arma::abs(arma::diagvec(arma::pinv(A))));
+    // se_beta.data.col(poi_col) =
+    //     arma::sqrt(mse * arma::abs(arma::diagvec(arma::pinv(A))));
+    // arma::fmat temp_se = se_beta.data.col(poi_col);
+    // arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
+    float df = arma::accu(W2.col(poi_col)) - n_parms;
+    arma::fmat tmse = (W2.col(poi_col).t() * arma::square(pheno.data - eta));
+    float mse = tmse(0, 0) / df;
+
+    se_beta.data.col(poi_col) = arma::sqrt(mse * arma::diagvec(AAinv));
     arma::fmat temp_se = se_beta.data.col(poi_col);
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
     neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
