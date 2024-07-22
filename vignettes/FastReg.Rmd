@@ -22,12 +22,6 @@ Traditional software solutions to regression analyses available in the programmi
 FastReg tries to solve this by using the iteratively weighted least squares (IRLS) algorithm to perform logistic regression. It assumes that the data to be analyzed are available in text format, and that each response is saved in column format (a standard GWAS format). FastReg converts the data to the HDF5 format as it allows for random access from multiple threads, memory efficiencies and faster read times. Once converted, we use the iteratively reweighted least squares algorithm to perform logistic regression. The algorithm typically converges within a handful of iterations, and for speed, we cap the number of iterations (defaults to six). The output contains the summary with significance p-value, the maximum likelihood estimate, and the covariance estimates.
 
 # Pre-requisites and Installation
-
-## Install BLAS
-
--   **Recommended**: [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html "Intel OneAPI")
--   [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS "OpenBLAS github")
-
 ## Windows
 
 -   Install [**Rtools for Windows**](https://cran.r-project.org/bin/windows/Rtools/ "Rtools for Windows")
@@ -37,13 +31,13 @@ FastReg tries to solve this by using the iteratively weighted least squares (IRL
 -   Ensure that **Xcode Command Line Tools** are installed. Open **Terminal** and type: **`xcode-select -p`**.
     -   If you see the following: **/Library/Developer/CommandLineTools** command line tools are installed
     -   If not, check for system updates: **`System Settings > General > Software Update`**
--   Install the latest [**gfortran** **compiler**](https://cran.r-project.org/bin/macosx/tools/ "gfortran compiler")
+-   Install the latest [**gfortran compiler**](https://cran.r-project.org/bin/macosx/tools/ "gfortran compiler")
 
 ## Installing FastReg
 
 ```
 # install dependencies
-install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools"))
+install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools", "BEDMatrix"))
 Biocmanager::install("rhdf5")
 library(devtools)
 # install the package from github
@@ -116,7 +110,7 @@ The parameters for the covariates define the structure, data type, standardizati
 
 ```{r include=TRUE, eval=FALSE}
 read.csv("FastRegResults/Full_Convergence_stratum_1.tsv", delimiter="\t", nrows=10)
-read.csv("FastRegResults/Full_Results_stratum_1.tsv", delimited="\t", nrwos=10)
+read.csv("FastRegResults/Full_Results_stratum_1.tsv", delimited="\t", nrows=10)
 ```
 
 ## Linear Regression
