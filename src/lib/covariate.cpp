@@ -137,21 +137,24 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
     Z = Z.rows(arma::find(w > 0));
     y = arma::fmat(y.rows(arma::find(w > 0)));
 
-    double ssa = arma::accu(arma::square(y));
-
+    float ssa = arma::accu(arma::square(y));
     arma::fmat zty = Z.t() * y;
     arma::fmat g = arma::pinv(Z.t() * Z);
-    double sse = arma::accu(arma::square(y - Z * g * zty));
-    double rsquared = 1 - sse / ssa;
-    // Rcpp::Rcout << "rsquared val: " << rsquared << std::endl;
+    float sse = arma::accu(arma::square(y - Z * g * zty));
+    float rsquared = 1 - sse / ssa;
+    
     if (rsquared <= colinearity_rsq) {
       retained_col_map[can_col_name] = temp_col_count + num_cols;
       retained_cols.push_back(can_col_name);
       temp_col_count++;
     } else {
+      // Rcpp::Rcout << "rsquared: " << rsquared << std::endl;
+      // Rcpp::Rcout << "sse: " << sse << std::endl;
+      // Rcpp::Rcout << "ssa: " << ssa << std::endl;
+      // zty.brief_print();
       Rcpp::Rcout
           << "Candidate column " << can_col_name
-          << " was not added to design matrix due to potential of colinearity."
+          << " was not added to design matrix due to potential of colinearity"
           << std::endl;
     }
     // Rcpp::Rcout << "join horiz Z covar" << std::endl;

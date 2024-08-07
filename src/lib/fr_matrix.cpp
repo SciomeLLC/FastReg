@@ -138,6 +138,208 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
   file_stream.close();
 }
 
+void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
+                             std::string &id, std::string& phenotype) {
+  fs::path df_file_path(filename);
+  if (!fs::exists(df_file_path)) {
+    Rcpp::stop("%s does not exist.", filename);
+  }
+  std::ifstream file_stream(filename);
+  std::string line;
+
+  std::getline(file_stream, line);
+  // remove carriage returns for windows
+  if (line[line.size() - 1] == '\r') {
+    line.erase(line.size() - 1);
+  }
+  std::stringstream ss(line);
+
+  char delim_char;
+  if (delim == "tab") {
+    delim_char = '\t';
+  } else if (delim == "comma") {
+    delim_char = ',';
+  } else if (delim == "semicolon") {
+    delim_char = ';';
+  } else {
+    Rcpp::stop(
+        "Invalid delim! delim for %s must be 'tab', 'comma', or 'semicolon'",
+        filename);
+  }
+
+  std::vector<std::string> col_headers = split(line, delim_char);
+
+  int col_idx = 0;
+  if(col_headers[0] != id) {
+    Rcpp::stop("Expected %s as the first column of %s but found %s", id, filename, col_headers[0]);
+  }
+  for (const std::string &col_name : col_headers) {
+    if (col_name != id) {
+      col_names[col_name] = col_idx;
+      col_idx++;
+    }
+  }
+  if (std::find(col_headers.begin(), col_headers.end(), phenotype) == col_headers.end()) {
+    Rcpp::stop("phenotype %s columns not found in %s", phenotype, filename);
+  }
+  // Count lines
+  size_t num_lines = 0;
+  while (std::getline(file_stream, line)) {
+    num_lines++;
+  }
+
+  // Reset file pointer to the beginning
+  file_stream.clear();
+  file_stream.seekg(0, std::ios::beg);
+
+  // Skip header line
+  std::getline(file_stream, line);
+
+  // Initialize Armadillo matrix
+  data.set_size(num_lines, col_idx + 1);
+  str_data.resize(num_lines);
+  std::vector<std::string> row_items;
+  // Read file content
+  size_t row_count = 0;
+  while (std::getline(file_stream, line)) {
+    row_items = split(line, delim_char);
+
+    std::string row_name = row_items.front();
+    if (row_names.find(row_name) != row_names.end()) {
+      Rcpp::Rcout << "Found duplicate row name: " << row_name << std::endl;
+      continue; // skip rows with duplicate names
+    }
+    row_names[row_name] = row_count;
+
+    int str_col_count = 0;
+    for (size_t i = 1; i < row_items.size(); ++i) {
+      try {
+        data(row_count, i - 1) = std::stof(row_items[i]);
+      } catch (const std::invalid_argument &e) {
+        str_data[row_count].push_back(row_items[i]);
+        col_names_str[col_headers.at(i)] = str_col_count;
+        str_col_count++;
+      }
+    }
+
+    row_count++;
+  }
+  file_stream.close();
+}
+
+void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
+                             std::string &id, std::vector<std::string> covariates, std::vector<std::string> cov_type) {
+  fs::path df_file_path(filename);
+  if (!fs::exists(df_file_path)) {
+    Rcpp::stop("%s does not exist.", filename);
+  }
+  std::ifstream file_stream(filename);
+  std::string line;
+
+  std::getline(file_stream, line);
+  // remove carriage returns for windows
+  if (line[line.size() - 1] == '\r') {
+    line.erase(line.size() - 1);
+  }
+  std::stringstream ss(line);
+
+  char delim_char;
+  if (delim == "tab") {
+    delim_char = '\t';
+  } else if (delim == "comma") {
+    delim_char = ',';
+  } else if (delim == "semicolon") {
+    delim_char = ';';
+  } else {
+    Rcpp::stop(
+        "Invalid delim! delim for %s must be 'tab', 'comma', or 'semicolon'",
+        filename);
+  }
+
+  std::vector<std::string> col_headers = split(line, delim_char);
+
+  int col_idx = 0;
+  if(col_headers[0] != id) {
+    Rcpp::stop("Expected %s as the first column of %s but found %s", id, filename, col_headers[0]);
+  }
+  for (const std::string &col_name : col_headers) {
+    if (col_name != id) {
+      col_names[col_name] = col_idx;
+      col_idx++;
+    }
+  }
+  // Count lines
+  size_t num_lines = 0;
+  while (std::getline(file_stream, line)) {
+    num_lines++;
+  }
+
+  // Reset file pointer to the beginning
+  file_stream.clear();
+  file_stream.seekg(0, std::ios::beg);
+
+  // Skip header line
+  std::getline(file_stream, line);
+
+  // Initialize Armadillo matrix
+  data.set_size(num_lines, col_idx);
+  str_data.resize(num_lines);
+  std::vector<std::string> row_items;
+  // Read file content
+  size_t row_count = 0;
+  while (std::getline(file_stream, line)) {
+    row_items = split(line, delim_char);
+
+    std::string row_name = row_items.front();
+    if (row_names.find(row_name) != row_names.end()) {
+      Rcpp::Rcout << "Found duplicate row name: " << row_name << std::endl;
+      continue; // skip rows with duplicate names
+    }
+    row_names[row_name] = row_count;
+
+    int str_col_count = 0;
+    for (size_t i = 1; i < row_items.size(); ++i) {
+      auto temp_col_name = std::find(covariates.begin(), covariates.end(), col_headers.at(i));
+      bool isNumeric = false;
+      if(temp_col_name != covariates.end()) {
+        int index = temp_col_name - covariates.begin();
+        isNumeric = cov_type.at(index) == "numeric";
+        // Rcpp::Rcout << "Found col in cov: " << covariates.at(index) << std::endl;
+      }
+
+      if (isNumeric) {
+        if(row_items[i].empty()) {
+          // Rcpp::Rcout << "Found numeric col with empty str: " << col_headers.at(i) << " at index " << i + 1 << std::endl;
+          data(row_count, i - 1) = NAN;
+        } else {
+          try {
+            data(row_count, i - 1) = std::stof(row_items[i]);
+          } catch (const std::invalid_argument &e) {
+            Rcpp::stop("Found invalid string value in a numeric column %s in %s.", col_headers.at(i), filename);
+          }
+        }
+      } else {
+        str_data[row_count].push_back(row_items[i]);
+        col_names_str[col_headers.at(i)] = str_col_count;
+        str_col_count++;
+      }
+      // try {
+      //   if(row_items[i].empty() && isNumeric) {
+      //     data(row_count, i - 1) = nanf;
+      //   }
+      //   data(row_count, i - 1) = std::stof(row_items[i]);
+      // } catch (const std::invalid_argument &e) {
+      //   str_data[row_count].push_back(row_items[i]);
+      //   col_names_str[col_headers.at(i)] = str_col_count;
+      //   str_col_count++;
+      // }
+    }
+
+    row_count++;
+  }
+  file_stream.close();
+}
+
 FRMatrix FRMatrix::get_submat_by_cols(const std::vector<int> &row_idx,
                                       const std::vector<std::string> &names) {
   std::vector<int> col_indices;

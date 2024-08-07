@@ -1,5 +1,16 @@
 #include "utils.h"
 
+static void chkIntFn(void *dummy) {
+  R_CheckUserInterrupt();
+}
+
+void checkInterrupt() {
+  if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
+    Rcpp::stop("Received user interrupt. Stopping FastReg...");
+  }
+}
+
+
 bool dir_exists(const std::string &path) {
   fs::path directory(path);
   return fs::is_directory(directory);

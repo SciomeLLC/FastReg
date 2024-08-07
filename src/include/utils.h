@@ -26,7 +26,8 @@ namespace fs = std::experimental::filesystem;
 #endif
 using namespace arma;
 
-
+static void chkIntFn(void *dummy);
+void checkInterrupt();
 bool dir_exists(const std::string& path);
 
 void delete_dir(const std::string& path);

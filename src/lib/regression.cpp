@@ -1,5 +1,6 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <regression.h>
+#include <utils.h>
 
 arma::fcolvec RegressionBase::t_dist(arma::fcolvec abs_z, int df) {
 
@@ -30,6 +31,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 
 #pragma omp parallel for
   for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
+    checkInterrupt();
     arma::fmat A(n_parms, n_parms, arma::fill::zeros);
 
     // Initialize beta
@@ -122,6 +124,7 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       is_t_dist == true ? t_dist : norm_dist;
 #pragma omp parallel for
   for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
+    checkInterrupt();
     // Initialize beta
     arma::fmat beta(n_parms, 1, arma::fill::zeros);
     arma::fmat cov_w_mat = cov.data;

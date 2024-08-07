@@ -174,8 +174,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
     int num_parallel_poi_blocks =
         (int)std::ceil((double)num_poi / (double)chunk_size);
-    int total_nonconvergence_status = 0;
-    double sum_total_filtered_pois = 0.0;
+    // int total_nonconvergence_status = 0;
+    // double sum_total_filtered_pois = 0.0;
 
     FRMatrix poi_matrix;
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -265,7 +265,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                 .count();
       }
 
-      total_filtered_pois = poi_matrix.data.n_cols;
+      total_filtered_pois += poi_matrix.data.n_cols;
 
       // Rcpp::Rcout << "filtered pois" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
@@ -377,11 +377,11 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (beta_abs_errs > config.abs_conv_tolerance));
       nonconvergence_status = arma::sum(convergence);
       double noncovergence_percent =
-          (total_nonconvergence_status / sum_total_filtered_pois) * 100;
+          (nonconvergence_status / total_filtered_pois) * 100;
       if (noncovergence_percent > 0.0)
       {
-        Rcpp::Rcout << total_nonconvergence_status << " out of "
-                    << sum_total_filtered_pois << " (" << std::setprecision(2)
+        Rcpp::Rcout << nonconvergence_status << " out of "
+                    << total_filtered_pois << " (" << std::setprecision(2)
                     << noncovergence_percent
                     << "%) POIs did not meet relative and absolute convergence "
                        "threshold."
@@ -491,9 +491,9 @@ void FastRegCpp(
   }
 
   FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
-                    config.pheno_rowname_cols);
+                    config.pheno_rowname_cols, config.phenotype);
   FRMatrix covar_df(config.covar_file, config.covar_file_delim,
-                    config.covar_rowname_cols);
+                    config.covar_rowname_cols, config.covariates, config.covariate_type);
 
   // Load the first POI file to calculate chunks
   std::string poi_file_path = config.poi_files[0];
@@ -570,6 +570,7 @@ void FastRegCpp(
   {
     while ((num_processes_started - num_processes_completed) < max_processes)
     {
+      checkInterrupt();
       if (num_processes_started == num_processes_total)
       {
         break;
@@ -608,6 +609,7 @@ void FastRegCpp(
     // Check for finished processes
     for (int i = 0; i < num_processes_started; i++)
     {
+      checkInterrupt();
       if (process_ids[i] != 0)
       { // parent process
         if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0)
