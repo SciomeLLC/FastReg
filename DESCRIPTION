@@ -28,7 +28,7 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.0)
 biocViews:
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, data.table, parallel, BEDMatrix, float
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, float
 LinkingTo: Rcpp, RcppArmadillo, float
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3

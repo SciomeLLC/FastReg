@@ -18,7 +18,6 @@
 #' @return a list consisting of dataset size (num.poi, num.ind) as well as regression coefficients used for both binary and numeric response
 #' @import stats
 #' @import parallel
-#' @import data.table
 #' @import rhdf5
 #' @import utils
 create_test_dataset <- function(num.poi = 50000,

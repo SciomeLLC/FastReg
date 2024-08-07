@@ -9,7 +9,6 @@
 #' @return integer 1 when successful
 #' @import stats
 #' @import parallel
-#' @import data.table
 H5_To_Bed <- function(input.dir = ".", output.dir = NULL, prefix = NULL, poi.chunk.size = 1000, seed = 12133, num.poi = NULL, num.ind = NULL) {
   if (is.null(output.dir)) output.dir <- input.dir
 
@@ -69,7 +68,7 @@ H5_To_Bed <- function(input.dir = ".", output.dir = NULL, prefix = NULL, poi.chu
 
   poi.df <- as.data.table(data.frame(CHROM = seq.names[poi.seq], ID = poi.id, POS = integer(num.poi), "COORD" = poi.pos, "ALT" = poi.alt, "REF" = poi.ref, stringsAsFactors = FALSE, check.names = FALSE))
   remove(list = c("poi.seq", "poi.pos", "poi.ref", "poi.alt", "w", "num.w", "rf", "seq", "seqs", "num.seq", "seq.names"))
-  fwrite(poi.df, file = out.files[1], row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE, na = "")
+  write.table(poi.df, file = out.files[1], row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE, na = "")
   remove(list = "poi.df")
 
   cat("Generating .fam file\n")
@@ -107,7 +106,7 @@ H5_To_Bed <- function(input.dir = ".", output.dir = NULL, prefix = NULL, poi.chu
   if (length(fam$SEX[common.ind]) == 0 || length(fam$PHENO[common.ind]) == 0) {
     stop("Replacement has length zero due to incorrect indexing or data misalignment.")
   }
-  fwrite(fam, file = out.files[2], row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE, na = "")
+  write.table(fam, file = out.files[2], row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE, na = "")
   remove(list = "fam")
 
   cat("Generating .bed file\n")
