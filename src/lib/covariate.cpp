@@ -36,7 +36,6 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
 
   // Get levels and reference level if not specified
   if (levels.empty() && type != "numeric") {
-    // Rcpp::Rcout << "Getting reference level for: " << name << std::endl;
     std::vector<std::string> col_vals = df.get_col_str(name);
     auto it = std::unique(col_vals.begin(), col_vals.end());
     col_vals.resize(std::distance(col_vals.begin(), it));
@@ -58,12 +57,10 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
     candidate_cols.col_names[name] = 0;
     temp_col_names.push_back(name);
   } else {
-    // Rcpp::Rcout << "non-numeric data " << name << std::endl;
     if (std::find(levels.begin(), levels.end(), ref_level) == levels.end()) {
       Rcpp::stop("covariate.ref.level must be one of unique value of "
                  "covariate.levels.");
     }
-
     levels.erase(std::find(levels.begin(), levels.end(), ref_level));
     if (X_mat.data.n_cols == 0) {
       levels.insert(levels.begin(), ref_level);
@@ -76,9 +73,10 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
       for (arma::uword i = 0; i < df.data.n_rows; i++) {
         res(i, 0) = (col_vals[i] == lev) ? 1 : 0;
       }
-
+      
       candidate_cols.data.insert_cols(count, res);
       std::string col_name;
+      // std::string lev_str = (lev.empty() ? "" : lev);
       if (X_mat.data.n_cols == 0) {
         col_name = name + " (" + lev + ")";
       } else {

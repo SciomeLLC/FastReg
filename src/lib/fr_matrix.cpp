@@ -83,6 +83,9 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
   std::vector<std::string> col_headers = split(line, delim_char);
 
   int col_idx = 0;
+  if(col_headers[0] != id) {
+    Rcpp::stop("Expected %s as the first column of %s but found %s", id, filename, col_headers[0]);
+  }
   for (const std::string &col_name : col_headers) {
     if (col_name != id) {
       col_names[col_name] = col_idx;
@@ -122,7 +125,7 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
     int str_col_count = 0;
     for (size_t i = 1; i < row_items.size(); ++i) {
       try {
-        data(row_count, i - 1) = std::stod(row_items[i]);
+        data(row_count, i - 1) = std::stof(row_items[i]);
       } catch (const std::invalid_argument &e) {
         str_data[row_count].push_back(row_items[i]);
         col_names_str[col_headers.at(i)] = str_col_count;

@@ -1,6 +1,6 @@
 ---
 title: "FastReg"
-author: "Matt Wheeler, Shail Choksi, Adam Burkholder, John House, Deepak Mav"
+author: "Matt W. Wheeler, Shail Choksi, Deepak Mav, Adam Burkholder, Fred Wright, Alison A. Motsinger-Reif, John S. House"
 output: 
   rmarkdown::html_document:
     toc: true
@@ -15,23 +15,31 @@ vignette: >
 
 # Introduction
 
-In Biostatistics, data science, and informatics, regression using generalized linear models (McCullagh 2019) is often the primary workhorse for scientists seeking to understand the relationship between measured covariates and observed responses.  In the era of “big data,” one may be required to compute thousands or millions of regressions.  Computing this large number of regressions requires significant computational resources, and this fact is exacerbated with logistic regression, whose solution requires an iterative algorithm verses a single solve that is standard with linear regression for continuous data.  
+In genome-wide association studies (GWAS) and other genomic analyses, logistic regression is a central analysis tool for binary responses. 
+For millions of SNPs that require millions of regressions, logistic regression analyses require significant computational resources, 
+which are especially costly in terms of time, money, and carbon footprint when carried out in typical analysis pipelines. 
+Software that maximizes analysis throughput can reduce a researcher's costs when analyzing data.
 
-Traditional software solutions to regression analyses available in the programming language R (R Core Team 2023) are a one-at-a-time approach, which analyzes each dataset as a unique analysis. Though such analyses occur in a fraction of a second, their focus on a single dataset at a time creates code inefficiencies resulting in duplicating effort when many regressions are needed. This creates noticeable bottlenecks when millions of regressions are required.  For example, if part of the covariate matrix is the same across regressions, computer operations that require the allocation of matrix memory or matrix multiplication will be needlessly duplicated.
-
-FastReg tries to solve this by using the iteratively weighted least squares (IRLS) algorithm to perform logistic regression. It assumes that the data to be analyzed are available in text format, and that each response is saved in column format (a standard GWAS format). FastReg converts the data to the HDF5 format as it allows for random access from multiple threads, memory efficiencies and faster read times. Once converted, we use the iteratively reweighted least squares algorithm to perform logistic regression. The algorithm typically converges within a handful of iterations, and for speed, we cap the number of iterations (defaults to six). The output contains the summary with significance p-value, the maximum likelihood estimate, and the covariance estimates.
+This software, FastReg, performs linear and logistic regression for arbitrary covariates (i.e., continuous, count, and binary covariates) 
+at 15% faster speeds than highly specialized tools such as PLINK 2 on linux operating systems, and is 100x more efficient than serially 
+using GLM in R.
 
 # Pre-requisites and Installation
 ## Windows
 
--   Install [**Rtools for Windows**](https://cran.r-project.org/bin/windows/Rtools/ "Rtools for Windows")
+- Install [**Rtools for Windows**](https://cran.r-project.org/bin/windows/Rtools/ "Rtools for Windows")
 
 ## MacOS
 
--   Ensure that **Xcode Command Line Tools** are installed. Open **Terminal** and type: **`xcode-select -p`**.
-    -   If you see the following: **/Library/Developer/CommandLineTools** command line tools are installed
-    -   If not, check for system updates: **`System Settings > General > Software Update`**
--   Install the latest [**gfortran compiler**](https://cran.r-project.org/bin/macosx/tools/ "gfortran compiler")
+- Install [**macrtools**](https://github.com/coatless-mac/macrtools "macrtools")
+- Start R and run the following:
+```
+install.packages("remotes")
+remotes::install_github("coatless-mac/macrtools")
+macrtools::xcode_cli_install()
+macrtools::gfortran_install()
+```
+- This will attempt to install Xcode CLI and gfortran that are required to install FastReg
 
 ## Installing FastReg
 
@@ -94,6 +102,7 @@ FastReg(
   pheno.file="inst/extdata/testdata_500_by_1k.bin.pheno.txt",
   pheno.rowname.cols="ind",
   phenotype = "bin.resp",
+  covar.rownames.cols="ind",
   covar.file="inst/extdata/testdata_500_by_1k.covar.txt",
   covariates=c("age", "sex", "treatment"),
   covariate.type = c("numeric", "categorical", "categorical"),

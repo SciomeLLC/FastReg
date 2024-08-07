@@ -6,8 +6,6 @@
 #' @return integer 1 when successful
 #' @import BEDMatrix
 #' @import data.table
-library("BEDMatrix");
-library("data.table");
 Bed_To_dosage <- function(input.dir = ".", output.dir = NULL, prefix = NULL, poi.chunk.size = 1000) {
   
   if(is.null(output.dir)) output.dir <- input.dir;

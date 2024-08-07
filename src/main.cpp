@@ -46,7 +46,8 @@ namespace fs = std::experimental::filesystem;
 #endif
 #endif
 
-struct ProcResult {
+struct ProcResult
+{
   int timing_results[4] = {0, 0, 0, 0};
   double process_nonconvergence_status = 0.0;
   double process_total_filtered_pois = 0.0;
@@ -54,18 +55,15 @@ struct ProcResult {
 
 void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                    FRMatrix &covar_df, std::string poi_file_path,
-                   int chunk_size, int num_threads, int timing_results[4]) {
-
-  // Rcpp::Rcout << "Started process " << process_id + 1
-  //             << " with chunk size: " << chunk_size
-  //             << " and openmp threads: " << num_threads << "." << std::endl;
+                   int chunk_size, int num_threads, int timing_results[4])
+{
   // Load POI file
   POI poi(poi_file_path);
   poi.open(true);
   poi.get_values_dataset_id();
   poi.get_data_type();
   poi.get_names();
-  poi.get_individuals(); 
+  poi.get_individuals();
 
   // Find common individuals
   std::vector<std::string> poi_names = poi.names;
@@ -73,9 +71,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
-  // Rcout << intersected_ind.size() << " unique subjects were found to be
-  // common in pheno.file, covar.file, and POI.file" << std::endl;
-  if (intersected_ind.empty()) {
+  if (intersected_ind.empty())
+  {
     stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
@@ -88,7 +85,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   // }
 
   int num_poi = poi_names.size();
-  if (num_poi == 0) {
+  if (num_poi == 0)
+  {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
 
@@ -99,16 +97,19 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   double file_writing_time = 0.0;
   double poi_reading_time = 0.0;
   double regression_time = 0.0;
-  for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
+  for (int stratum = 0; stratum < stratums.nstrata; ++stratum)
+  {
     std::string outfile_suffix = stratums.ids[stratum];
-    if (!config.split_by[0].empty()) {
+    if (!config.split_by[0].empty())
+    {
       Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
                   << std::endl;
     }
     std::vector<std::string> ind_set = stratums.index_list[outfile_suffix];
     int ct = 0;
     std::vector<int> ind_set_idx(ind_set.size());
-    for (std::string ind : ind_set) {
+    for (std::string ind : ind_set)
+    {
       ind_set_idx[ct] = pheno_df.get_row_idx(ind);
       ct++;
     }
@@ -130,14 +131,18 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                     covar_poi_interaction_matrix);
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
-    
+
     // identify missing values for covar, pheno matrix
-    for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
+    for (size_t i = 0; i < covar_matrix.data.n_rows; i++)
+    {
       arma::uvec covar_nan_idx = arma::find_nonfinite(covar_matrix.data.row(i));
       arma::uvec pheno_nan_idx = arma::find_nonfinite(pheno_matrix.data.row(i));
-      if (covar_nan_idx.size() > 0 || pheno_nan_idx.size() > 0) {
+      if (covar_nan_idx.size() > 0 || pheno_nan_idx.size() > 0)
+      {
         nan_idx.push_back(i);
-      } else {
+      }
+      else
+      {
         ind_set_filtered.push_back(ind_set[i]);
       }
     }
@@ -151,7 +156,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         std::unordered_map<std::string, int>(ind_set_filtered.size());
     pheno_matrix.row_names =
         std::unordered_map<std::string, int>(ind_set_filtered.size());
-    for (size_t j = 0; j < covar_matrix.data.n_rows; j++) {
+    for (size_t j = 0; j < covar_matrix.data.n_rows; j++)
+    {
       covar_matrix.row_names[ind_set_filtered[j]] = j;
       pheno_matrix.row_names[ind_set_filtered[j]] = j;
       covar_poi_interaction_matrix.row_names[ind_set_filtered[j]] = j;
@@ -159,11 +165,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
         ind_set_filtered.begin(), ind_set_filtered.end(),
-        strat_individuals.begin(), [&intersected_ind](const std::string &elem) {
-          return intersected_ind[std::distance(
+        strat_individuals.begin(), [&intersected_ind](const std::string &elem)
+        { return intersected_ind[std::distance(
               intersected_ind.begin(),
-              std::find(intersected_ind.begin(), intersected_ind.end(), elem))];
-        });
+              std::find(intersected_ind.begin(), intersected_ind.end(), elem))]; });
     double nonconvergence_status = 0.0;
     double total_filtered_pois = 0.0;
 
@@ -175,10 +180,12 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
     FRMatrix poi_matrix;
     auto start_time = std::chrono::high_resolution_clock::now();
     // allocate memory space for H5 file to read into
-    for (int block = 0; block < num_parallel_poi_blocks; block++) {
+    for (int block = 0; block < num_parallel_poi_blocks; block++)
+    {
       int start_chunk = block * chunk_size;
       int end_chunk = start_chunk + chunk_size;
-      if (end_chunk >= num_poi) {
+      if (end_chunk >= num_poi)
+      {
         end_chunk = num_poi;
       }
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
@@ -192,13 +199,15 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
       int num_dropped = poi.individuals.size() - strat_individuals.size();
       arma::uvec drop_row_idx(drop_rows.size());
-      for (size_t i = 0; i < drop_rows.size(); i++) {
+      for (size_t i = 0; i < drop_rows.size(); i++)
+      {
         drop_row_idx[i] = poi_matrix.row_names[drop_rows[i]];
       }
 
       std::unordered_map<std::string, int> new_row_names(
           strat_individuals.size());
-      for (auto &ind : strat_individuals) {
+      for (auto &ind : strat_individuals)
+      {
         new_row_names[ind] = poi_matrix.row_names[ind] - num_dropped;
       }
       poi_matrix.data.shed_rows(drop_row_idx);
@@ -210,14 +219,16 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
-      
-      if (config.POI_type == "genotype") {
+
+      if (config.POI_type == "genotype")
+      {
         FRMatrix filtered =
             filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
         arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
 
         if (filtered.data.n_cols == 0 ||
-            filtered_col.n_elem == poi_matrix.data.n_cols) {
+            filtered_col.n_elem == poi_matrix.data.n_cols)
+        {
           Rcpp::Rcout << "no POI passed filtering" << std::endl;
           return;
         }
@@ -225,12 +236,16 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         std::vector<std::string> poi_col_names = filtered.sort_map(false);
         int cols_erased = 0;
 
-        for (unsigned int i = 0; i < poi_col_names.size(); i++) {
+        for (unsigned int i = 0; i < poi_col_names.size(); i++)
+        {
           if ((unsigned)cols_erased < filtered_col.n_elem &&
-              filtered_col[cols_erased] == i) {
+              filtered_col[cols_erased] == i)
+          {
             poi_matrix.col_names.erase(poi_col_names[i]);
             cols_erased++;
-          } else {
+          }
+          else
+          {
             poi_matrix.col_names[poi_col_names[i]] =
                 poi_matrix.col_names[poi_col_names[i]] - cols_erased;
           }
@@ -271,13 +286,15 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       neglog10_pvl.data =
           arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
 
-      for (auto &col_name : covar_matrix.col_names) {
+      for (auto &col_name : covar_matrix.col_names)
+      {
         beta_est.row_names[col_name.first] = col_name.second;
         se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];
         neglog10_pvl.row_names[col_name.first] =
             beta_est.row_names[col_name.first];
       }
-      for (auto &col_name : covar_poi_interaction_matrix.col_names) {
+      for (auto &col_name : covar_poi_interaction_matrix.col_names)
+      {
         beta_est.row_names[col_name.first] =
             covar_matrix.col_names.size() + col_name.second;
         se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];
@@ -292,9 +309,11 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
       arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
                                  arma::fill::ones);
-      for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
+      for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++)
+      {
         arma::uvec G_na = arma::find_nonfinite(poi_matrix.data.col(v));
-        for (arma::uword i = 0; i < G_na.n_elem; i++) {
+        for (arma::uword i = 0; i < G_na.n_elem; i++)
+        {
           W2(G_na(i), v) = 0;
           poi_matrix.data(G_na(i), v) = 0;
         }
@@ -309,16 +328,19 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "init matrices" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
-      
-      #if !defined(__APPLE__) && !defined(__MACH__)
+
+#if !defined(__APPLE__) && !defined(__MACH__)
       omp_set_num_threads(num_threads);
-      #endif
-      if (config.regression_type == "logistic") {
+#endif
+      if (config.regression_type == "logistic")
+      {
         regression.reset(new LogisticRegression());
-      } else {
+      }
+      else
+      {
         regression.reset(new LinearRegression());
       }
-    
+
       // Rcpp::Rcout << "start regression" << std::endl;
       regression->run(covar_matrix, pheno_matrix, poi_matrix,
                       covar_poi_interaction_matrix, W2, beta_est, se_beta,
@@ -340,7 +362,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
               .count();
       poi_matrix.col_names.clear();
 
-      if (config.regression_type == "logistic") {
+      if (config.regression_type == "logistic")
+      {
         start_time = std::chrono::high_resolution_clock::now();
         std::string convergence_file_prefix = "Convergence";
         FRMatrix::write_convergence_results(
@@ -355,7 +378,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       nonconvergence_status = arma::sum(convergence);
       double noncovergence_percent =
           (total_nonconvergence_status / sum_total_filtered_pois) * 100;
-      if (noncovergence_percent > 0.0) {
+      if (noncovergence_percent > 0.0)
+      {
         Rcpp::Rcout << total_nonconvergence_status << " out of "
                     << sum_total_filtered_pois << " (" << std::setprecision(2)
                     << noncovergence_percent
@@ -409,7 +433,8 @@ void FastRegCpp(
     const Rcpp::StringVector covariate_ref_level,
     const Rcpp::StringVector POI_covar_interactions_str,
     const Rcpp::StringVector split_by_str, const std::string output_dir,
-    bool compress_results, int max_workers) {
+    bool compress_results, int max_workers)
+{
   Config config(
       phenotype, regression_type, pvalue_dist, output_exclude_covar,
       maf_threshold, hwe_threshold, no_intercept, colinearity_rsq,
@@ -460,7 +485,8 @@ void FastRegCpp(
   Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
   Rcpp::Rcout << "-----------------------------------------" << std::endl;
   // Clean up previous run
-  if (dir_exists(config.output_dir)) {
+  if (dir_exists(config.output_dir))
+  {
     delete_dir(config.output_dir);
   }
 
@@ -489,12 +515,14 @@ void FastRegCpp(
         << " common unique subjects in pheno.file, "
            "covar.file, and POI.file"
         << std::endl;
-  if (intersected_ind.empty()) {
+  if (intersected_ind.empty())
+  {
     stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
   int num_poi = poi_names.size();
-  if (num_poi == 0) {
+  if (num_poi == 0)
+  {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
 
@@ -517,11 +545,13 @@ void FastRegCpp(
   double concatenation_time, compression_time = 0.0;
   int total_timing_results[timing_results_size] = {0, 0, 0, 0};
 #ifdef _WIN32
-  for (int i = 0; i < num_poi_files; i++) {
+  for (int i = 0; i < num_poi_files; i++)
+  {
     int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                   parallel_chunk_size, num_threads, timing_results);
-    for (int j = 0; j < timing_results_size; j++) {
+    for (int j = 0; j < timing_results_size; j++)
+    {
       total_timing_results[j] += timing_results[j];
     }
   }
@@ -536,47 +566,59 @@ void FastRegCpp(
   int num_processes_started = 0;
   int num_processes_completed = 0;
 
-  while (num_processes_completed < num_processes_total) {
-    while ((num_processes_started - num_processes_completed) < max_processes) {
-      if (num_processes_started == num_processes_total) {
+  while (num_processes_completed < num_processes_total)
+  {
+    while ((num_processes_started - num_processes_completed) < max_processes)
+    {
+      if (num_processes_started == num_processes_total)
+      {
         break;
       }
       int i = num_processes_started;
-      if (pipe(&pipe_file_descriptors[i * 2]) == -1) {
+      if (pipe(&pipe_file_descriptors[i * 2]) == -1)
+      {
         perror("pipe");
         return;
       }
       process_ids[i] = fork();
-      if (process_ids[i] == -1) {
+      if (process_ids[i] == -1)
+      {
         perror("fork");
         return;
       }
       std::string poi_file_path = config.poi_files[i];
-      if (process_ids[i] == 0) {             // child process
+      if (process_ids[i] == 0)
+      {                                      // child process
         close(pipe_file_descriptors[i * 2]); // close read pipe
         int timing_results[timing_results_size] = {0, 0, 0, 0};
         // Rcpp::Rcout << "Started processing for " << i + 1 << std::endl;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
-                         parallel_chunk_size, num_threads, timing_results);
+                      parallel_chunk_size, num_threads, timing_results);
         ssize_t res = write(pipe_file_descriptors[i * 2 + 1], timing_results, sizeof(timing_results));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
         return;
-      } else {
+      }
+      else
+      {
         close(pipe_file_descriptors[i * 2 + 1]);
         num_processes_started++;
       }
     }
     // Check for finished processes
-    for (int i = 0; i < num_processes_started; i++) {
-      if (process_ids[i] != 0) { // parent process
-        if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
+    for (int i = 0; i < num_processes_started; i++)
+    {
+      if (process_ids[i] != 0)
+      { // parent process
+        if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0)
+        {
           has_completed[i] = true;
           int timing_results[timing_results_size] = {0, 0, 0, 0};
-          ssize_t res = read(pipe_file_descriptors[i*2], timing_results, sizeof(timing_results));
+          ssize_t res = read(pipe_file_descriptors[i * 2], timing_results, sizeof(timing_results));
           close(pipe_file_descriptors[i * 2]);
-          
-          for (int j = 0; j < timing_results_size; j++) {
+
+          for (int j = 0; j < timing_results_size; j++)
+          {
             total_timing_results[j] += timing_results[j];
           }
           num_processes_completed++;
@@ -588,19 +630,20 @@ void FastRegCpp(
   auto start_time = std::chrono::high_resolution_clock::now();
   FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
   FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
-  if (config.POI_type == "genotype") {
+  if (config.POI_type == "genotype")
+  {
     FRMatrix::concatenate_results(config.output_dir, "POI_Summary", "Full");
   }
   auto end_time = std::chrono::high_resolution_clock::now();
   concatenation_time = (double)std::chrono::duration_cast<std::chrono::milliseconds>(
-              end_time - start_time)
-              .count();
+                           end_time - start_time)
+                           .count();
 
   // timing_results[0] = poi_reading_time;
   // timing_results[1] = file_writing_time;
   // timing_results[2] = memory_allocation_time;
   // timing_results[3] = regression_time;
-  
+
   Rcpp::Rcout << "-----------------------------------------" << std::endl;
   Rcpp::Rcout << "Timing Summary: " << std::endl;
   Rcpp::Rcout << "Reading HDF5: " << total_timing_results[0] / 1000.0 << "s"
@@ -609,23 +652,24 @@ void FastRegCpp(
               << std::endl;
   Rcpp::Rcout << "Memory allocation: " << total_timing_results[2] / 1000.0 << "s"
               << std::endl;
-  Rcpp::Rcout << "Regression: " << total_timing_results[3] / 1000.0 << "s" << std::endl;  
+  Rcpp::Rcout << "Regression: " << total_timing_results[3] / 1000.0 << "s" << std::endl;
   Rcpp::Rcout << "Results concatenation: " << concatenation_time / 1000.0 << "s" << std::endl;
-    
-  if (config.compress_results) {
+
+  if (config.compress_results)
+  {
     start_time = std::chrono::high_resolution_clock::now();
     FRMatrix::zip_results(config.output_dir);
     end_time = std::chrono::high_resolution_clock::now();
     compression_time += (double)std::chrono::duration_cast<std::chrono::milliseconds>(
-              end_time - start_time)
-              .count();
+                            end_time - start_time)
+                            .count();
     Rcpp::Rcout << "Results compression: " << concatenation_time / 1000.0 << "s" << std::endl;
   }
   auto end =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   Rcpp::Rcout << "Completed " << config.regression_type << " regression -" << std::endl;
   Rcpp::Rcout << "\t\tnum individuals: " << intersected_ind.size() << std::endl;
-  Rcpp::Rcout << "\t\t~num pois: " << num_poi*num_poi_files << std::endl;
+  Rcpp::Rcout << "\t\t~num pois: " << num_poi * num_poi_files << std::endl;
   Rcpp::Rcout << "\t\twith openmp thread(s): " << num_threads << std::endl;
   Rcpp::Rcout << "at: " << std::ctime(&end) << std::endl;
   Rcpp::Rcout << "-----------------------------------------" << std::endl;

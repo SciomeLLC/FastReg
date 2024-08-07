@@ -168,7 +168,8 @@ create_test_dataset <- function(num.poi = 50000,
     values <- generate_values(num.ind, chunk_indices, poi.type, maf[chunk_indices], miss.rate[chunk_indices])
     colnames(values) <- poi.id[chunk_indices]
     df <- data.frame(ID = ind.id, values, stringsAsFactors = FALSE, check.names = FALSE)
-    fwrite(df, file = poi.txt.file, sep = "\t", row.names = FALSE, col.names = (chunk_indices[1] == 1), append = (chunk_indices[1] != 1), na = "", quote = FALSE)
+    write.table(df, file=poi.txt.file, sep="\t", row.names = FALSE, col.names = (chunk_indices[1] == 1), append = (chunk_indices[1] != 1), na = "", quote = FALSE)
+    # fwrite(df, file = poi.txt.file, sep = "\t", row.names = FALSE, col.names = (chunk_indices[1] == 1), append = (chunk_indices[1] != 1), na = "", quote = FALSE)
     # }
     # values <- generate_values(num.ind, 1:num.poi, poi.type, poi.chunk.size)
     # colnames(values) <- poi.id

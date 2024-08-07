@@ -122,81 +122,81 @@ FastReg <- function(
 }
 
 #' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()
-#' @param dataFile Path of the input text file.
-#' @param h5Dir Path of a new directory to write generated hdf5 files.
-#' @param headerRow Default: 1. Row number of header line.
-#' @param idCol Default 1. Column number that contains identifiers.
-#' @param dataCol Default: 2. Column number that contains first data entry.
-#' @param buffSize Default: 1.0. Size in Gb of memory available for data conversion.
+#' @param data.file Path of the input text file.
+#' @param h5.dir Path of a new directory to write generated hdf5 files.
+#' @param header.row Default: 1. Row number of header line.
+#' @param id.col Default 1. Column number that contains identifiers.
+#' @param data.col Default: 2. Column number that contains first data entry.
+#' @param buff.size Default: 1.0. Size in Gb of memory available for data conversion.
 #' @param transpose Default: FALSE. Boolean value that indicates whether text data should be transposed. Set TRUE when columns represent individuals and rows represent POIs.
-#' @param chunkEdge Default: 100. Specify size of data chunks to be applied to output hdf5 files. Must be less than or equal to values of poiPerFile and greater than zero.
-#' @param vcf Default: FALSE. Indicate whether input file is in vcf format. If TRUE, headerRow, idCol, dataCol and transpose values are ignored.
+#' @param chunk.edge Default: 100. Specify size of data chunks to be applied to output hdf5 files. Must be less than or equal to values of poi.per.file and greater than zero.
+#' @param vcf Default: FALSE. Indicate whether input file is in vcf format. If TRUE, header.row, id.col, data.col and transpose values are ignored.
 #' @param delimiter Specify a string of all delimiters used in the text file to separate columns. Default will split entries by space or tab.
 #' @param gz Default: FALSE. Indicate whether input text file is gzip-compressed.
-#' @param poiPerFile Default: -1. Indicate the number of POIs to write to each output hdf5 file. A value of -1 indicates the count should be calculated based on available system resources.
-#' @param singleFile Default: FALSE. Indicate whether a single hdf5 file should be produced rather than a series.
-#' @param serverThreads Default: -1. Indicate the total number of CPU threads available for FastReg - utilized to determine the optimal number of output files. A value of -1 indicates the count should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
-#' @param serverMem Default: -1.0. Indicate the total memory in Gb available for FastReg - utilized to determine the optimal number of output files. A value of -1.0 indicates the total should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
+#' @param poi.per.file Default: -1. Indicate the number of POIs to write to each output hdf5 file. A value of -1 indicates the count should be calculated based on available system resources.
+#' @param single.file Default: FALSE. Indicate whether a single hdf5 file should be produced rather than a series.
+#' @param server.threads Default: -1. Indicate the total number of CPU threads available for FastReg - utilized to determine the optimal number of output files. A value of -1 indicates the count should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
+#' @param server.mem Default: -1.0. Indicate the total memory in Gb available for FastReg - utilized to determine the optimal number of output files. A value of -1.0 indicates the total should be detected automatically. Set this parameter when running FastReg on a shared system and specify resources allocated for your own use only.
 #' @return 0 = success, 1 = failure
 #' @export
 
 TextToH5 <- function(
-    dataFile,
-    h5Dir,
-    headerRow = 1,
-    idCol = 1,
-    dataCol = 2,
-    buffSize = 1.0,
+    data.file,
+    h5.dir,
+    header.row = 1,
+    id.col = 1,
+    data.col = 2,
+    buff.size = 1.0,
     transpose = FALSE,
-    chunkEdge = 100,
+    chunk.edge = 100,
     vcf = FALSE,
     delimiter = " \t",
     gz = FALSE,
-    poiPerFile = -1,
-    singleFile = FALSE,
-    serverThreads = -1,
-    serverMem = -1.0) {
-  if (!is.character(dataFile) || length(dataFile) > 1) {
-    cat("Error: dataFile must be a single-member character vector\n")
+    poi.per.file = -1,
+    single.file = FALSE,
+    server.threads = -1,
+    server.mem = -1.0) {
+  if (!is.character(data.file) || length(data.file) > 1) {
+    cat("Error: data.file must be a single-member character vector\n")
     return(FALSE)
   }
-  if (!is.character(h5Dir) || length(h5Dir) > 1) {
-    cat("Error: h5Dir must be a single-member character vector\n")
+  if (!is.character(h5.dir) || length(h5.dir) > 1) {
+    cat("Error: h5.dir must be a single-member character vector\n")
     return(FALSE)
-  } else if (file.exists(h5Dir)) {
-    cat("Error: file or folder named \"", h5Dir, "\" already exists\n", sep = "")
-    return(FALSE)
-  }
-  dir.create(h5Dir)
-  if (!is.numeric(headerRow) || headerRow != as.integer(headerRow) || length(headerRow) > 1 || headerRow < 1) {
-    cat("Error: headerRow must be a single-member integer vector with value > 0\n")
+  } else if (file.exists(h5.dir)) {
+    cat("Error: file or folder named \"", h5.dir, "\" already exists\n", sep = "")
     return(FALSE)
   }
-  headerRow <- as.integer(headerRow)
-  if (!is.numeric(idCol) || idCol != as.integer(idCol) || length(idCol) > 1 || idCol < 1) {
-    cat("Error: idCol must be a single-member integer vector with value > 0\n")
+  dir.create(h5.dir)
+  if (!is.numeric(header.row) || header.row != as.integer(header.row) || length(header.row) > 1 || header.row < 1) {
+    cat("Error: header.row must be a single-member integer vector with value > 0\n")
     return(FALSE)
   }
-  idCol <- as.integer(idCol)
-  if (!is.numeric(dataCol) || dataCol != as.integer(dataCol) || length(dataCol) > 1 || dataCol <= idCol) {
-    cat("Error: headerRow must be a single-member integer vector with value > idCol\n")
+  header.row <- as.integer(header.row)
+  if (!is.numeric(id.col) || id.col != as.integer(id.col) || length(id.col) > 1 || id.col < 1) {
+    cat("Error: id.col must be a single-member integer vector with value > 0\n")
     return(FALSE)
   }
-  dataCol <- as.integer(dataCol)
-  if (!is.numeric(buffSize) || length(buffSize) > 1 || buffSize <= 0) {
-    cat("Error: buffSize must be a single-member numeric vector with value > 0\n")
+  id.col <- as.integer(id.col)
+  if (!is.numeric(data.col) || data.col != as.integer(data.col) || length(data.col) > 1 || data.col <= id.col) {
+    cat("Error: header.row must be a single-member integer vector with value > id.col\n")
     return(FALSE)
   }
-  buffSize <- as.double(buffSize)
+  data.col <- as.integer(data.col)
+  if (!is.numeric(buff.size) || length(buff.size) > 1 || buff.size <= 0) {
+    cat("Error: buff.size must be a single-member numeric vector with value > 0\n")
+    return(FALSE)
+  }
+  buff.size <- as.double(buff.size)
   if (!is.logical(transpose) || length(transpose) > 1) {
     cat("Error: transpose must be a single-member logical vector\n")
     return(FALSE)
   }
-  if (!is.numeric(chunkEdge) || chunkEdge != as.integer(chunkEdge) || length(chunkEdge) > 1 || chunkEdge < 1) {
-    cat("Error: chunkEdge must be a single-member integer vector with value > 0\n")
+  if (!is.numeric(chunk.edge) || chunk.edge != as.integer(chunk.edge) || length(chunk.edge) > 1 || chunk.edge < 1) {
+    cat("Error: chunk.edge must be a single-member integer vector with value > 0\n")
     return(FALSE)
   }
-  chunkEdge <- as.integer(chunkEdge)
+  chunk.edge <- as.integer(chunk.edge)
   if (!is.logical(vcf) || length(vcf) > 1) {
     cat("Error: vcf must be a single-member logical vector\n")
     return(FALSE)
@@ -209,42 +209,42 @@ TextToH5 <- function(
     cat("Error: gz must be a single-member logical vector\n")
     return(FALSE)
   }
-  if (!is.numeric(poiPerFile) || poiPerFile != as.integer(poiPerFile) || length(poiPerFile) > 1 || poiPerFile < chunkEdge) {
-    if (poiPerFile != -1) {
-      cat("Error: poiPerFile must be a single-member integer vector with value >= chunkEdge\n")
+  if (!is.numeric(poi.per.file) || poi.per.file != as.integer(poi.per.file) || length(poi.per.file) > 1 || poi.per.file < chunk.edge) {
+    if (poi.per.file != -1) {
+      cat("Error: poi.per.file must be a single-member integer vector with value >= chunk.edge\n")
       return(FALSE)
     }
   }
-  poiPerFile <- as.integer(poiPerFile)
-  if (!is.logical(singleFile) || length(singleFile) > 1) {
-    cat("Error: singleFile must be a single-member logical vector\n")
+  poi.per.file <- as.integer(poi.per.file)
+  if (!is.logical(single.file) || length(single.file) > 1) {
+    cat("Error: single.file must be a single-member logical vector\n")
     return(FALSE)
   }
-  if (!is.numeric(serverThreads) || serverThreads != as.integer(serverThreads) || length(serverThreads) > 1) {
-    cat("Error: serverThreads must be a single-member integer vector\n")
+  if (!is.numeric(server.threads) || server.threads != as.integer(server.threads) || length(server.threads) > 1) {
+    cat("Error: server.threads must be a single-member integer vector\n")
     return(FALSE)
   }
-  serverThreads <- as.integer(serverThreads)
-  if (!is.numeric(serverMem) || length(serverMem) > 1) {
-    cat("Error: serverMem must be a single-member numeric vector\n")
+  server.threads <- as.integer(server.threads)
+  if (!is.numeric(server.mem) || length(server.mem) > 1) {
+    cat("Error: server.mem must be a single-member numeric vector\n")
     return(FALSE)
   }
-  serverMem <- as.double(serverMem)
+  server.mem <- as.double(server.mem)
   FastRegImportCpp(
-    dataFile,
-    h5Dir,
-    headerRow,
-    idCol,
-    dataCol,
-    buffSize,
+    data.file,
+    h5.dir,
+    header.row,
+    id.col,
+    data.col,
+    buff.size,
     transpose,
-    chunkEdge,
+    chunk.edge,
     vcf,
     delimiter,
     gz,
-    poiPerFile,
-    singleFile,
-    serverThreads,
-    serverMem
+    poi.per.file,
+    single.file,
+    server.threads,
+    server.mem
   )
 }
