@@ -244,7 +244,6 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
   // Read file content
   size_t row_count = 0;
   int phenotype_idx = col_names[phenotype];
-  Rcpp::Rcout << "phenotype idx: " << phenotype_idx << std::endl;
   while (std::getline(file_stream, line))
   {
     row_items = split(line, delim_char);
@@ -337,8 +336,11 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
   {
     if (col_name != id)
     {
-      col_names[col_name] = col_idx;
-      col_idx++;
+      auto cov_idx = std::find(covariates.begin(), covariates.end(), col_name);
+      if(cov_idx != covariates.end()) {
+        int idx = cov_idx - covariates.begin();
+        col_names[col_name] = idx;
+      }
     }
   }
   // Count lines
@@ -356,7 +358,7 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
   std::getline(file_stream, line);
 
   // Initialize Armadillo matrix
-  data.set_size(num_lines, col_idx);
+  data.set_size(num_lines, covariates.size());
   str_data.resize(num_lines);
   std::vector<std::string> row_items;
   // Read file content
@@ -376,11 +378,12 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
     int str_col_count = 0;
     for (size_t i = 1; i < row_items.size(); ++i)
     {
+      int index;
       auto temp_col_name = std::find(covariates.begin(), covariates.end(), col_headers.at(i));
       bool isNumeric = false;
       if (temp_col_name != covariates.end())
       {
-        int index = temp_col_name - covariates.begin();
+        index = temp_col_name - covariates.begin();
         isNumeric = cov_type.at(index) == "numeric";
         // Rcpp::Rcout << "Found col in cov: " << covariates.at(index) << std::endl;
       }
@@ -390,13 +393,13 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
         if (row_items[i].empty())
         {
           // Rcpp::Rcout << "Found numeric col with empty str: " << col_headers.at(i) << " at index " << i + 1 << std::endl;
-          data(row_count, i - 1) = NAN;
+          data(row_count, index) = NAN;
         }
         else
         {
           try
           {
-            data(row_count, i - 1) = std::stof(row_items[i]);
+            data(row_count, index) = std::stof(row_items[i]);
           }
           catch (const std::invalid_argument &e)
           {
@@ -410,16 +413,6 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
         col_names_str[col_headers.at(i)] = str_col_count;
         str_col_count++;
       }
-      // try {
-      //   if(row_items[i].empty() && isNumeric) {
-      //     data(row_count, i - 1) = nanf;
-      //   }
-      //   data(row_count, i - 1) = std::stof(row_items[i]);
-      // } catch (const std::invalid_argument &e) {
-      //   str_data[row_count].push_back(row_items[i]);
-      //   col_names_str[col_headers.at(i)] = str_col_count;
-      //   str_col_count++;
-      // }
     }
 
     row_count++;
