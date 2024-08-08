@@ -89,7 +89,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
-
+  // Rcpp::Rcout << "Stratifying data" << std::endl;
   // Stratify data
   Strata stratums;
   stratums.stratify(config.split_by, covar_df, intersected_ind);
@@ -113,9 +113,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       ind_set_idx[ct] = pheno_df.get_row_idx(ind);
       ct++;
     }
+    
+    // Rcpp::Rcout << "Init matrices" << std::endl;
     // initialize matrices
-    FRMatrix pheno_matrix = pheno_df.get_submat_by_cols(
-        ind_set_idx, {config.phenotype}); // check col names
+    FRMatrix pheno_matrix = pheno_df; // check col names
 
     // n individuals x # covariates
     FRMatrix covar_matrix = create_design_matrix(
@@ -131,7 +132,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                     covar_poi_interaction_matrix);
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
-
+    
+    // Rcpp::Rcout << "Identify missing" << std::endl;
     // identify missing values for covar, pheno matrix
     for (size_t i = 0; i < covar_matrix.data.n_rows; i++)
     {
@@ -146,7 +148,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         ind_set_filtered.push_back(ind_set[i]);
       }
     }
-
+    
+    // Rcpp::Rcout << "Removing missing" << std::endl;
     // remove from covar, pheno
     covar_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
     pheno_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
@@ -176,7 +179,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         (int)std::ceil((double)num_poi / (double)chunk_size);
     // int total_nonconvergence_status = 0;
     // double sum_total_filtered_pois = 0.0;
-
+    
     FRMatrix poi_matrix;
     auto start_time = std::chrono::high_resolution_clock::now();
     // allocate memory space for H5 file to read into
@@ -188,6 +191,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       {
         end_chunk = num_poi;
       }
+      
+      // Rcpp::Rcout << "Reading poi chunk" << std::endl;
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
       // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " << end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks << std::endl;
@@ -306,7 +311,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       se_beta.col_names = beta_est.col_names;
       neglog10_pvl.col_names = beta_est.col_names;
       std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
-
+      
+      // Rcpp::Rcout << "Creating W2" << std::endl;
       arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
                                  arma::fill::ones);
       for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++)
@@ -328,7 +334,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "init matrices" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
-      
+      // pheno_matrix.data.print();
       // int covar_nans = arma::sum(arma::find_nonfinite(covar_matrix.data));
       
       // int pheno_nans = arma::sum(arma::find_nonfinite(pheno_matrix.data));
