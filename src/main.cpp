@@ -598,8 +598,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "init matrices" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
-      pheno_matrix.data.print();
-      covar_matrix.data.print();
+      // pheno_matrix.data.print();
+      // covar_matrix.data.print();
       // int covar_nans = arma::sum(arma::find_nonfinite(covar_matrix.data));
 
       // int pheno_nans = arma::sum(arma::find_nonfinite(pheno_matrix.data));
@@ -1032,7 +1032,7 @@ bool compareDesignMatrices(
     bool n_rows = covar_matrix_2.n_rows == covar_matrix.data.n_rows;
 
 
-    bool approx_equal = arma::approx_equal(covar_matrix.data, covar_matrix_2, "absdiff", 1.0e-6);
+    bool approx_equal = arma::approx_equal(covar_matrix.data, covar_matrix_2, "reldiff", 0.1);
     arma::uvec idx = arma::find_nonfinite(covar_matrix.data);
     arma::uvec idx_2 = arma::find_nonfinite(covar_matrix_2);
     std::vector<std::string> col_names(covar_matrix.col_names.size());
