@@ -56,4 +56,8 @@ FRMatrix create_design_matrix(
     double colinearity_rsq=1.0
 );
 
+/// @brief given a string it determines if it is only whitespace
+/// @param str the string in question
+/// @return true if only whitespace, false if true
+bool isWhitespace(const std::string &str);
 #endif // UTILS_H

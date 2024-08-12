@@ -1,6 +1,7 @@
 useDynLib(FastReg, .registration=TRUE)
 exportPattern("^[[:alpha:]]+")
 export(FastReg)
+export(compareDesignMatrices)
 export(TextToH5)
 export(H5_To_Bed)
 export(perform.GLM.test)

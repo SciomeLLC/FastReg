@@ -1,4 +1,4 @@
-#include "utils.h"
+#include <utils.h>
 
 static void chkIntFn(void *dummy) {
   R_CheckUserInterrupt();
@@ -177,4 +177,13 @@ FRMatrix create_design_matrix(FRMatrix &df, std::vector<Covariate> covariates,
     cv.add_to_matrix(df, X, colinearity_rsq);
   }
   return X;
+}
+
+/// @brief given a string it determines if it is only whitespace
+/// @param str the string in question
+/// @return true if only whitespace, false if true
+bool isWhitespace(const std::string &str)
+{
+  return std::all_of(str.begin(), str.end(), [](char c)
+                     { return std::isspace(c); });
 }

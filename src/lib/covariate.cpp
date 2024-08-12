@@ -6,6 +6,7 @@
 #include <fr_matrix.h>
 #include <string>
 #include <vector>
+#include <utils.h>
 
 std::vector<std::string> Covariate::split(std::string &val, std::string delim) {
   std::vector<std::string> split_result;
@@ -71,7 +72,11 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
     for (const std::string &lev : levels) {
       arma::fmat res(df.data.n_rows, 1);
       for (arma::uword i = 0; i < df.data.n_rows; i++) {
-        res(i, 0) = (col_vals[i] == lev) ? 1 : 0;
+        if (col_vals[i].empty() || isWhitespace(col_vals[i])) {
+          res(i, 0) = NAN;
+        } else {
+          res(i, 0) = (col_vals[i] == lev) ? 1 : 0;
+        }
       }
       
       candidate_cols.data.insert_cols(count, res);

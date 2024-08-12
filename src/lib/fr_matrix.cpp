@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unordered_map>
 #include <vector>
+#include <utils.h>
 
 #ifndef __has_include
 static_assert(false, "__has_include not supported");
@@ -388,9 +389,13 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
         // Rcpp::Rcout << "Found col in cov: " << covariates.at(index) << std::endl;
       }
 
+      // if (row_count > 230 && row_count < 236 && covariates.at(index) == "Agesq") {
+      //   Rcpp::Rcout << "Reading row: " << row_count << std::endl;
+      //   Rcpp::Rcout << "With value: " << row_items[i] << std::endl;
+      // }
       if (isNumeric)
       {
-        if (row_items[i].empty())
+        if (row_items[i].empty() || isWhitespace(row_items[i]))
         {
           // Rcpp::Rcout << "Found numeric col with empty str: " << col_headers.at(i) << " at index " << i + 1 << std::endl;
           data(row_count, index) = NAN;
@@ -497,18 +502,45 @@ FRMatrix FRMatrix::get_submat_by_cols(
   return subm;
 }
 
-std::vector<std::string> FRMatrix::split(const std::string &str_tokens,
-                                         char delim)
+std::vector<std::string> FRMatrix::split(const std::string &str_tokens, char delim)
 {
-  std::vector<std::string> tokens;
-  std::stringstream ss(str_tokens);
-  std::string item;
-  while (std::getline(ss, item, delim))
+  std::string str = str_tokens;
+  str.erase(std::remove_if(str.begin(), str.end(),
+                           [](char i)
+                           { return (i == '\r'); }),
+            str.end()); // remove the carriage return if it is there
+  std::vector<std::string> toks(0);
+  std::stringstream stream(str);
+  std::string temp;
+  int i = 1;
+  // Loop over the stringstream until newline '\n' is hit
+  while (!stream.eof())
   {
-    tokens.push_back(item);
+    std::getline(stream, temp, delim);
+    temp.erase(std::remove_if(temp.begin(), temp.end(), ::isspace), temp.end()); // remove all whitespace from the value
+    toks.push_back(temp);
   }
-  return tokens;
+
+  return toks;
 }
+// std::vector<std::string> FRMatrix::split(const std::string &str_tokens,
+//                                          char delim)
+// {
+//   std::string str_temp = str_tokens;
+//   str_temp.erase(std::remove_if(str_temp.begin(), str_temp.end(),
+//                            [](char i)
+//                            { return (i == '\r'); }),
+//             str_temp.end());
+//   std::vector<std::string> tokens;
+//   std::stringstream ss(str_temp);
+//   std::string item;
+//   while (std::getline(ss, item, delim))
+//   {
+//     item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
+//     tokens.push_back(item);
+//   }
+//   return tokens;
+// }
 
 std::vector<std::string> FRMatrix::get_col_str(const std::string &col_name)
 {
