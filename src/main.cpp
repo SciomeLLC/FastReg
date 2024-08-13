@@ -601,10 +601,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // pheno_matrix.data.print();
       // covar_matrix.data.print();
       // int covar_nans = arma::sum(arma::find_nonfinite(covar_matrix.data));
-
       // int pheno_nans = arma::sum(arma::find_nonfinite(pheno_matrix.data));
-
-      // int poi_nans =arma::sum( arma::find_nonfinite(poi_matrix.data));
+      // int poi_nans = arma::sum( arma::find_nonfinite(poi_matrix.data));
       // int w2_nans = arma::sum(arma::find_nonfinite(W2));
       // int inter_nans = arma::sum(arma::find_nonfinite(covar_poi_interaction_matrix.data));
 
@@ -613,7 +611,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "poi_nans: " << poi_nans << std::endl;
       // Rcpp::Rcout << "w2_nans: " << w2_nans << std::endl;
       // Rcpp::Rcout << "inter_nans: " << inter_nans << std::endl;
-
+      
 #if !defined(__APPLE__) && !defined(__MACH__)
       Rcpp::Rcout << "Setting OMP threads " << num_threads << std::endl;
       omp_set_num_threads(num_threads);

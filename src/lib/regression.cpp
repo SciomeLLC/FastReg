@@ -2,14 +2,16 @@
 #include <regression.h>
 #include <utils.h>
 
-arma::fcolvec RegressionBase::t_dist(arma::fcolvec abs_z, int df) {
+arma::fcolvec RegressionBase::t_dist(arma::fcolvec abs_z, int df)
+{
 
   arma::fcolvec pvalues = conv_to<fcolvec>::from(
       -1 * (stats2::pt(abs_z, df, true) + log(2)) / log(10));
   return pvalues;
 }
 
-arma::fcolvec RegressionBase::norm_dist(arma::fcolvec abs_z, int df) {
+arma::fcolvec RegressionBase::norm_dist(arma::fcolvec abs_z, int df)
+{
   return conv_to<fcolvec>::from(
       -1 * (stats2::pnorm(abs_z, 1.0, 1.0, true) + log(2)) / log(10));
 }
@@ -22,18 +24,18 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                              FRMatrix &neglog10_pvl,
                              arma::fcolvec &beta_rel_errs,
                              arma::fcolvec &beta_abs_errs, int max_iter,
-                             bool is_t_dist) {
-
+                             bool is_t_dist)
+{
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
   // create a pointer to the specified distribution function
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist : norm_dist;
-
 #pragma omp parallel for
-  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
+
+  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++)
+  {
     checkInterrupt();
     arma::fmat A(n_parms, n_parms, arma::fill::zeros);
-
     // Initialize beta
     arma::fcolvec beta(n_parms, arma::fill::zeros);
     arma::fcolvec beta_old = arma::fcolvec(beta);
@@ -51,44 +53,27 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     // arma::span col_1 = arma::span(0,0);
     beta_rel_errs.at(poi_col) = 1;
 
-    // if (poi_col < 2) {
-    //   poi_data.data.col(poi_col).print();
-    //   Rcpp::Rcout << "init intermediate matrices" << std::endl;
-    //   Rcpp::Rcout << "interactions size: " << arma::size(interactions.data)
-    //               << std::endl;
-    //   Rcpp::Rcout << "poi_data size: " << arma::size(poi_data.data)
-    //               << std::endl;
-    //   Rcpp::Rcout << "poi_col size: " <<
-    //   arma::size(poi_data.data.col(poi_col))
-    //               << std::endl;
-    // }
+    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4; iter++)
+    {
 
-    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4;
-         iter++) {
       arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
       eta += cov_w_mat * beta.subvec(first);
       eta += int_w_mat * beta.subvec(second);
 
       arma::fmat p = 1 / (1 + arma::exp(-eta));
       arma::fmat W1 = p % (1 - p) % w2_col;
-
       arma::fmat temp1 = cov_w_mat % arma::repmat(W1, 1, cov_w_mat.n_cols);
       arma::fmat temp2 = int_w_mat % arma::repmat(W1, 1, int_w_mat.n_cols);
 
-      A.submat(first, first) = temp1.t() * cov_w_mat;        // C'C
-      A.submat(second, second) = temp2.t() * int_w_mat;      // I'I
-      A.submat(first, second) = temp1.t() * int_w_mat;       // C'I
+      A.submat(first, first) = temp1.t() * cov_w_mat; // C'C
+      A.submat(second, second) = temp2.t() * int_w_mat; // I'I
+      A.submat(first, second) = temp1.t() * int_w_mat; // C'I
       A.submat(second, first) = A.submat(first, second).t(); // I'C
-
       arma::fmat z = w2_col % (pheno.data - p);
-
       arma::fmat B = arma::fmat(n_parms, 1, arma::fill::zeros);
       B.submat(first, arma::span(0, 0)) = cov_w_mat.t() * z;
       B.submat(second, arma::span(0, 0)) = int_w_mat.t() * z;
 
-      // if (iter == max_iter - 2) {
-      //   beta_old = beta;
-      // }
       beta = beta + arma::solve(A, B, arma::solve_opts::fast);
       beta_diff = arma::abs(beta - beta_old);
       beta_abs_errs.at(poi_col) = beta_diff.max();
@@ -97,15 +82,15 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     }
 
     // arma::fcolvec beta_diff = arma::abs(beta - beta_old);
+
     beta_abs_errs.at(poi_col) = beta_diff.max();
     beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
-
     int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
-    arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A))));
-
+    // arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::inv(A))));
+    
+    arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A,1e-10,"std"))));
     beta_est.data.col(poi_col) = beta;
-    se_beta.data.col(poi_col) =
-        arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A))));
+    se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
     neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
   }
@@ -116,14 +101,16 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                            FRMatrix &beta_est, FRMatrix &se_beta,
                            FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
                            arma::fcolvec &beta_abs_errs, int max_iter,
-                           bool is_t_dist) {
+                           bool is_t_dist)
+{
 
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
   arma::span col_1 = arma::span(0, 0);
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist : norm_dist;
 #pragma omp parallel for
-  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
+  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++)
+  {
     checkInterrupt();
     // Initialize beta
     arma::fmat beta(n_parms, 1, arma::fill::zeros);
