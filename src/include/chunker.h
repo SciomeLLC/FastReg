@@ -1,3 +1,6 @@
+#ifndef CHUNKER_H
+#define CHUNKER_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <iostream>
@@ -48,3 +51,4 @@ class Chunker{
     void get_num_threads();
     void get_num_cpus();
 };
+#endif

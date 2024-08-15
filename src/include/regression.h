@@ -1,3 +1,6 @@
+#ifndef REGRESSION_H
+#define REGRESSION_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <string>
@@ -10,7 +13,6 @@
 #include <fr_matrix.h>
 #include <covariate.h>
 #include <stats.hpp>
-#pragma once
 
 using namespace arma;
 
@@ -71,3 +73,4 @@ class LinearRegression : public RegressionBase {
             bool is_t_dist
         );
 };
+#endif

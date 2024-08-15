@@ -1,3 +1,6 @@
+#ifndef FRMATRIX_H
+#define FRMATRIX_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <names_map.h>
@@ -7,7 +10,6 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
-#pragma once
 
 class FRMatrix {
 public:
@@ -89,3 +91,4 @@ public:
     );
     static void zip_results(std::string output_dir);
 };
+#endif

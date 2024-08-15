@@ -1,4 +1,7 @@
 
+#ifndef COV_H
+#define COV_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <fr_matrix.h>
@@ -8,7 +11,6 @@
 #include <cmath>
 
 using namespace arma;
-#pragma once
 class Covariate {
     public:
     std::vector<std::string> levels;
@@ -31,3 +33,4 @@ class Covariate {
     std::vector<std::string> split(std::string& val, std::string delim);
     void add_to_matrix(FRMatrix& df, FRMatrix& X_mat, double colinearity_rsq);
 };
+#endif

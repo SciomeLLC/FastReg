@@ -1,5 +1,7 @@
 
-
+#ifndef H5FILE_H
+#define H5FILE_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include "hdf5.h"
 #include <RcppArmadillo.h>
@@ -13,7 +15,6 @@
   #include <omp.h>
 #endif
 
-#pragma once
 class POI {
 public:
     std::vector<std::string> names;
@@ -55,3 +56,4 @@ public:
     void load_int_data_chunk(FRMatrix& G,  hsize_t* hyperslab_dims,  hsize_t* src_offset);
     void load_float_data_chunk(FRMatrix& G,  hsize_t* hyperslab_dims,  hsize_t* src_offset);
 };
+#endif

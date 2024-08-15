@@ -1,3 +1,6 @@
+#ifndef NAMESMAP_H
+#define NAMESMAP_H
+#pragma once
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -15,3 +18,4 @@ private:
     std::unordered_map<std::string, int> name_to_index;
     std::unordered_map<int, std::string> index_to_name;
 };
+#endif

@@ -1,3 +1,6 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -20,7 +23,6 @@ namespace fs = std::experimental::filesystem;
 #  endif
 #endif
 
-#pragma once
 class Config {
     public:
     
@@ -137,3 +139,4 @@ class Config {
     void get_poi_files();
     std::vector<std::string> split(std::string val, std::string delim, std::string default_str_val, unsigned int size);
 };
+#endif
