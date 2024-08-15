@@ -257,10 +257,10 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
     }
     row_names[row_name] = row_count;
 
-    int str_col_count = 0;
+    // int str_col_count = 0;
     for (size_t i = 1; i < row_items.size(); ++i)
     {
-      if (i == phenotype_idx)
+      if ((int)i == phenotype_idx)
       {
         if (row_items[i].empty())
         {
@@ -328,7 +328,7 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
 
   std::vector<std::string> col_headers = split(line, delim_char);
 
-  int col_idx = 0;
+  // int col_idx = 0;
   if (col_headers[0] != id)
   {
     Rcpp::stop("Expected %s as the first column of %s but found %s", id, filename, col_headers[0]);
@@ -512,7 +512,7 @@ std::vector<std::string> FRMatrix::split(const std::string &str_tokens, char del
   std::vector<std::string> toks(0);
   std::stringstream stream(str);
   std::string temp;
-  int i = 1;
+  // int i = 1;
   // Loop over the stringstream until newline '\n' is hit
   while (!stream.eof())
   {

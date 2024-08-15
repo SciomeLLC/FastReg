@@ -64,7 +64,7 @@ std::vector<std::string> tokenize(std::string str, const char token = '\t')
   std::vector<std::string> toks(0);
   std::stringstream stream(str);
   std::string temp;
-  int i = 1;
+  // int i = 1;
   // Loop over the stringstream until newline '\n' is hit
   while (!stream.eof())
   {
@@ -132,10 +132,10 @@ std::vector<std::vector<int>> find_cols_to_subset(std::vector<std::string> heade
 
   std::vector<std::vector<int>> retV(0);
   //////////////////////////////////////////////
-  for (int it = 0; it < header.size(); it++)
+  for (size_t it = 0; it < header.size(); it++)
   {
     /////////////////////////////////////////////////////////////////
-    for (int jt = 0; jt < covariates.size(); jt++)
+    for (size_t jt = 0; jt < covariates.size(); jt++)
     {
       std::string temp = Rcpp::as<std::string>(covariates[jt]);
 
@@ -165,7 +165,7 @@ std::vector<std::string> unique_levels(std::vector<std::vector<std::string>> fil
 {
 
   std::vector<std::string> entries(0);
-  for (int i = 1; i < file_info.size(); i++)
+  for (size_t i = 1; i < file_info.size(); i++)
   { // loop over the rows, start at 1 to ignore header
 
     if (!file_info[i][col].empty() &&
@@ -200,7 +200,7 @@ arma::fmat create_design_mat(std::vector<std::vector<std::string>> file,
   int n = file.size() - 1;
   // step 1 determine the size of the matrix
   int r = 0;
-  for (int i = 0; i < covType_numeric.size(); i++)
+  for (size_t i = 0; i < covType_numeric.size(); i++)
   {
     if (covType_numeric[i])
     {
@@ -214,7 +214,7 @@ arma::fmat create_design_mat(std::vector<std::vector<std::string>> file,
   // step 2 create the design matrix
   arma::fmat return_mat(n, r);
   int idx = 0;
-  for (int i = 0; i < covType_numeric.size(); i++)
+  for (size_t i = 0; i < covType_numeric.size(); i++)
   {
     if (covType_numeric[i])
     {
@@ -245,7 +245,7 @@ arma::fmat create_design_mat(std::vector<std::vector<std::string>> file,
     }
     else
     {
-      for (int z = 0; z < factor_levels[i].size() - 1; z++)
+      for (size_t z = 0; z < factor_levels[i].size() - 1; z++)
       {
         for (int k = 0; k < n; k++)
         {
@@ -282,8 +282,8 @@ arma::fmat createDesign(std::string file_to_open, std::string delim,
 
   // std::vector<std::vector<std::string>> tokenized_file = read_file(file_to_open, delim[0]); // a vector of vectors representing the tokenized lines of the file
 
-  int n = tokenized_file.size() - 1;
-  int k = tokenized_file[0].size();
+  // int n = tokenized_file.size() - 1;
+  // int k = tokenized_file[0].size();
 
   // determine the columns of interest
   std::vector<std::vector<int>> use_col = find_cols_to_subset(tokenized_file[0], covariates, cov_type);
@@ -1017,7 +1017,7 @@ bool compareDesignMatrices(
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
-  int num_poi = poi_names.size();
+  // int num_poi = poi_names.size();
   
     // initialize matrices
     FRMatrix pheno_matrix = pheno_df; // check col names
@@ -1048,36 +1048,15 @@ bool compareDesignMatrices(
       if (col_names.at(i) == "Agesq") {
 
         std::string col_name = col_names.at(i);
-        // Rcpp::Rcout << "Checking col_name: " << col_name << " non-finites: " << std::endl;
-        // Rcpp::Rcout << idx.n_elem << std::endl;
-        // Rcpp::Rcout << col(232) << std::endl;
-        // Rcpp::Rcout << col(233) << std::endl;
-        // Rcpp::Rcout << col(234) << std::endl;
       }
-
-      // for (size_t j = 0; j < idx.n_elem; j++) {
-      //   Rcpp::Rcout << "covar_mat NAN: " << idx[j] << "," << i << std::endl;
-      //   Rcpp::Rcout << covar_matrix.data(idx[j], i) << std::endl;
-      // }
     }
 
     Rcpp::Rcout << "cov_mat_idx NAN len: " << idx.n_elem << std::endl;
     Rcpp::Rcout << "cov_mat_2_idx NAN len: " << idx_2.n_elem << std::endl;
-    // if(idx.n_elem >= idx_2.n_elem) {
-    //   for (size_t i = 0; i < idx.n_elem; i++) {
-    //     Rcpp::Rcout << "Covar mat: " << idx[i] << " covar mat 2: " << idx_2[i] << std::endl;
-    //   }
-    // } else {
-    //   for (size_t i = 0; i < idx_2.n_elem; i++) {
-    //     Rcpp::Rcout << "Covar mat: " << idx[i] << " covar mat 2: " << idx_2[i] << std::endl;
-    //   }
-    // }
     Rcpp::Rcout << "n_cols covar_mat: " << covar_matrix.data.n_cols << std::endl;
     Rcpp::Rcout << "n_cols covar_mat_2: " << covar_matrix_2.n_cols << std::endl;
     Rcpp::Rcout << "n_cols eq: " << n_cols << std::endl;
     Rcpp::Rcout << "n_rows eq: " << n_rows << std::endl;
     Rcpp::Rcout << "eq: " << approx_equal << std::endl;
-    // covar_matrix.data.col(9).print();
     return n_cols && n_rows && approx_equal;
-    // return arma::approx_equal(covar_matrix.data, covar_matrix_2, "absdiff", 1.0e-6);
 }

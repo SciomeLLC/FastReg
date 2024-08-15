@@ -65,16 +65,22 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       arma::fmat temp1 = cov_w_mat % arma::repmat(W1, 1, cov_w_mat.n_cols);
       arma::fmat temp2 = int_w_mat % arma::repmat(W1, 1, int_w_mat.n_cols);
 
-      A.submat(first, first) = temp1.t() * cov_w_mat; // C'C
-      A.submat(second, second) = temp2.t() * int_w_mat; // I'I
-      A.submat(first, second) = temp1.t() * int_w_mat; // C'I
+      A.submat(first, first) = temp1.t() * cov_w_mat;        // C'C
+      A.submat(second, second) = temp2.t() * int_w_mat;      // I'I
+      A.submat(first, second) = temp1.t() * int_w_mat;       // C'I
       A.submat(second, first) = A.submat(first, second).t(); // I'C
       arma::fmat z = w2_col % (pheno.data - p);
       arma::fmat B = arma::fmat(n_parms, 1, arma::fill::zeros);
       B.submat(first, arma::span(0, 0)) = cov_w_mat.t() * z;
       B.submat(second, arma::span(0, 0)) = int_w_mat.t() * z;
 
-      beta = beta + arma::solve(A, B, arma::solve_opts::fast);
+      if (iter == 0) {
+        beta = beta + 0.75 * arma::solve(A, B, arma::solve_opts::fast);
+      } else {
+        beta = beta + arma::solve(A, B, arma::solve_opts::fast);
+      }
+      
+      // beta = beta + arma::solve(A, B, arma::solve_opts::fast);
       beta_diff = arma::abs(beta - beta_old);
       beta_abs_errs.at(poi_col) = beta_diff.max();
       beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta_old)).max();
@@ -87,8 +93,8 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
     int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
     // arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::inv(A))));
-    
-    arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A,1e-10,"std"))));
+
+    arma::fcolvec temp_se = arma::sqrt(arma::abs(arma::diagvec(arma::pinv(A, 1e-10, "std"))));
     beta_est.data.col(poi_col) = beta;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
