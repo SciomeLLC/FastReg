@@ -127,7 +127,8 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
     beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
     int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
 
-    arma::fcolvec temp_se = arma::sqrt(arma::diagvec(arma::inv_sympd(A)));
+    // arma::fcolvec temp_se = arma::sqrt(arma::diagvec(arma::inv_sympd(A)));
+    arma::fcolvec temp_se = arma::sqrt(arma::diagvec(arma::pinv(A)));
     beta_est.data.col(poi_col) = beta;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
