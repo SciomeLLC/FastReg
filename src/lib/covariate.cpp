@@ -406,10 +406,14 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
 
     float ssa = arma::accu(arma::square(y));
     arma::fmat zty = Z.t() * y;
-    
-    float lambda = 1e-7; // Regularization parameter
-    arma::fmat I = arma::eye<arma::fmat>(Z.n_cols, Z.n_cols);
-    arma::fmat g = arma::pinv(Z.t() * Z + lambda * I);
+    try {
+
+      float lambda = 1e-7; // Regularization parameter
+      arma::fmat I = arma::eye<arma::fmat>(Z.n_cols, Z.n_cols);
+      arma::fmat g = arma::pinv(Z.t() * Z + lambda * I);
+    } catch (const std::runtime_error &e) {
+      Rcpp::stop(e.what());
+    }
 
 
     float sse = arma::accu(arma::square(y - Z * g * zty));
