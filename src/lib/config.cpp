@@ -104,8 +104,8 @@ void Config::validate_covariate_config(
   covariate_levels = convert_stringV_to_string_arr(covariate_levels_str);
   covariate_ref_level = convert_stringV_to_string_arr(covariate_ref_level_str);
 
-  for (const bool &cov_std : covariate_standardize_str) {
-    covariate_standardize.push_back(cov_std);
+  for (const int &cov_std : covariate_standardize_str) {
+    covariate_standardize.push_back((bool)cov_std);
   }
 
   // split_by = split(split_by_str, ",", "", 0);

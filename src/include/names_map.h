@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
-
 // Custom data structure to store row or column names
 class NamesMap {
 public:

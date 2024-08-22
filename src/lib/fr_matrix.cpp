@@ -325,7 +325,6 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
         "Invalid delim! delim for %s must be 'tab', 'comma', or 'semicolon'",
         filename);
   }
-
   std::vector<std::string> col_headers = split(line, delim_char);
 
   // int col_idx = 0;
@@ -338,7 +337,8 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
     if (col_name != id)
     {
       auto cov_idx = std::find(covariates.begin(), covariates.end(), col_name);
-      if(cov_idx != covariates.end()) {
+      if (cov_idx != covariates.end())
+      {
         int idx = cov_idx - covariates.begin();
         col_names[col_name] = idx;
       }
@@ -389,10 +389,6 @@ void FRMatrix::load_from_csv(std::string &filename, std::string &delim,
         // Rcpp::Rcout << "Found col in cov: " << covariates.at(index) << std::endl;
       }
 
-      // if (row_count > 230 && row_count < 236 && covariates.at(index) == "Agesq") {
-      //   Rcpp::Rcout << "Reading row: " << row_count << std::endl;
-      //   Rcpp::Rcout << "With value: " << row_items[i] << std::endl;
-      // }
       if (isNumeric)
       {
         if (row_items[i].empty() || isWhitespace(row_items[i]))
@@ -523,27 +519,10 @@ std::vector<std::string> FRMatrix::split(const std::string &str_tokens, char del
 
   return toks;
 }
-// std::vector<std::string> FRMatrix::split(const std::string &str_tokens,
-//                                          char delim)
-// {
-//   std::string str_temp = str_tokens;
-//   str_temp.erase(std::remove_if(str_temp.begin(), str_temp.end(),
-//                            [](char i)
-//                            { return (i == '\r'); }),
-//             str_temp.end());
-//   std::vector<std::string> tokens;
-//   std::stringstream ss(str_temp);
-//   std::string item;
-//   while (std::getline(ss, item, delim))
-//   {
-//     item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
-//     tokens.push_back(item);
-//   }
-//   return tokens;
-// }
 
 std::vector<std::string> FRMatrix::get_col_str(const std::string &col_name)
 {
+  
   bool exists = col_names_str.find(col_name) != col_names_str.end();
   if (!exists)
   {
@@ -908,5 +887,31 @@ void FRMatrix::concatenate_results(std::string output_dir,
       fs::remove(file_path);
     }
     out.close();
+  }
+}
+
+void FRMatrix::join(FRMatrix &fmat) {
+
+  if(data.size() == 0) {
+    data = fmat.data;
+    col_names = fmat.col_names;
+    row_names = fmat.row_names;
+    return;
+  } 
+
+  if(fmat.data.n_rows != data.n_rows) {
+    Rcpp::Rcout << fmat.data.n_rows << " vs " << data.n_rows << std::endl;
+    Rcpp::stop("Error: cannot join_horiz matrices with different row counts.");
+  }
+  Rcpp::Rcout << "Joining fmat with design matrix" << std::endl;
+  // join the matrices
+  data = arma::join_horiz(data, fmat.data);
+  size_t num_cols = col_names.size();
+  Rcpp::Rcout << "Num cols: " << num_cols << std::endl;
+  
+  // Add column names and increase indices accordingly
+  for (auto el : fmat.col_names) {
+    Rcpp::Rcout << "Adding col_names: " << el.first << ": " << el.second << std::endl; 
+    col_names.emplace(el.first, el.second + num_cols);
   }
 }

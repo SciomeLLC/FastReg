@@ -13,6 +13,8 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+## Introduction
+
 In genome-wide association studies (GWAS) and other genomic analyses, logistic regression is a central analysis tool for binary responses.
 For millions of SNPs that require millions of regressions, logistic regression analyses require significant computational resources,
 which are especially costly in terms of time, money, and carbon footprint when carried out in typical analysis pipelines.
@@ -49,7 +51,6 @@ macrtools::gfortran_install()
 install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools", "BEDMatrix"))
 Biocmanager::install("rhdf5")
 library(devtools)
-# install the package from github
 install_github("SciomeLLC/FastReg")
 library(FastReg)
 ```
@@ -174,7 +175,7 @@ FastReg(
 )
 ```
 
-NOTE: MacOS doesn't support OpenMP natively currently and this parameter will be defaulted to 1 on a MacOS system.
+NOTE: MacOS doesn't support OpenMP natively currently and this parameter will be defaulted to 1 on MacOS.
 
 #### Workers
 
@@ -228,13 +229,13 @@ FastReg(
 
 Windows users may get an error related to the HDF5 library:
 
-```
+```{text}
 ***HDF5 library version mismatched error***
 ```
 
 You can set the following environment variable to safely disable the warning:
 
-```
+```{r eval=FALSE}
 Sys.setenv(HDF5_DISABLE_VERSION_CHECK='2')
 ```
 

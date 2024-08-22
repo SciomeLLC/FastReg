@@ -7,7 +7,6 @@
 #include <cmath>
 #include <thread>
 
-
 struct ChunkConfig {
     int num_files;
     int num_poi;

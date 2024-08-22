@@ -1,4 +1,5 @@
 #define ARMA_WARN_LEVEL 0
+
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <algorithm>
@@ -7,6 +8,7 @@
 #include <chunker.h>
 #include <config.h>
 #include <covariate.h>
+#include <covariate_matrix.h>
 #include <ctime>
 #include <fr_matrix.h>
 #include <fstream>
@@ -48,267 +50,6 @@ namespace fs = std::filesystem;
 namespace fs = std::experimental::filesystem;
 #endif
 #endif
-
-// [[Rcpp::depends(RcppArmadillo)]]
-////////////////////////////////////////////////////////////////////////////////////////////////
-/// @brief tokenize - split a string into tokens assuming based upon the 'token' character
-/// @param str   -- string to split
-/// @param token -- token defaults to tab
-/// @return -- returns a standard vector of strings where each one is represents a value between the tokens
-std::vector<std::string> tokenize(std::string str, const char token = '\t')
-{
-  str.erase(std::remove_if(str.begin(), str.end(),
-                           [](char i)
-                           { return (i == '\r'); }),
-            str.end()); // remove the carriage return if it is there
-  std::vector<std::string> toks(0);
-  std::stringstream stream(str);
-  std::string temp;
-  // int i = 1;
-  // Loop over the stringstream until newline '\n' is hit
-  while (!stream.eof())
-  {
-    std::getline(stream, temp, token);
-    temp.erase(std::remove_if(temp.begin(), temp.end(), ::isspace), temp.end()); // remove all whitespace from the value
-    toks.push_back(temp);
-  }
-
-  return toks;
-}
-
-/// @brief read_file()
-/// @param name - the name of the file to read
-/// @param token - the character token to read by default it is '\t'
-/// @return - the file returns a vector of vector<strings> where each row of the outside vector
-///           represents a line of the file, and each entry of the inside vector represents an
-///           entry from the line without the token and without the any white space
-std::vector<std::vector<std::string>> read_file(std::string name, const char token = '\t')
-{
-  std::ifstream file;
-  file.open(name);
-  std::string in_line;
-  std::vector<std::string> line;                        // each line of the file
-  std::vector<std::vector<std::string>> tokenized_file; // a vector of vectors representing the tokenized lines of the file
-
-  // go through the file line-by-line and tokenize it
-  while (std::getline(file, in_line))
-  {
-    line = tokenize(in_line, token);
-    tokenized_file.push_back(line);
-  }
-  file.close();
-
-  return tokenized_file;
-}
-
-/// @brief Make sure the values in covs are valid input
-/// @param covs Vector of strings.  Elements should contain either 'numeric' or 'categorical'
-void check_covariate_type(Rcpp::StringVector covs)
-{
-  for (auto it = covs.begin(); it != covs.end(); it++)
-  {
-    std::string temp = Rcpp::as<std::string>(*it);
-
-    if (!(temp.compare("numeric") == 0) && !(temp.compare("categorical") == 0))
-    {
-      Rcpp::stop("Require either `numeric' or `categorical' for covaraite type.");
-    }
-  }
-}
-
-/// @brief Given the header find the columns in the header of the covariate file
-///        that we need to subset
-/// @param header - the 'named' header of the file
-/// @param covariates = the covariates we are searching for.
-/// @return           - a vector of columnn indices that represent the columns that make up our matrix
-///                   - the second vector represents the type of covariate it is supposed to be
-///                   - 1/true = numeric , 0/false = categorical
-std::vector<std::vector<int>> find_cols_to_subset(std::vector<std::string> header,
-                                                  Rcpp::StringVector covariates,
-                                                  Rcpp::StringVector cov_type)
-{
-  std::vector<int> use_col(0);
-  std::vector<int> type_cov(0);
-
-  std::vector<std::vector<int>> retV(0);
-  //////////////////////////////////////////////
-  for (size_t it = 0; it < header.size(); it++)
-  {
-    /////////////////////////////////////////////////////////////////
-    for (size_t jt = 0; jt < covariates.size(); jt++)
-    {
-      std::string temp = Rcpp::as<std::string>(covariates[jt]);
-
-      if (temp.compare(header[it]) == 0)
-      {
-        use_col.push_back(it);
-        std::string temp2 = Rcpp::as<std::string>(cov_type[jt]);
-        type_cov.push_back(temp2.compare("numeric") == 0);
-      }
-    }
-  }
-  retV.push_back(use_col);
-  retV.push_back(type_cov);
-  if (use_col.size() != type_cov.size())
-  {
-    Rcpp::stop("Error creating the Covariance Matrix.");
-  }
-  return retV;
-}
-
-/// @brief For a tokenized file and column, it deterimes which levels are unique so we can
-///        then build a matrix off of that.
-/// @param file_info - tokenized file
-/// @param col       - column of interest
-/// @return  unique factors
-std::vector<std::string> unique_levels(std::vector<std::vector<std::string>> file_info, int col)
-{
-
-  std::vector<std::string> entries(0);
-  for (size_t i = 1; i < file_info.size(); i++)
-  { // loop over the rows, start at 1 to ignore header
-
-    if (!file_info[i][col].empty() &&
-        !isWhitespace(file_info[i][col]))
-    { // only add non white-spaced entries
-      entries.push_back(file_info[i][col]);
-    }
-  }
-
-  entries.erase(entries.begin());
-  std::sort(entries.begin(), entries.end());
-  auto last = std::unique(entries.begin(), entries.end());
-  entries.erase(last, entries.end());
-
-  return entries;
-}
-
-////////////////////////////////////////////////////////////////////////
-/// @brief given a file it creates a design matrix assuming the first row is
-///        the header music
-/// @param file - the tokenized file
-/// @param columns   - columns to be selected
-/// @param covType_numeric - is it a numeric column or a factor column
-/// @param factor_levels   - the factor levels of a given column
-/// @return The design matrix 'without' the identity matrix
-arma::fmat create_design_mat(std::vector<std::vector<std::string>> file,
-                             std::vector<int> columns,
-                             std::vector<int> covType_numeric,
-                             std::vector<std::vector<std::string>> factor_levels)
-{
-  Rcpp::Rcout << "create_design_mat" << std::endl;
-  int n = file.size() - 1;
-  // step 1 determine the size of the matrix
-  int r = 0;
-  for (size_t i = 0; i < covType_numeric.size(); i++)
-  {
-    if (covType_numeric[i])
-    {
-      r++;
-    }
-    else
-    {
-      r += factor_levels[i].size() - 1;
-    }
-  }
-  // step 2 create the design matrix
-  arma::fmat return_mat(n, r);
-  int idx = 0;
-  for (size_t i = 0; i < covType_numeric.size(); i++)
-  {
-    if (covType_numeric[i])
-    {
-      for (int j = 0; j < n; j++)
-      {
-        std::string temp = file[j + 1][columns[i]];
-        if (temp.empty() ||
-            isWhitespace(temp))
-        {
-          return_mat(j, idx) = NAN;
-        }
-        else
-        {
-          float temp_float = 0.0;
-          try
-          {
-            temp_float = std::stof(temp);
-          }
-          catch (const std::exception &e)
-          {
-            Rcpp::stop("Unable to convert text to numeric. Are you sure you specified the column correctly?");
-          }
-
-          return_mat(j, idx) = temp_float;
-        }
-      }
-      idx++;
-    }
-    else
-    {
-      for (size_t z = 0; z < factor_levels[i].size() - 1; z++)
-      {
-        for (int k = 0; k < n; k++)
-        {
-          std::string temp = file[k + 1][columns[i]];
-          if (temp.empty() ||
-              isWhitespace(temp))
-          {
-            return_mat(k, idx) = NAN;
-          }
-          else
-          {
-            if (temp.compare(factor_levels[i][z]) == 0)
-            {
-              return_mat(k, idx) = 1.0;
-            }
-          }
-        }
-        idx++;
-      }
-    }
-  }
-
-  return return_mat;
-}
-
-arma::fmat createDesign(std::string file_to_open, std::string delim,
-                        Rcpp::StringVector covariates, Rcpp::StringVector cov_type)
-{
-  Rcpp::Rcout << "delim: " << delim << " covariates: " << covariates << " cov_type: " << cov_type << std::endl;
-  check_covariate_type(cov_type);
-
-  // read the file into a tokenized version
-  std::vector<std::vector<std::string>> tokenized_file = read_file(file_to_open); // a vector of vectors representing the tokenized lines of the file
-
-  // std::vector<std::vector<std::string>> tokenized_file = read_file(file_to_open, delim[0]); // a vector of vectors representing the tokenized lines of the file
-
-  // int n = tokenized_file.size() - 1;
-  // int k = tokenized_file[0].size();
-
-  // determine the columns of interest
-  std::vector<std::vector<int>> use_col = find_cols_to_subset(tokenized_file[0], covariates, cov_type);
-  std::vector<std::string> col_names(use_col[0].size());
-
-  for (int i = 0; i < use_col[0].size(); i++)
-  {
-    col_names[i] = tokenized_file[0][use_col[0][i]];
-    std::cout << col_names[i] << std::endl;
-  }
-
-  // Determine the unique levels of each covariate
-  // and build the covariate matrix
-  std::vector<std::vector<std::string>> factor_lists(use_col[0].size());
-  for (int i = 0; i < use_col[1].size(); i++)
-  {
-    if (!use_col[1][i])
-    { // is not numeric
-      factor_lists[i] = unique_levels(tokenized_file, use_col[0][i]);
-    }
-  }
-
-  arma::fmat dmat = create_design_mat(tokenized_file, use_col[0], use_col[1], factor_lists);
-  return dmat;
-}
 
 struct ProcResult
 {
@@ -612,10 +353,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "w2_nans: " << w2_nans << std::endl;
       // Rcpp::Rcout << "inter_nans: " << inter_nans << std::endl;
       
-#if !defined(__APPLE__) && !defined(__MACH__)
-      Rcpp::Rcout << "Setting OMP threads " << num_threads << std::endl;
-      omp_set_num_threads(num_threads);
-#endif
+// #if !defined(__APPLE__) && !defined(__MACH__)
+//       Rcpp::Rcout << "Setting OMP threads " << num_threads << std::endl;
+//       omp_set_num_threads(num_threads);
+// #endif
       if (config.regression_type == "logistic")
       {
         regression.reset(new LogisticRegression());
@@ -697,6 +438,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
               << " at: " << std::ctime(&end) << std::endl;
 }
 
+
 // [[Rcpp::export]]
 void FastRegCpp(
     const std::string phenotype, const std::string regression_type,
@@ -776,10 +518,12 @@ void FastRegCpp(
 
   FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
                     config.pheno_rowname_cols, config.phenotype);
+
   FRMatrix covar_df(config.covar_file, config.covar_file_delim,
                     config.covar_rowname_cols, config.covariates, config.covariate_type);
 
   // Load the first POI file to calculate chunks
+  
   std::string poi_file_path = config.poi_files[0];
   // Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
   POI poi(poi_file_path);
@@ -837,6 +581,7 @@ void FastRegCpp(
     int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                   parallel_chunk_size, num_threads, timing_results);
+    
     for (int j = 0; j < timing_results_size; j++)
     {
       total_timing_results[j] += timing_results[j];
@@ -1023,9 +768,13 @@ bool compareDesignMatrices(
     FRMatrix pheno_matrix = pheno_df; // check col names
 
     // n individuals x # covariates
+    Rcpp::Rcout << config.covs.size() << std::endl;
     FRMatrix covar_matrix = create_design_matrix(
         covar_df, config.covs, config.no_intercept, config.colinearity_rsq);
-    arma::fmat covar_matrix_2 = createDesign(config.covar_file, config.covar_file_delim, covariates, covariate_type);
+    // arma::fmat covar_matrix_2 = createDesign(config.covar_file, config.covar_file_delim, covariates, covariate_type);
+    CovariateMatrix cov_mat = CovariateMatrix(config.covar_file, config.covar_file_delim, config.covar_rowname_cols, config.covs, config.colinearity_rsq, config.no_intercept);
+    FRMatrix cov_matrix_2 = cov_mat.create_design_matrix();
+    arma::fmat covar_matrix_2 = cov_matrix_2.data;
     bool n_cols = covar_matrix_2.n_cols == covar_matrix.data.n_cols;
     bool n_rows = covar_matrix_2.n_rows == covar_matrix.data.n_rows;
 
