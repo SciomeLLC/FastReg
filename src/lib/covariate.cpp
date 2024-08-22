@@ -406,7 +406,12 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
 
     float ssa = arma::accu(arma::square(y));
     arma::fmat zty = Z.t() * y;
-    arma::fmat g = arma::pinv(Z.t() * Z);
+    
+    float lambda = 1e-7; // Regularization parameter
+    arma::fmat I = arma::eye<arma::fmat>(Z.n_cols, Z.n_cols);
+    arma::fmat g = arma::pinv(Z.t() * Z + lambda * I);
+
+
     float sse = arma::accu(arma::square(y - Z * g * zty));
     float rsquared = 1 - sse / ssa;
     if (rsquared <= colinearity_rsq)
