@@ -37,7 +37,7 @@ void Covariate::set_col_idx(int idx)
 
 void Covariate::generate_levels(std::vector<std::string> col_vals)
 {
-  std::vector unique_vals = col_vals;
+  std::vector<std::string> unique_vals = col_vals;
   auto it = std::unique(unique_vals.begin(), unique_vals.end()); // skip header value
   unique_vals.resize(std::distance(unique_vals.begin(), it));
 
