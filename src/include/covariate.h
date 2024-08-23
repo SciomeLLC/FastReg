@@ -29,7 +29,6 @@ public:
     Covariate(std::string cov, std::string covar_type, std::string cov_ref_level, std::string cov_levels, bool cov_standardize)
     {
         name = cov;
-        Rcpp::Rcout << cov << " has type " << covar_type << " with reference level " << cov_ref_level << " and levels " << cov_levels << std::endl;
         cov_type = covar_type;
         ref_level = cov_ref_level;
         standardize = cov_standardize;

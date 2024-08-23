@@ -30,6 +30,7 @@ public:
         FRMatrix &neglog10_pvl,
         arma::fcolvec &beta_rel_errs,
         arma::fcolvec &beta_abs_errs,
+        arma::fcolvec &iters,
         int max_iter,
         bool is_t_dist) = 0;
 
@@ -88,6 +89,7 @@ public:
         FRMatrix &neglog10_pvl,
         arma::fcolvec &beta_rel_errs,
         arma::fcolvec &beta_abs_errs,
+        arma::fcolvec &iters,
         int max_iter,
         bool is_t_dist);
 
@@ -103,6 +105,7 @@ private:
         FRMatrix &neglog10_pvl,
         arma::fcolvec &beta_rel_errs,
         arma::fcolvec &beta_abs_errs,
+        arma::fcolvec &iters,
         int max_iter,
         bool is_t_dist);
     void run_EIGEN(FRMatrix &cov,
@@ -115,6 +118,7 @@ private:
                    FRMatrix &neglog10_pvl,
                    arma::fcolvec &beta_rel_errs,
                    arma::fcolvec &beta_abs_errs,
+                   arma::fcolvec &iters,
                    int max_iter,
                    bool is_t_dist);
     bool USE_BLAS;
@@ -134,6 +138,7 @@ public:
         FRMatrix &neglog10_pvl,
         arma::fcolvec &beta_rel_errs,
         arma::fcolvec &beta_abs_errs,
+        arma::fcolvec &iters,
         int max_iter,
         bool is_t_dist);
 };

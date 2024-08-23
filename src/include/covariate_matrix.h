@@ -27,7 +27,7 @@ public:
     this->covariates = covariates;
     headers = reader.get_headers();
     id_col = id;
-    colinearity_rsq = colinearity_rsq;
+    this->colinearity_rsq = colinearity_rsq;
     has_intercept = !no_intercept;
     set_cov_col_idx();
   };

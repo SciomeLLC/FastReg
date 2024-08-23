@@ -103,7 +103,6 @@ FRMatrix Covariate::create_categorical_matrix(std::vector<std::string> col_vals)
         res(i, 0) = (col_vals[i] == lev) ? 1 : 0;
       }
     }
-    candidate_mat.data.insert_cols(count, res);
     // generate column names for each level
     std::string col_name;
     if (count == 0)
@@ -114,6 +113,8 @@ FRMatrix Covariate::create_categorical_matrix(std::vector<std::string> col_vals)
     {
       col_name = name + " (" + lev + " vs. " + ref_level + ")";
     }
+
+    candidate_mat.data.insert_cols(count, res);
     candidate_mat.col_names[col_name] = count;
     col_names_arr.push_back(col_name);
     count++;
@@ -159,9 +160,7 @@ void Covariate::create_matrix(std::vector<std::vector<std::string>> tokenized, s
   }
   else
   {
-    Rcpp::Rcout << "Creating cat mat" << std::endl;
     frmat = create_categorical_matrix(col_vals);
-    Rcpp::Rcout << "Created cat mat" << std::endl;
   }
 
   // Standardize if required
@@ -176,8 +175,6 @@ void Covariate::create_matrix(std::vector<std::vector<std::string>> tokenized, s
 
 FRMatrix Covariate::filter_colinear(FRMatrix &design_mat, double colinearity_rsq)
 {
-  Rcpp::Rcout << "Covariate " << name << " has " << frmat.data.n_rows << " rows" << std::endl;
-  Rcpp::Rcout << "Design mat has " << design_mat.data.n_rows << " rows" << std::endl;
   int nS = frmat.data.n_rows;
   arma::fmat Z;
   arma::fmat full_Z = design_mat.data;
@@ -197,45 +194,42 @@ FRMatrix Covariate::filter_colinear(FRMatrix &design_mat, double colinearity_rsq
       continue;
     }
 
+    // Skip reference level if categorical
+    if (cov_type != "numeric" && i == 0)
+    {
+      continue;
+    }
+
     arma::fmat y = arma::reshape(col_vec, nS, 1);
-    arma::fmat temp = col_vec;
-    Rcpp::Rcout << "Joining " << colname << " with num rows: " << temp.size() << std::endl;
-    Rcpp::Rcout << "Z mat num rows: " << Z.n_rows << std::endl;
     // Add current column to Z matrix to test for colinearity
     Z = arma::join_horiz(Z, col_vec);
 
-    // filter NaNs
+    arma::uvec valid_rows = arma::uvec(nS, arma::fill::zeros);
     arma::uvec w = arma::uvec(nS, arma::fill::ones);
     for (int j = 0; j < nS; j++)
     {
-      if (y.row(j).has_nan())
+      if (y.row(j).has_nan() || Z.row(j).has_nan())
       {
         w[j] = 0;
-        continue;
-      }
-      if (Z.row(j).has_nan())
-      {
-        w[j] = 0;
-        continue;
       }
     }
+
     Z = Z.rows(arma::find(w > 0));
-    y = arma::fmat(y.rows(arma::find(w > 0)));
-    Rcpp::Rcout << "Filtered nans" << std::endl;
+    y = y.rows(arma::find(w > 0));
+
     float ssa = arma::accu(arma::square(y));
     arma::fmat zty = Z.t() * y;
     arma::fmat g = arma::pinv(Z.t() * Z);
     float sse = arma::accu(arma::square(y - Z * g * zty));
     float rsquared = 1 - sse / ssa;
-    
-    Rcpp::Rcout << "Done colinear calc" << std::endl;
+
     if (rsquared <= colinearity_rsq)
     {
       full_Z.insert_cols(full_Z.n_cols, col_vec);
       cols_to_keep.push_back(i);
     }
     else
-    { 
+    {
       Rcpp::Rcout << "SSE: " << sse << " rsquared: " << rsquared << " ssa: " << ssa << std::endl;
       Rcpp::Rcout
           << "Covariate column " << colname
@@ -247,16 +241,14 @@ FRMatrix Covariate::filter_colinear(FRMatrix &design_mat, double colinearity_rsq
   // Create the resulting matrix
   int col_count = 0;
   FRMatrix res_mat;
-  Rcpp::Rcout << "Creating res_mat" << std::endl;
-  for (int idx : cols_to_keep) {
+  for (int idx : cols_to_keep)
+  {
     res_mat.data.insert_cols(col_count, frmat.data.col(idx));
     res_mat.col_names[col_names_arr.at(idx)] = col_count;
     res_mat.col_name_str_arr.push_back(col_names_arr.at(idx));
     col_count++;
   }
   res_mat.row_names = frmat.row_names;
-
-  Rcpp::Rcout << "Covariate " << name << " has " << res_mat.data.n_rows << " rows after filtering for colinearity" << std::endl;
   return res_mat;
 }
 
@@ -294,7 +286,6 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
   if (cov_type == "numeric")
   {
     candidate_cols.data = arma::fmat(df.row_names.size(), 1, arma::fill::zeros);
-    // Rcpp::Rcout << "numeric data" << std::endl;
     candidate_cols.data.insert_cols(0, df.data.col(cov_idx));
     candidate_cols.col_names[name] = 0;
     temp_col_names.push_back(name);
@@ -354,9 +345,6 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
       arma::fvec col = candidate_cols.data.col(i);
       col = (col - arma::mean(col)) / arma::stddev(col);
       candidate_cols.data.col(i) = col;
-
-      // Rcpp::Rcout << "standardized " << name << " " <<
-      // candidate_cols.col_names[name] << std::endl;
     }
   }
 
@@ -406,19 +394,11 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
 
     float ssa = arma::accu(arma::square(y));
     arma::fmat zty = Z.t() * y;
-    arma::fmat g, I;
-    try {
-
-      float lambda = 1e-7; // Regularization parameter
-      I = arma::eye<arma::fmat>(Z.n_cols, Z.n_cols);
-      g = arma::pinv(Z.t() * Z + lambda * I);
-    } catch (const std::runtime_error &e) {
-      Rcpp::stop(e.what());
-    }
-
+    arma::fmat g = arma::pinv(Z.t() * Z);
 
     float sse = arma::accu(arma::square(y - Z * g * zty));
     float rsquared = 1 - sse / ssa;
+
     if (rsquared <= colinearity_rsq)
     {
       retained_col_map[can_col_name] = temp_col_count + num_cols;
@@ -427,17 +407,11 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
     }
     else
     {
-      // Rcpp::Rcout << "rsquared: " << rsquared << std::endl;
-      // Rcpp::Rcout << "sse: " << sse << std::endl;
-      // Rcpp::Rcout << "ssa: " << ssa << std::endl;
-      // zty.brief_print();
       Rcpp::Rcout
           << "Candidate column " << can_col_name
           << " was not added to design matrix due to potential of colinearity"
           << std::endl;
     }
-    // Rcpp::Rcout << "join horiz Z covar" << std::endl;
-    //  Z = arma::join_horiz(Z, candidate_cols.data.col(can_col_name.second));
   }
 
   for (auto retained_col : retained_cols)

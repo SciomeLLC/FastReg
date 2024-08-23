@@ -522,7 +522,7 @@ std::vector<std::string> FRMatrix::split(const std::string &str_tokens, char del
 
 std::vector<std::string> FRMatrix::get_col_str(const std::string &col_name)
 {
-  
+
   bool exists = col_names_str.find(col_name) != col_names_str.end();
   if (!exists)
   {
@@ -628,6 +628,9 @@ void FRMatrix::print()
 
 void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
                              FRMatrix &neglog10, arma::umat &W2,
+                             arma::fcolvec &rel_err,
+                             arma::fcolvec &abs_err,
+                             arma::fcolvec &iters,
                              std::vector<std::string> poi_names,
                              std::string dir, std::string file_name,
                              int stratum, bool exclude_covars, int process_id)
@@ -673,7 +676,7 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
                   << std::endl;
       return;
     }
-    outfile << "POI\tN\tDF\tEffect\tEstimate\tSE\tmlog10P"
+    outfile << "POI\tN\tDF\tEffect\tEstimate\tSE\tmlog10P\tAbs Err\tRel Err\titers"
             << std::endl;
     // Rcpp::Rcout << "File created for writing." << std::endl;
   }
@@ -685,6 +688,10 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
   {
     std::string poi_name = poi_names[col];
     arma::uvec w2_col = W2.col(col);
+    double abs_err_val = abs_err.at(col);
+    double rel_err_val = rel_err.at(col);
+    double iter = iters.at(col);
+
     int N = arma::as_scalar(arma::sum(w2_col, 0));
     int df = N - n_parms;
     int adder = 1;
@@ -704,7 +711,7 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
 
       buffer << poi_name << "\t" << N << "\t" << df << "\t" << effect_name
              << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval
-             << "\t" << std::endl;
+             << "\t" << abs_err_val << "\t" << rel_err_val << "\t" << iter << std::endl;
     }
   }
   outfile << buffer.str();
@@ -890,28 +897,29 @@ void FRMatrix::concatenate_results(std::string output_dir,
   }
 }
 
-void FRMatrix::join(FRMatrix &fmat) {
+void FRMatrix::join(FRMatrix &fmat)
+{
 
-  if(data.size() == 0) {
+  if (data.size() == 0)
+  {
     data = fmat.data;
     col_names = fmat.col_names;
     row_names = fmat.row_names;
     return;
-  } 
+  }
 
-  if(fmat.data.n_rows != data.n_rows) {
+  if (fmat.data.n_rows != data.n_rows)
+  {
     Rcpp::Rcout << fmat.data.n_rows << " vs " << data.n_rows << std::endl;
     Rcpp::stop("Error: cannot join_horiz matrices with different row counts.");
   }
-  Rcpp::Rcout << "Joining fmat with design matrix" << std::endl;
   // join the matrices
   data = arma::join_horiz(data, fmat.data);
   size_t num_cols = col_names.size();
-  Rcpp::Rcout << "Num cols: " << num_cols << std::endl;
-  
+
   // Add column names and increase indices accordingly
-  for (auto el : fmat.col_names) {
-    Rcpp::Rcout << "Adding col_names: " << el.first << ": " << el.second << std::endl; 
+  for (auto el : fmat.col_names)
+  {
     col_names.emplace(el.first, el.second + num_cols);
   }
 }

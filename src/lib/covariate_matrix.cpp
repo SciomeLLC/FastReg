@@ -2,6 +2,9 @@
 
 FRMatrix CovariateMatrix::create_design_matrix()
 {
+  for (int i = 0; i < reader.row_names.size(); i++) {
+    design_matrix.row_names[reader.row_names[i]] = i;
+  }
 
   if (has_intercept)
   {
@@ -19,7 +22,6 @@ FRMatrix CovariateMatrix::create_design_matrix()
     }
     design_matrix.join(cov_mat);
   }
-
   return design_matrix;
 }
 

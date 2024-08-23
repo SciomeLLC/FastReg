@@ -44,7 +44,9 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
                                   FRMatrix &beta_est, FRMatrix &se_beta,
                                   FRMatrix &neglog10_pvl,
                                   arma::fcolvec &beta_rel_errs,
-                                  arma::fcolvec &beta_abs_errs, int max_iter,
+                                  arma::fcolvec &beta_abs_errs,
+                                  arma::fcolvec &iters, 
+                                  int max_iter,
                                   bool is_t_dist)
 {
 
@@ -100,6 +102,7 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
 
       beta_diff = arma::abs(beta - beta_old);
       beta_abs_errs.at(poi_col) = beta_diff.max();
+      iters.at(poi_col) = iter + 1;
       beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta_old)).max();
       beta_old = beta;
     }
@@ -141,7 +144,9 @@ void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi
                                    FRMatrix &beta_est, FRMatrix &se_beta,
                                    FRMatrix &neglog10_pvl,
                                    arma::fcolvec &beta_rel_errs,
-                                   arma::fcolvec &beta_abs_errs, int max_iter,
+                                   arma::fcolvec &beta_abs_errs, 
+                                   arma::fcolvec &iters,  
+                                   int max_iter,
                                    bool is_t_dist)
 {
 
@@ -212,6 +217,7 @@ void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi
 
       beta_diff = (beta.array() - beta_old.array()).abs();
       beta_abs_errs.at(poi_col) = beta_diff.array().maxCoeff();
+      iters.at(poi_col) = iter + 1;
       Eigen::MatrixXf mTemp = (beta_diff.array() / beta_old.array());
       beta_rel_errs.at(poi_col) = mTemp.maxCoeff();
       beta_old = beta;
@@ -253,20 +259,22 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                              FRMatrix &beta_est, FRMatrix &se_beta,
                              FRMatrix &neglog10_pvl,
                              arma::fcolvec &beta_rel_errs,
-                             arma::fcolvec &beta_abs_errs, int max_iter,
+                             arma::fcolvec &beta_abs_errs, 
+                             arma::fcolvec &iters,
+                             int max_iter,
                              bool is_t_dist)
 {
   if (USE_BLAS)
   { // use BLAS if faster than Eigen::MatrixXf calculations run_BLAS
     run_BLAS(cov, pheno, poi_data,
              interactions, W2, beta_est, se_beta, neglog10_pvl,
-             beta_rel_errs, beta_abs_errs, max_iter, is_t_dist);
+             beta_rel_errs, beta_abs_errs, iters, max_iter, is_t_dist);
   }
   else
   {
     run_EIGEN(cov, pheno, poi_data,
               interactions, W2, beta_est, se_beta, neglog10_pvl,
-              beta_rel_errs, beta_abs_errs, max_iter, is_t_dist);
+              beta_rel_errs, beta_abs_errs, iters, max_iter, is_t_dist);
   }
 }
 
@@ -274,7 +282,9 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                            FRMatrix &interactions, arma::umat &W2,
                            FRMatrix &beta_est, FRMatrix &se_beta,
                            FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
-                           arma::fcolvec &beta_abs_errs, int max_iter,
+                           arma::fcolvec &beta_abs_errs, 
+                           arma::fcolvec &iters, 
+                           int max_iter,
                            bool is_t_dist)
 {
 
@@ -317,6 +327,7 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     arma::fmat AAinv = arma::inv_sympd(A, inv_opts::allow_approx);
     beta = AAinv * B;
     beta_est.data.col(poi_col) = beta;
+    iters.at(poi_col) = 1;
     arma::fmat eta = cov_w_mat * beta.submat(first, col_1);
     // arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
     // eta += cov_w_mat * beta.submat(first, col_1);
