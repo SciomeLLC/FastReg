@@ -6,24 +6,36 @@
 
 #include <RcppEigen.h>
 
+
 template <typename T>
 Rcpp::NumericVector arma2vec(const T &x)
 {
   return Rcpp::NumericVector(x.begin(), x.end());
 }
 
-Rcpp::NumericVector t_dist_r(arma::fcolvec abs_z, int df)
+arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df)
 {
-  return Rcpp::dt(arma2vec(abs_z), df, true);
+  arma::fcolvec ret_val(abs_z.size());
+  for(size_t i = 0; i < abs_z.size(); i++) {
+    ret_val(i) = -1 * (R::dt(abs_z(i), df, true)) / log(10);
+  }
+  // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
+  return ret_val;
 }
 
-Rcpp::NumericVector norm_dist_r(arma::fcolvec abs_z, int df)
+arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df)
 {
-  return Rcpp::dnorm(arma2vec(abs_z), 1.0, 1.0, true);
+  arma::fcolvec ret_val(abs_z.size());
+  for(size_t i = 0; i < abs_z.size(); i++) {
+    ret_val(i) = -1 * (R::dnorm(abs_z(i), 1.0, 1.0, true)) / log(10);
+  }
+  // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
+  return ret_val;
+  // return Rcpp::dnorm(arma2vec(abs_z), 1.0, 1.0, true);
 }
 
 typedef Eigen::Matrix<arma::uword, Eigen::Dynamic, Eigen::Dynamic> MatrixUd;
-arma::fcolvec RegressionBase::t_dist(arma::fcolvec abs_z, int df)
+arma::fcolvec t_dist(arma::fcolvec abs_z, int df)
 {
 
   arma::fcolvec pvalues = conv_to<fcolvec>::from(
@@ -31,7 +43,7 @@ arma::fcolvec RegressionBase::t_dist(arma::fcolvec abs_z, int df)
   return pvalues;
 }
 
-arma::fcolvec RegressionBase::norm_dist(arma::fcolvec abs_z, int df)
+arma::fcolvec norm_dist(arma::fcolvec abs_z, int df)
 {
   return conv_to<fcolvec>::from(
       -1 * (stats2::pnorm(abs_z, 1.0, 1.0, true) + log(2)) / log(10));
@@ -52,6 +64,7 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
 
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
   // create a pointer to the specified distribution function
+  arma::fcolvec (*dist_func_r)(arma::fcolvec, int) = is_t_dist == true ? t_dist_r : norm_dist_r;
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist : norm_dist;
 #pragma omp parallel for
@@ -135,7 +148,17 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
     beta_est.data.col(poi_col) = beta;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
-    neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
+    if (poi_col == 0) {
+      Rcpp::Rcout << "neg_abs_z: " << std::endl;
+      neg_abs_z.print();
+      arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
+      Rcpp::Rcout << "dist_r: " << std::endl;
+      dist_r.print();
+      arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
+      Rcpp::Rcout << "dist: " << std::endl;
+      dist.print();
+    }
+    neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
 }
 
@@ -152,6 +175,8 @@ void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi
 
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
   // create a pointer to the specified distribution function
+  
+  arma::fcolvec (*dist_func_r)(arma::fcolvec, int) = is_t_dist == true ? t_dist_r : norm_dist_r;
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist : norm_dist;
   MatrixUd W2_EIG = Eigen::Map<MatrixUd>(W2.memptr(),
@@ -250,7 +275,17 @@ void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi
     beta_est.data.col(poi_col) = temp_b;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(temp_b / temp_se) * -1;
-    neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
+    if (poi_col == 0) {
+      Rcpp::Rcout << "neg_abs_z: " << std::endl;
+      neg_abs_z.print();
+      arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
+      Rcpp::Rcout << "dist_r: " << std::endl;
+      dist_r.print();
+      arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
+      Rcpp::Rcout << "dist: " << std::endl;
+      dist.print();
+    }
+    neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
 }
 
@@ -262,9 +297,10 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                              arma::fcolvec &beta_abs_errs, 
                              arma::fcolvec &iters,
                              int max_iter,
-                             bool is_t_dist)
+                             bool is_t_dist,
+                             bool use_blas)
 {
-  if (USE_BLAS)
+  if (use_blas)
   { // use BLAS if faster than Eigen::MatrixXf calculations run_BLAS
     run_BLAS(cov, pheno, poi_data,
              interactions, W2, beta_est, se_beta, neglog10_pvl,
@@ -285,7 +321,7 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                            arma::fcolvec &beta_abs_errs, 
                            arma::fcolvec &iters, 
                            int max_iter,
-                           bool is_t_dist)
+                           bool is_t_dist, bool use_blas)
 {
 
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;

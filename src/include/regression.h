@@ -32,51 +32,15 @@ public:
         arma::fcolvec &beta_abs_errs,
         arma::fcolvec &iters,
         int max_iter,
-        bool is_t_dist) = 0;
-
-protected:
-    static arma::fcolvec t_dist(arma::fcolvec abs_z, int df);
-    static arma::fcolvec norm_dist(arma::fcolvec abs_z, int df);
+        bool is_t_dist, 
+        bool use_blas) = 0;
 };
 
 class LogisticRegression : public RegressionBase
 {
 
 public:
-    LogisticRegression()
-    {
-        arma::fmat tempM(250, 500);
-        tempM.randu(); // = arma::fmat::randu(500, 10000);
-        Eigen::MatrixXf mddata = Eigen::Map<Eigen::MatrixXf>(tempM.memptr(),
-                                                             tempM.n_rows,
-                                                             tempM.n_cols);
-        ///////////////
-        auto start = std::chrono::system_clock::now();
-        tempM = tempM.t() * tempM;
-        auto end = std::chrono::system_clock::now();
-        ///////////////
-
-        ///////////////
-        auto start_a = std::chrono::system_clock::now();
-        mddata = mddata.transpose() * mddata;
-        auto end_a = std::chrono::system_clock::now();
-        ///////////////
-        const auto ms_int_a = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        const auto ms_int_b = std::chrono::duration_cast<std::chrono::nanoseconds>(end_a - start_a);
-        double BLAS = std::chrono::duration<double>(ms_int_a).count();
-        double EIGEN = std::chrono::duration<double>(ms_int_b).count();
-
-        if (BLAS / EIGEN < 1)
-        {
-            USE_BLAS = true;
-            Rcpp::Rcout << "Using loaded BLAS ilbrary." << std::endl;
-        }
-        else
-        {
-            USE_BLAS = false;
-            Rcpp::Rcout << "Using RcppEigen as it appears faster than loaded BLAS library. " << std::endl;
-        }
-    }
+    LogisticRegression(){}
 
     void run(
         FRMatrix &cov,
@@ -91,7 +55,8 @@ public:
         arma::fcolvec &beta_abs_errs,
         arma::fcolvec &iters,
         int max_iter,
-        bool is_t_dist);
+        bool is_t_dist,
+        bool use_blas);
 
 private:
     void run_BLAS(
@@ -121,7 +86,6 @@ private:
                    arma::fcolvec &iters,
                    int max_iter,
                    bool is_t_dist);
-    bool USE_BLAS;
 };
 
 class LinearRegression : public RegressionBase
@@ -140,5 +104,6 @@ public:
         arma::fcolvec &beta_abs_errs,
         arma::fcolvec &iters,
         int max_iter,
-        bool is_t_dist);
+        bool is_t_dist,
+        bool use_blas);
 };

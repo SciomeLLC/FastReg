@@ -51,6 +51,8 @@ namespace fs = std::experimental::filesystem;
 #endif
 #endif
 
+#include <RcppEigen.h>
+
 struct ProcResult
 {
   int timing_results[4] = {0, 0, 0, 0};
@@ -60,7 +62,7 @@ struct ProcResult
 
 void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                    FRMatrix &covar_df, std::string poi_file_path,
-                   int chunk_size, int num_threads, int timing_results[4])
+                   int chunk_size, int num_threads, bool use_blas, int timing_results[4])
 {
   // Load POI file
   POI poi(poi_file_path);
@@ -350,11 +352,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         regression.reset(new LinearRegression());
       }
 
-      // Rcpp::Rcout << "start regression" << std::endl;
       regression->run(covar_matrix, pheno_matrix, poi_matrix,
                       covar_poi_interaction_matrix, W2, beta_est, se_beta,
                       neglog10_pvl, beta_rel_errs, beta_abs_errs, iters,
-                      config.max_iter, config.p_value_type == "t.dist");
+                      config.max_iter, config.p_value_type == "t.dist", use_blas);
       end_time = std::chrono::high_resolution_clock::now();
       regression_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -411,6 +412,42 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
               << " at: " << std::ctime(&end) << std::endl;
 }
 
+
+bool is_BLAS_faster() {
+  bool use_blas = true;
+  arma::fmat tempM(250, 10000);
+  tempM.randu(250, 10000);
+  Eigen::MatrixXf mddata = Eigen::Map<Eigen::MatrixXf>(tempM.memptr(),
+                                                        tempM.n_rows,
+                                                        tempM.n_cols);
+  ///////////////
+  auto start = std::chrono::system_clock::now();
+  tempM = tempM.t() * tempM;
+  auto end = std::chrono::system_clock::now();
+  ///////////////
+
+  ///////////////
+  auto start_a = std::chrono::system_clock::now();
+  mddata = mddata.transpose() * mddata;
+  auto end_a = std::chrono::system_clock::now();
+  ///////////////
+  const auto ms_int_a = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+  const auto ms_int_b = std::chrono::duration_cast<std::chrono::nanoseconds>(end_a - start_a);
+  double BLAS = std::chrono::duration<double>(ms_int_a).count();
+  double EIGEN = std::chrono::duration<double>(ms_int_b).count();
+
+  if (BLAS / EIGEN < 1)
+  {
+      use_blas = true;
+      Rcpp::Rcout << "Using loaded BLAS ilbrary." << std::endl;
+  }
+  else
+  {
+      use_blas = false;
+      Rcpp::Rcout << "Using RcppEigen as it appears faster than loaded BLAS library. " << std::endl;
+  }
+  return use_blas;
+}
 // [[Rcpp::export]]
 void FastRegCpp(
     const std::string phenotype, const std::string regression_type,
@@ -482,12 +519,14 @@ void FastRegCpp(
   Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
   Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
   Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  // Check for BLAS speed
+  bool use_blas = is_BLAS_faster();
   // Clean up previous run
   if (dir_exists(config.output_dir))
   {
     delete_dir(config.output_dir);
   }
-
+  
   FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
                     config.pheno_rowname_cols, config.phenotype);
 
@@ -559,7 +598,7 @@ void FastRegCpp(
   {
     int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, poi_file_path,
-                  parallel_chunk_size, num_threads, timing_results);
+                  parallel_chunk_size, num_threads, use_blas, timing_results);
 
     for (int j = 0; j < timing_results_size; j++)
     {
@@ -605,7 +644,7 @@ void FastRegCpp(
         int timing_results[timing_results_size] = {0, 0, 0, 0};
         // Rcpp::Rcout << "Started processing for " << i + 1 << std::endl;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
-                      parallel_chunk_size, num_threads, timing_results);
+                      parallel_chunk_size, num_threads, use_blas, timing_results);
         ssize_t res = write(pipe_file_descriptors[i * 2 + 1], timing_results, sizeof(timing_results));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
