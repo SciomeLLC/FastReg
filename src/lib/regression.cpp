@@ -17,7 +17,7 @@ arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df)
 {
   arma::fcolvec ret_val(abs_z.size());
   for(size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * (R::dt(abs_z(i), df, true)) / log(10);
+    ret_val(i) = -1 * (R::pt(abs_z(i), df, true, true) + log(2)) / log(10);
   }
   // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
   return ret_val;
@@ -27,7 +27,7 @@ arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df)
 {
   arma::fcolvec ret_val(abs_z.size());
   for(size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * (R::dnorm(abs_z(i), 1.0, 1.0, true)) / log(10);
+    ret_val(i) = -1 * (R::pnorm(abs_z(i), 1.0, 1.0, true, true) + log(2)) / log(10);
   }
   // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
   return ret_val;
@@ -148,16 +148,16 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
     beta_est.data.col(poi_col) = beta;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
-    if (poi_col == 0) {
-      Rcpp::Rcout << "neg_abs_z: " << std::endl;
-      neg_abs_z.print();
-      arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
-      Rcpp::Rcout << "dist_r: " << std::endl;
-      dist_r.print();
-      arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
-      Rcpp::Rcout << "dist: " << std::endl;
-      dist.print();
-    }
+    // if (poi_col == 0) {
+    //   Rcpp::Rcout << "neg_abs_z: " << std::endl;
+    //   neg_abs_z.print();
+    //   arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
+    //   Rcpp::Rcout << "dist_r: " << std::endl;
+    //   dist_r.print();
+    //   arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
+    //   Rcpp::Rcout << "dist: " << std::endl;
+    //   dist.print();
+    // }
     neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
 }
@@ -275,16 +275,16 @@ void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi
     beta_est.data.col(poi_col) = temp_b;
     se_beta.data.col(poi_col) = temp_se;
     arma::fcolvec neg_abs_z = arma::abs(temp_b / temp_se) * -1;
-    if (poi_col == 0) {
-      Rcpp::Rcout << "neg_abs_z: " << std::endl;
-      neg_abs_z.print();
-      arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
-      Rcpp::Rcout << "dist_r: " << std::endl;
-      dist_r.print();
-      arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
-      Rcpp::Rcout << "dist: " << std::endl;
-      dist.print();
-    }
+    // if (poi_col == 0) {
+    //   Rcpp::Rcout << "neg_abs_z: " << std::endl;
+    //   neg_abs_z.print();
+    //   arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
+    //   Rcpp::Rcout << "dist_r: " << std::endl;
+    //   dist_r.print();
+    //   arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
+    //   Rcpp::Rcout << "dist: " << std::endl;
+    //   dist.print();
+    // }
     neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
 }

@@ -48,7 +48,7 @@ macrtools::gfortran_install()
 
 ```{r eval=FALSE}
 # install dependencies
-install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools", "BEDMatrix"))
+install.packages(c("Rcpp", "RcppArmadillo", "stats", "data.table", "BiocManager", "devtools", "BEDMatrix", "RcppEigen", "RhpcBLASctl"))
 Biocmanager::install("rhdf5")
 library(devtools)
 install_github("SciomeLLC/FastReg")

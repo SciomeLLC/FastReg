@@ -39,6 +39,7 @@
 #' @import Rcpp
 #' @import RcppArmadillo
 #' @import parallel
+#' @import RhpcBLASctl
 FastReg <- function(
     phenotype = "bin.resp",
     regression.type = "logistic",
@@ -78,7 +79,7 @@ FastReg <- function(
     cat("Error: max.openmp.threads must be a positive integer.\n")
     return(FALSE)
   }
-
+  blas_set_num_threads(max.openmp.threads)
   if (max.workers < 0) {
     cat("Error: max.workers must be a positive integer.\n")
     return(FALSE)
@@ -119,6 +120,7 @@ FastReg <- function(
     compress.results,
     max.workers
   )
+  blas_set_num_threads(get_num_procs())
 }
 
 #' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()

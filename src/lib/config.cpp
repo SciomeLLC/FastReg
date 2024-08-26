@@ -292,3 +292,42 @@ void Config::get_poi_files() {
     }
   }
 }
+
+void Config::print() {
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  Rcpp::Rcout << "Running FastReg with configuration: " << std::endl;
+  Rcpp::Rcout << "phenotype: " << phenotype << std::endl;
+  Rcpp::Rcout << "regression_type: " << regression_type << std::endl;
+  Rcpp::Rcout << "pvalue_dist: " << p_value_type << std::endl;
+  Rcpp::Rcout << "output_exclude_covar: " << output_exclude_covar << std::endl;
+  Rcpp::Rcout << "maf_threshold: " << maf_threshold << std::endl;
+  Rcpp::Rcout << "hwe_threshold: " << hwe_threshold << std::endl;
+  Rcpp::Rcout << "no_intercept: " << no_intercept << std::endl;
+  Rcpp::Rcout << "colinearity_rsq: " << colinearity_rsq << std::endl;
+  Rcpp::Rcout << "poi_block_size: " << poi_block_size << std::endl;
+  Rcpp::Rcout << "max_iter: " << max_iter << std::endl;
+  Rcpp::Rcout << "rel_conv_tolerance: " << rel_conv_tolerance << std::endl;
+  Rcpp::Rcout << "abs_conv_tolerance: " << abs_conv_tolerance << std::endl;
+  Rcpp::Rcout << "max_openmp_threads: " << max_openmp_threads << std::endl;
+  Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
+  Rcpp::Rcout << "pheno_rowname_cols: " << pheno_rowname_cols << std::endl;
+  Rcpp::Rcout << "pheno_file_delim: " << pheno_file_delim << std::endl;
+  Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
+  Rcpp::Rcout << "covar_rowname_cols: " << covar_rowname_cols << std::endl;
+  Rcpp::Rcout << "covar_file_delim: " << covar_file_delim << std::endl;
+  Rcpp::Rcout << "poi_file_dir: " << POI_file_dir << std::endl;
+  Rcpp::Rcout << "poi_file_delim: " << POI_file_delim << std::endl;
+  Rcpp::Rcout << "poi_file_format: " << POI_file_format << std::endl;
+  Rcpp::Rcout << "poi_type: " << POI_type << std::endl;
+  Rcpp::Rcout << "poi_effect_type: " << POI_effect_type << std::endl;
+  for (size_t i = 0; i < covs.size(); i++) {
+    covs[i].print();
+  }
+  Rcpp::Rcout << "POI_covar_interactions_str: " << POI_covar_interactions_str
+              << std::endl;
+  Rcpp::Rcout << "split_by_str: " << split_by_str << std::endl;
+  Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
+  Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
+  Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
+  Rcpp::Rcout << "-----------------------------------------" << std::endl;
+}

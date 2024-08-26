@@ -1,0 +1,22 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/articles/FastReg.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/Bed_To_dosage.html</loc></url>
+<url><loc>/reference/create_test_dataset.html</loc></url>
+<url><loc>/reference/FastReg.html</loc></url>
+<url><loc>/reference/generate_values.html</loc></url>
+<url><loc>/reference/generate_values2.html</loc></url>
+<url><loc>/reference/H5_To_Bed.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/perform.GLM.test.html</loc></url>
+<url><loc>/reference/testdata_500_by_1k.bin.pheno.html</loc></url>
+<url><loc>/reference/testdata_500_by_1k.covar.html</loc></url>
+<url><loc>/reference/testdata_500_by_1k.num.pheno.html</loc></url>
+<url><loc>/reference/testdata_500_by_1k.poi.html</loc></url>
+<url><loc>/reference/TextToH5.html</loc></url>
+<url><loc>/reference/write.h5.html</loc></url>
+</urlset>
+

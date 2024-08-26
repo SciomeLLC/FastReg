@@ -47,6 +47,7 @@ public:
     std::vector<std::string> split(std::string &val, char delim);
     void add_to_matrix(FRMatrix &df, FRMatrix &X_mat, double colinearity_rsq);
     void set_col_idx(int idx);
+    void print();
     void create_matrix(std::vector<std::vector<std::string>> tokenized, std::vector<std::string> row_names);
     FRMatrix filter_colinear(FRMatrix &design_mat, double colinearity_rsq);
 

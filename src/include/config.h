@@ -38,7 +38,7 @@ class Config {
     std::string subject_subset_rowname_cols,
         subject_subset_file, subject_subset_delim,
         POI_subset_file, POI_subset_file_delim, POI_subset_rowname_col;
-
+    Rcpp::StringVector POI_covar_interactions_str, split_by_str;
     std::vector<Covariate> covs;
     std::vector<std::string> poi_files;
     std::vector<std::string> covariates, covariate_levels, covariate_ref_level, covariate_type, split_by,
@@ -104,6 +104,8 @@ class Config {
         POI_file_delim = poi_file_delim_str;
         POI_file_format = poi_file_format_str;
         POI_type = poi_type_str;
+        this->POI_covar_interactions_str = POI_covar_interactions_str;
+        this->split_by_str = split_by_str;
         split_by = convert_stringV_to_string_arr(split_by_str);
         output_dir = output_dir_str;
         compress_results = compress_results_bool;
@@ -115,6 +117,7 @@ class Config {
         get_poi_files();
     }
     Config(){};
+    void print();
     private:
     std::unordered_map<std::string, std::string> values;
     template <typename T>
