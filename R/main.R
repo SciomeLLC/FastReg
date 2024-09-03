@@ -32,6 +32,7 @@
 #' @param split.by Default: c(""). List of covariates values to split by when stratifying the data.
 #' @param output.dir Default: results. Relative path to directory for output. Directory will be created if it doesn't exist
 #' @param compress.results TRUE|FALSE. Default: FALSE. Compress results inside the output directory.
+#' @param max.blas.threads Default: -1. Set the number of BLAS threads that Eigen/Armadillo will use. The default value will use the system/BLAS library default.
 #' @param max.workers Default: 0. Number of processes FastReg will spawn. By default FastReg will spawn min(# of poi files, # of available workers)
 #' @return numeric denoting elapsed.time
 #' @export
@@ -74,12 +75,22 @@ FastReg <- function(
     split.by = c(""),
     output.dir = "test",
     compress.results = FALSE,
+    max.blas.threads = -1,
     max.workers = 0) {
   if (max.openmp.threads <= 0) {
     cat("Error: max.openmp.threads must be a positive integer.\n")
     return(FALSE)
   }
-  blas_set_num_threads(max.openmp.threads)
+
+  if (max.blas.threads > get_num_procs()) {
+    cat("Error: max.blas.threads cannot be greater than number of avaialable processors.\n")
+    return(FALSE)
+  }
+
+  if (max.blas.threads > 0) {
+    blas_set_num_threads(max.blas.threads)
+  }
+
   if (max.workers < 0) {
     cat("Error: max.workers must be a positive integer.\n")
     return(FALSE)
@@ -120,7 +131,10 @@ FastReg <- function(
     compress.results,
     max.workers
   )
-  blas_set_num_threads(get_num_procs())
+
+  if (max.blas.threads > 0) {
+    blas_set_num_threads(get_num_procs())
+  }
 }
 
 #' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()
