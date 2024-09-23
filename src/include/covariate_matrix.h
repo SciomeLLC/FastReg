@@ -10,7 +10,7 @@ class CovariateMatrix
 public:
   std::string file_name;
   std::string id_col;
-  int id_cold_idx;
+  int id_col_idx;
   double colinearity_rsq;
   bool has_intercept;
   std::vector<Covariate> covariates;

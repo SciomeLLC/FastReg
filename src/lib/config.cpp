@@ -210,50 +210,50 @@ void Config::set_default_values() {
 void Config::validate_args() {
   std::string empty_str = "";
   if (!(POI_file_format == "txt" || POI_file_format == "plink" ||
-        POI_file_format == "h5")) {
-    throw std::invalid_argument("POI.file.format not supported");
+        POI_file_format == "h5" || POI_file_format == "bed")) {
+    Rcpp::stop("POI.file.format not supported");
   }
 
   if (POI_file_format == "txt" &&
       !(POI_file_delim == "tab" || POI_file_delim == "comma")) {
-    throw std::invalid_argument("POI.file.delim not supported");
+    Rcpp::stop("POI.file.delim not supported");
   }
 
   if (!(POI_effect_type == "dosage" || POI_effect_type == "additive" ||
         POI_effect_type == "recessive" || POI_effect_type == "dominant")) {
-    throw std::invalid_argument("invalid POI.effect.type");
+    Rcpp::stop("invalid POI.effect.type");
   }
 
   if (!(regression_type == "logistic" || regression_type == "linear")) {
-    throw std::invalid_argument("invalid regression.type");
+    Rcpp::stop("invalid regression.type");
   }
 
   if (!(pheno_file_delim == "tab" || pheno_file_delim == "comma" ||
         pheno_file_delim == "semicolon")) {
-    throw std::invalid_argument("pheno.file.delim not supported. Valid values "
-                                "are tab, comma and semicolon.");
+    Rcpp::stop("pheno.file.delim not supported. Valid values "
+               "are tab, comma and semicolon.");
   }
 
   if (!(covar_file_delim == "tab" || covar_file_delim == "comma" ||
         covar_file_delim == "semicolon")) {
-    throw std::invalid_argument("cov.file.delim not supported. Valid values "
-                                "are tab, comma and semicolon.");
+    Rcpp::stop("cov.file.delim not supported. Valid values "
+               "are tab, comma and semicolon.");
   }
 
   if (maf_threshold > 0.5 || maf_threshold < 0) {
-    throw std::invalid_argument("maf.threshold out of conventional bound");
+    Rcpp::stop("maf.threshold out of conventional bound");
   }
 
   if (hwe_threshold > 0.5 || hwe_threshold < 0) {
-    throw std::invalid_argument("hwe.threshold out of conventional bound");
+    Rcpp::stop("hwe.threshold out of conventional bound");
   }
 
   if (colinearity_rsq < 0.8 || colinearity_rsq > 1) {
-    throw std::invalid_argument("colinearity.rsq out of conventional bound");
+    Rcpp::stop("colinearity.rsq out of conventional bound");
   }
 
   if (!(p_value_type == "t.dist" || p_value_type == "norm.dist")) {
-    throw std::invalid_argument("Pvalue.type must be t.dist or norm.dist");
+    Rcpp::stop("Pvalue.type must be t.dist or norm.dist");
   }
 }
 
@@ -283,12 +283,16 @@ std::vector<std::string> Config::split(std::string val, std::string delim,
 // get a list of poi files from the poi_file_dir directory with the
 // poi_file_type extension
 void Config::get_poi_files() {
-  // get all files in the directory POI_file_dir
-  // Rcpp::Rcout << "getting poi files" << std::endl;
+  std::string extension;
+  if (POI_file_format == "bed") {
+    extension = ".bed";
+  } else {
+    extension = ".h5";
+  }
+
   for (auto &entry : fs::directory_iterator(POI_file_dir)) {
-    if (entry.path().extension() == ".h5") {
-        // Rcpp::Rcout << "POI file found: " << entry.path().string() << std::endl;
-        poi_files.push_back(entry.path().string());
+    if (entry.path().extension() == extension) {
+      poi_files.push_back(fs::absolute(entry.path()).string());
     }
   }
 }

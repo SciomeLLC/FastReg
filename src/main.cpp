@@ -1,6 +1,7 @@
 #define ARMA_WARN_LEVEL 0
 
 // [[Rcpp::depends(RcppArmadillo)]]
+#include "bed_reader.h"
 #include <RcppArmadillo.h>
 #include <algorithm>
 #include <atomic>
@@ -15,6 +16,7 @@
 #include <h5file.h>
 #include <iostream>
 #include <iterator>
+#include <pheno_matrix.h>
 #include <regression.h>
 #include <sstream>
 #include <stdio.h>
@@ -25,6 +27,8 @@
 #include <vector>
 
 #include <utils.h>
+
+#include "BEDMatrix.h"
 
 #if !defined(__APPLE__) && !defined(__MACH__)
 #include <omp.h>
@@ -84,12 +88,12 @@ struct ProcResult {
   void print_nonconvergence_summary() {
     double noncovergence_percent =
         (process_nonconvergence_status / process_total_filtered_pois) * 100;
-    Rcpp::Rcout << process_nonconvergence_status << " out of " << process_total_filtered_pois
-                  << " (" << std::setprecision(2) << std::fixed
-                  << noncovergence_percent
-                  << "%) POIs did not meet relative and absolute convergence "
-                     "threshold."
-                  << std::endl;
+    Rcpp::Rcout << process_nonconvergence_status << " out of "
+                << process_total_filtered_pois << " (" << std::setprecision(2)
+                << std::fixed << noncovergence_percent
+                << "%) POIs did not meet relative and absolute convergence "
+                   "threshold."
+                << std::endl;
   }
   void print_timing_summary(int process_id) {
     auto end =
@@ -428,7 +432,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (beta_abs_errs > config.abs_conv_tolerance));
       nonconvergence_status = arma::sum(convergence);
       // proc_res.print_convergence_percentage(nonconvergence_status,
-                                            // filtered_pois);
+      // filtered_pois);
       proc_res.process_nonconvergence_status += nonconvergence_status;
       proc_res.process_total_filtered_pois += filtered_pois;
     }
@@ -521,8 +525,11 @@ void FastRegCpp(
     delete_dir(config.output_dir);
   }
 
-  FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
-                    config.pheno_rowname_cols, config.phenotype);
+  // FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
+  //                   config.pheno_rowname_cols, config.phenotype);
+  PhenoMatrix pheno_matrix(config.pheno_file, config.pheno_file_delim,
+                           config.pheno_rowname_cols, config.phenotype);
+  FRMatrix pheno_df = pheno_matrix.create_matrix();
 
   CovariateMatrix cov_mat = CovariateMatrix(
       config.covar_file, config.covar_file_delim, config.covar_rowname_cols,
@@ -625,8 +632,8 @@ void FastRegCpp(
         ProcResult proc_res;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                       parallel_chunk_size, num_threads, use_blas, proc_res);
-        ssize_t res =
-            write(pipe_file_descriptors[i * 2 + 1], &proc_res, sizeof(proc_res));
+        ssize_t res = write(pipe_file_descriptors[i * 2 + 1], &proc_res,
+                            sizeof(proc_res));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
         return;
@@ -686,28 +693,67 @@ void FastRegCpp(
   // Rcpp::Rcout << "-----------------------------------------" << std::endl;
 }
 
-// [[Rcpp::export]]
-bool compareDesignMatrices(
-    const std::string phenotype, const std::string regression_type,
-    const std::string pvalue_dist, bool output_exclude_covar,
-    double maf_threshold, double hwe_threshold, bool no_intercept,
-    double colinearity_rsq, int poi_block_size, int max_iter,
-    double rel_conv_tolerance, double abs_conv_tolderance,
-    int max_openmp_threads, const std::string pheno_file,
-    const std::string pheno_rowname_cols, const std::string pheno_file_delim,
-    const std::string covar_file, const std::string covar_rowname_cols,
-    const std::string covar_file_delim, const std::string poi_file_dir,
-    const std::string poi_file_delim, const std::string poi_file_format,
-    const std::string poi_type, const std::string poi_effect_type,
-    const Rcpp::StringVector covariates,
-    const Rcpp::StringVector covariate_type,
-    const Rcpp::LogicalVector covariate_standardize,
-    const Rcpp::StringVector covariate_levels,
-    const Rcpp::StringVector covariate_ref_level,
-    const Rcpp::StringVector POI_covar_interactions_str,
-    const Rcpp::StringVector split_by_str, const std::string output_dir,
-    bool compress_results, int max_workers) {
+Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
+                          std::vector<std::string> row_names,
+                          std::vector<std::string> col_names) {
+  int n_rows = mat.n_rows;
+  int n_cols = mat.n_cols;
 
+  if (col_names.size() != static_cast<size_t>(n_cols)) {
+    Rcpp::stop("Number of column names does not match number of columns in "
+               "matrix. n_cols: %s, col_names: %s",
+               n_cols, col_names.size());
+  }
+
+  if (row_names.size() != static_cast<size_t>(n_rows)) {
+    Rcpp::stop("Number of row names does not match number of rows in matrix.");
+  }
+
+  for (size_t i = 0; i < col_names.size(); ++i) {
+    if (col_names[i].empty()) {
+      Rcpp::stop("Column name at position %d is empty.", i);
+    }
+  }
+
+  for (size_t i = 0; i < row_names.size(); ++i) {
+    if (row_names[i].empty()) {
+      Rcpp::stop("Row name at position %d is empty.", i);
+    }
+  }
+  Rcpp::List df_cols;
+  for (int i = 0; i < n_cols; i++) {
+    df_cols[col_names[i]] =
+        Rcpp::NumericVector(mat.colptr(i), mat.colptr(i) + n_rows);
+  }
+
+  Rcpp::DataFrame df(df_cols);
+  df.attr("row.names") = Rcpp::wrap(row_names);
+
+  return df;
+}
+
+// [[Rcpp::export]]
+Rcpp::List
+FastRegVLA(const std::string phenotype, const std::string regression_type,
+           const std::string pvalue_dist, bool output_exclude_covar,
+           double maf_threshold, double hwe_threshold, bool no_intercept,
+           double colinearity_rsq, int poi_block_size, int max_iter,
+           double rel_conv_tolerance, double abs_conv_tolderance,
+           int max_openmp_threads, const std::string pheno_file,
+           const std::string pheno_rowname_cols,
+           const std::string pheno_file_delim, const std::string covar_file,
+           const std::string covar_rowname_cols,
+           const std::string covar_file_delim, const std::string poi_file_dir,
+           const std::string poi_file_delim, const std::string poi_file_format,
+           const std::string poi_type, const std::string poi_effect_type,
+           const Rcpp::StringVector covariates,
+           const Rcpp::StringVector covariate_type,
+           const Rcpp::LogicalVector covariate_standardize,
+           const Rcpp::StringVector covariate_levels,
+           const Rcpp::StringVector covariate_ref_level,
+           const Rcpp::StringVector POI_covar_interactions_str,
+           const Rcpp::StringVector split_by_str, const std::string output_dir,
+           bool compress_results, int max_workers) {
   Config config(
       phenotype, regression_type, pvalue_dist, output_exclude_covar,
       maf_threshold, hwe_threshold, no_intercept, colinearity_rsq,
@@ -718,71 +764,40 @@ bool compareDesignMatrices(
       covariate_type, covariate_standardize, covariate_levels,
       covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir,
       compress_results, max_workers);
-  FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
-                    config.pheno_rowname_cols, config.phenotype);
-  FRMatrix covar_df(config.covar_file, config.covar_file_delim,
-                    config.covar_rowname_cols, config.covariates,
-                    config.covariate_type);
-  // Load the first POI file to calculate chunks
-  std::string poi_file_path = config.poi_files[0];
-  // Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
-  POI poi(poi_file_path);
-  poi.open(true);
-  poi.get_values_dataset_id();
-  poi.get_names();
-  poi.get_individuals();
 
-  std::vector<std::string> poi_names = poi.names;
-  std::vector<std::string> common_ind =
-      intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
-  std::vector<std::string> intersected_ind =
-      intersect_row_names(common_ind, poi.individuals);
-
-  FRMatrix pheno_matrix = pheno_df; // check col names
-
-  FRMatrix covar_matrix = create_design_matrix(
-      covar_df, config.covs, config.no_intercept, config.colinearity_rsq);
-
+  config.print();
+  if (dir_exists(config.output_dir)) {
+    delete_dir(config.output_dir);
+  }
   CovariateMatrix cov_mat = CovariateMatrix(
       config.covar_file, config.covar_file_delim, config.covar_rowname_cols,
       config.covs, config.colinearity_rsq, config.no_intercept);
 
-  FRMatrix cov_matrix_2 = cov_mat.create_design_matrix();
-  arma::fmat covar_matrix_2 = cov_matrix_2.data;
-  bool n_cols = covar_matrix_2.n_cols == covar_matrix.data.n_cols;
-  bool n_rows = covar_matrix_2.n_rows == covar_matrix.data.n_rows;
+  FRMatrix covar_df = cov_mat.create_design_matrix();
 
-  bool approx_equal =
-      arma::approx_equal(covar_matrix.data, covar_matrix_2, "reldiff", 0.1);
-  arma::uvec idx = arma::find_nonfinite(covar_matrix.data);
-  arma::uvec idx_2 = arma::find_nonfinite(covar_matrix_2);
-  std::vector<std::string> col_names(covar_matrix.col_names.size());
+  PhenoMatrix pheno_matrix(config.pheno_file, config.pheno_file_delim,
+                           config.pheno_rowname_cols, config.phenotype);
 
-  Rcpp::Rcout << "cov_mat_idx NAN len: " << idx.n_elem << std::endl;
-  Rcpp::Rcout << "cov_mat_2_idx NAN len: " << idx_2.n_elem << std::endl;
-  Rcpp::Rcout << "n_cols covar_mat: " << covar_matrix.data.n_cols << std::endl;
-  Rcpp::Rcout << "n_cols covar_mat_2: " << covar_matrix_2.n_cols << std::endl;
+  FRMatrix pheno_df = pheno_matrix.create_matrix();
+  BEDReader bed_reader(config.poi_files[0]);
 
-  Rcpp::Rcout << "n_cols eq: " << n_cols << std::endl;
-  Rcpp::Rcout << "n_rows eq: " << n_rows << std::endl;
-  for (auto kv : covar_matrix.col_names) {
-    Rcpp::Rcout << "col_name: " << kv.first << ": " << kv.second << std::endl;
-  }
+  std::vector<std::string> poi_names = bed_reader.get_names();
+  std::vector<std::string> poi_individuals = bed_reader.get_individuals();
+  std::vector<std::string> common_ind =
+      intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
+  std::vector<std::string> intersected_ind =
+      intersect_row_names(common_ind, poi_individuals);
+  Rcpp::Rcout << "Reading bed chunk" << std::endl;
+  FRMatrix Z = bed_reader.read_chunk(intersected_ind, poi_names);
+  Rcpp::List covar =
+      arma_2_df(covar_df.data, covar_df.row_names_arr, covar_df.col_names_arr);
+  Rcpp::List phen =
+      arma_2_df(pheno_df.data, pheno_df.row_names_arr, pheno_df.col_names_arr);
+  Rcpp::List poi = arma_2_df(Z.data, Z.row_names_arr, Z.col_names_arr);
+  Rcpp::List ret_mat =
+      Rcpp::List::create(Rcpp::Named("covariates") = covar,
+                         Rcpp::Named("phenotype") = phen, Rcpp::Named("poi") = poi);
 
-  for (auto kv : cov_matrix_2.col_names) {
-    Rcpp::Rcout << "col_name: " << kv.first << ": " << kv.second << std::endl;
-  }
 
-  // for (size_t i = 0; i < covar_matrix.data.n_cols; i++) {
-  //   arma::fcolvec col = covar_matrix.data.col(i);
-  //   arma::fcolvec col2 = covar_matrix_2.col(i);
-
-  //   arma::uvec idx = arma::find_nonfinite(col);
-  //   arma::uvec idx2 = arma::find_nonfinite(col2);
-  //   // if (col_names.at(i) == "Agesq") {
-  //   //   std::string col_name = col_names.at(i);
-  //   // }
-  // }
-
-  return n_cols && n_rows && approx_equal;
+  return ret_mat;
 }

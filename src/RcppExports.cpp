@@ -80,9 +80,9 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// compareDesignMatrices
-bool compareDesignMatrices(const std::string phenotype, const std::string regression_type, const std::string pvalue_dist, bool output_exclude_covar, double maf_threshold, double hwe_threshold, bool no_intercept, double colinearity_rsq, int poi_block_size, int max_iter, double rel_conv_tolerance, double abs_conv_tolderance, int max_openmp_threads, const std::string pheno_file, const std::string pheno_rowname_cols, const std::string pheno_file_delim, const std::string covar_file, const std::string covar_rowname_cols, const std::string covar_file_delim, const std::string poi_file_dir, const std::string poi_file_delim, const std::string poi_file_format, const std::string poi_type, const std::string poi_effect_type, const Rcpp::StringVector covariates, const Rcpp::StringVector covariate_type, const Rcpp::LogicalVector covariate_standardize, const Rcpp::StringVector covariate_levels, const Rcpp::StringVector covariate_ref_level, const Rcpp::StringVector POI_covar_interactions_str, const Rcpp::StringVector split_by_str, const std::string output_dir, bool compress_results, int max_workers);
-RcppExport SEXP _FastReg_compareDesignMatrices(SEXP phenotypeSEXP, SEXP regression_typeSEXP, SEXP pvalue_distSEXP, SEXP output_exclude_covarSEXP, SEXP maf_thresholdSEXP, SEXP hwe_thresholdSEXP, SEXP no_interceptSEXP, SEXP colinearity_rsqSEXP, SEXP poi_block_sizeSEXP, SEXP max_iterSEXP, SEXP rel_conv_toleranceSEXP, SEXP abs_conv_tolderanceSEXP, SEXP max_openmp_threadsSEXP, SEXP pheno_fileSEXP, SEXP pheno_rowname_colsSEXP, SEXP pheno_file_delimSEXP, SEXP covar_fileSEXP, SEXP covar_rowname_colsSEXP, SEXP covar_file_delimSEXP, SEXP poi_file_dirSEXP, SEXP poi_file_delimSEXP, SEXP poi_file_formatSEXP, SEXP poi_typeSEXP, SEXP poi_effect_typeSEXP, SEXP covariatesSEXP, SEXP covariate_typeSEXP, SEXP covariate_standardizeSEXP, SEXP covariate_levelsSEXP, SEXP covariate_ref_levelSEXP, SEXP POI_covar_interactions_strSEXP, SEXP split_by_strSEXP, SEXP output_dirSEXP, SEXP compress_resultsSEXP, SEXP max_workersSEXP) {
+// FastRegVLA
+Rcpp::List FastRegVLA(const std::string phenotype, const std::string regression_type, const std::string pvalue_dist, bool output_exclude_covar, double maf_threshold, double hwe_threshold, bool no_intercept, double colinearity_rsq, int poi_block_size, int max_iter, double rel_conv_tolerance, double abs_conv_tolderance, int max_openmp_threads, const std::string pheno_file, const std::string pheno_rowname_cols, const std::string pheno_file_delim, const std::string covar_file, const std::string covar_rowname_cols, const std::string covar_file_delim, const std::string poi_file_dir, const std::string poi_file_delim, const std::string poi_file_format, const std::string poi_type, const std::string poi_effect_type, const Rcpp::StringVector covariates, const Rcpp::StringVector covariate_type, const Rcpp::LogicalVector covariate_standardize, const Rcpp::StringVector covariate_levels, const Rcpp::StringVector covariate_ref_level, const Rcpp::StringVector POI_covar_interactions_str, const Rcpp::StringVector split_by_str, const std::string output_dir, bool compress_results, int max_workers);
+RcppExport SEXP _FastReg_FastRegVLA(SEXP phenotypeSEXP, SEXP regression_typeSEXP, SEXP pvalue_distSEXP, SEXP output_exclude_covarSEXP, SEXP maf_thresholdSEXP, SEXP hwe_thresholdSEXP, SEXP no_interceptSEXP, SEXP colinearity_rsqSEXP, SEXP poi_block_sizeSEXP, SEXP max_iterSEXP, SEXP rel_conv_toleranceSEXP, SEXP abs_conv_tolderanceSEXP, SEXP max_openmp_threadsSEXP, SEXP pheno_fileSEXP, SEXP pheno_rowname_colsSEXP, SEXP pheno_file_delimSEXP, SEXP covar_fileSEXP, SEXP covar_rowname_colsSEXP, SEXP covar_file_delimSEXP, SEXP poi_file_dirSEXP, SEXP poi_file_delimSEXP, SEXP poi_file_formatSEXP, SEXP poi_typeSEXP, SEXP poi_effect_typeSEXP, SEXP covariatesSEXP, SEXP covariate_typeSEXP, SEXP covariate_standardizeSEXP, SEXP covariate_levelsSEXP, SEXP covariate_ref_levelSEXP, SEXP POI_covar_interactions_strSEXP, SEXP split_by_strSEXP, SEXP output_dirSEXP, SEXP compress_resultsSEXP, SEXP max_workersSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -120,7 +120,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const std::string >::type output_dir(output_dirSEXP);
     Rcpp::traits::input_parameter< bool >::type compress_results(compress_resultsSEXP);
     Rcpp::traits::input_parameter< int >::type max_workers(max_workersSEXP);
-    rcpp_result_gen = Rcpp::wrap(compareDesignMatrices(phenotype, regression_type, pvalue_dist, output_exclude_covar, maf_threshold, hwe_threshold, no_intercept, colinearity_rsq, poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance, max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim, covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir, poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates, covariate_type, covariate_standardize, covariate_levels, covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir, compress_results, max_workers));
+    rcpp_result_gen = Rcpp::wrap(FastRegVLA(phenotype, regression_type, pvalue_dist, output_exclude_covar, maf_threshold, hwe_threshold, no_intercept, colinearity_rsq, poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance, max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim, covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir, poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates, covariate_type, covariate_standardize, covariate_levels, covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir, compress_results, max_workers));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -128,7 +128,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_FastReg_FastRegImportCpp", (DL_FUNC) &_FastReg_FastRegImportCpp, 15},
     {"_FastReg_FastRegCpp", (DL_FUNC) &_FastReg_FastRegCpp, 34},
-    {"_FastReg_compareDesignMatrices", (DL_FUNC) &_FastReg_compareDesignMatrices, 34},
+    {"_FastReg_FastRegVLA", (DL_FUNC) &_FastReg_FastRegVLA, 34},
     {NULL, NULL, 0}
 };
 

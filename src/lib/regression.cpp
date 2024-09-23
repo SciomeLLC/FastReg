@@ -91,7 +91,6 @@ void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_
 
     for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4; iter++)
     {
-
       arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
       eta += cov_w_mat * beta.subvec(first);
       eta += int_w_mat * beta.subvec(second);

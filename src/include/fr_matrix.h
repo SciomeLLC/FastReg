@@ -20,31 +20,12 @@ public:
     std::vector<std::string> col_name_str_arr;
     std::vector<std::vector<std::string>> str_data;
     std::unordered_map<std::string, int> col_names_str;
-
+    std::vector<std::string> col_names_arr;
+    std::vector<std::string> row_names_arr;
     std::unordered_map<std::string, int> row_names;
     std::unordered_map<std::string, int> col_names;
-    FRMatrix(std::string filename, std::string delim, std::string &names)
-    {
-        load_from_csv(filename, delim, names);
-        Rcpp::Rcout << "Discovered " << row_names.size() << " unique subjects in " << filename << " file." << std::endl;
-    };
-
-    FRMatrix(std::string filename, std::string delim, std::string id, std::string phenotype)
-    {
-        load_from_csv(filename, delim, id, phenotype);
-        Rcpp::Rcout << "Discovered " << row_names.size() << " unique subjects in " << filename << " file." << std::endl;
-    };
-
-    FRMatrix(std::string filename, std::string delim, std::string id, std::vector<std::string> covariates, std::vector<std::string> cov_type)
-    {
-        load_from_csv(filename, delim, id, covariates, cov_type);
-        Rcpp::Rcout << "Discovered " << row_names.size() << " unique subjects in " << filename << " file." << std::endl;
-    };
 
     bool validate_cols(std::string &names);
-    void load_from_csv(std::string &filename, std::string &delim, std::string &id);
-    void load_from_csv(std::string &filename, std::string &delim, std::string &id, std::string &phenotype);
-    void load_from_csv(std::string &filename, std::string &delim, std::string &id, std::vector<std::string> covariates, std::vector<std::string> cov_type);
     FRMatrix get_submat_by_cols(const std::vector<int> &row_idx, const std::vector<std::string> &names);
     FRMatrix get_submat_by_cols(const std::vector<int> &row_idx, const std::unordered_map<std::string, int> &names);
     std::vector<std::string> split(const std::string &str_tokens, char delim);
