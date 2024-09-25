@@ -17,7 +17,7 @@ public:
   PhenoMatrix(std::string &filename, std::string &delim, std::string &id,
               std::string &phenotype) {
     file_name = filename;
-    reader = CSVReader(filename, delim);
+    reader = CSVReader(filename, delim, id);
     headers = reader.get_headers();
     id_col = id;
     this->phenotype = phenotype;

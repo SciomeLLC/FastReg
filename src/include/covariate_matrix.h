@@ -23,7 +23,7 @@ public:
   CovariateMatrix(std::string &filename, std::string &delim, std::string &id, std::vector<Covariate> covariates, double colinearity_rsq, bool no_intercept)
   {
     file_name = filename;
-    reader = CSVReader(filename, delim);
+    reader = CSVReader(filename, delim, id);
     this->covariates = covariates;
     headers = reader.get_headers();
     id_col = id;

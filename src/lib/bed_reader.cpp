@@ -1,4 +1,4 @@
-#include "bed_reader.h"
+#include "reader.h"
 
 float BEDReader::recode_genotype2(int genotype) {
   float coding = arma::datum::nan; // missing
@@ -58,8 +58,8 @@ std::vector<std::string> BEDReader::get_individuals() {
   return row_names;
 }
 
-FRMatrix BEDReader::read_chunk(std::vector<std::string> &rows,
-                               std::vector<std::string> &cols) {
+FRMatrix BEDReader::read_chunk(const std::vector<std::string> &rows,
+                               const std::vector<std::string> &cols) {
   // Open the BED file in binary mode
   std::ifstream bed_file(file_name.c_str(), std::ios::in | std::ios::binary);
   if (!bed_file) {
@@ -137,7 +137,7 @@ FRMatrix BEDReader::read_chunk(std::vector<std::string> &rows,
       Rcpp::stop("Failed to read genotype data for SNP %d.", snp_idx + 1);
     }
 
-    arma::frowvec geno_vec(ni);
+    arma::fcolvec geno_vec(ni);
     // For each sample in i
     for (int ci = 0; ci < ni; ci++) {
       int sample_idx = row_ids[ci];
@@ -156,8 +156,7 @@ FRMatrix BEDReader::read_chunk(std::vector<std::string> &rows,
     }
 
     std::string snp_id = headers[snp_idx];
-    Rcpp::Rcout << "Add col to bed mat" << std::endl;
-    snps_mat.data.col(cj) = geno_vec.t();
+    snps_mat.data.col(cj) = geno_vec;
     snps_mat.col_names[snp_id] = cj;
     snps_mat.col_names_arr.push_back(snp_id);
   }

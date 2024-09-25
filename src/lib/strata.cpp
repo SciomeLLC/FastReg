@@ -12,10 +12,18 @@ void Strata::stratify(const std::vector<std::string> &split_by,
                       const std::vector<std::string> &common_individuals) {
   int nsplit_vars = split_by.size();
   if (!split_by[0].empty()) {
+    Rcpp::Rcout << "Stratifying - split_by value exists" << std::endl;
     arma::uvec common_individuals_idx(common_individuals.size());
     int ct = 0;
     for (const auto &ind : common_individuals) {
+      if (ind.empty()) {
+        Rcpp::Rcout << "Stratify found empty id string: " << ind << std::endl;
+        continue;
+      }
       int row_idx = covar_df.get_row_idx(ind);
+      if (row_idx == -1) {
+        continue;
+      }
       common_individuals_idx[ct] = row_idx;
       ct++;
     }
@@ -24,7 +32,14 @@ void Strata::stratify(const std::vector<std::string> &split_by,
     arma::uvec split_by_idx(split_by.size());
 
     for (const auto &col : split_by) {
+      if (col.empty()) {
+        Rcpp::Rcout << "Stratify found empty col string: " << col << std::endl;
+        continue;
+      }
       int col_idx = covar_df.get_col_idx(col);
+      if (col_idx == -1) {
+        continue;
+      }
       split_by_idx[ct] = col_idx;
       ct++;
     }

@@ -1,7 +1,6 @@
 #define ARMA_WARN_LEVEL 0
 
 // [[Rcpp::depends(RcppArmadillo)]]
-#include "bed_reader.h"
 #include <RcppArmadillo.h>
 #include <algorithm>
 #include <atomic>
@@ -13,7 +12,6 @@
 #include <ctime>
 #include <fr_matrix.h>
 #include <fstream>
-#include <h5file.h>
 #include <iostream>
 #include <iterator>
 #include <pheno_matrix.h>
@@ -26,9 +24,10 @@
 #include <utility>
 #include <vector>
 
-#include <utils.h>
-
 #include "BEDMatrix.h"
+#include <poi_matrix.h>
+#include <reader.h>
+#include <utils.h>
 
 #if !defined(__APPLE__) && !defined(__MACH__)
 #include <omp.h>
@@ -270,7 +269,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " <<
       // end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks <<
       // std::endl;
-      poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk);
+      FRMatrix poi_matrix = poi.read_chunk(poi.individuals, poi_names_chunk);
       // Rcpp::Rcout << "loaded chunk" << std::endl;
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
@@ -732,6 +731,385 @@ Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
   return df;
 }
 
+void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
+                       FRMatrix &covar_df, std::string poi_file_path,
+                       int chunk_size, int num_threads, bool use_blas,
+                       ProcResult &proc_res) {
+  // Load POI file
+  BEDReader bed_reader(poi_file_path);
+
+  // Find common individuals
+  std::vector<std::string> poi_names = bed_reader.get_names();
+  std::vector<std::string> poi_individuals = bed_reader.get_individuals();
+  std::vector<std::string> common_ind =
+      intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
+  std::vector<std::string> intersected_ind =
+      intersect_row_names(common_ind, poi_individuals);
+  if (intersected_ind.empty()) {
+    stop("No overlapping individuals found in POI, pheno, and covar files");
+  }
+
+  int num_poi = poi_names.size();
+  if (num_poi == 0) {
+    stop("No overlapping individuals found in POI, pheno, covar files");
+  }
+
+  Rcpp::Rcout << "Stratifying data" << std::endl;
+  // Stratify data
+  Strata stratums;
+  stratums.stratify(config.split_by, covar_df, intersected_ind);
+  double memory_allocation_time = 0.0;
+  double file_writing_time = 0.0;
+  double poi_reading_time = 0.0;
+  double regression_time = 0.0;
+  for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
+    std::string outfile_suffix = stratums.ids[stratum];
+    Rcpp::Rcout << "outfile suffix: " << outfile_suffix << std::endl;
+    if (!config.split_by[0].empty()) {
+      Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
+                  << std::endl;
+    }
+    std::vector<std::string> ind_set = stratums.index_list[outfile_suffix];
+    int ct = 0;
+    std::vector<int> ind_set_idx(ind_set.size());
+    for (std::string ind : ind_set) {
+      if (ind.empty()) {
+        Rcpp::Rcout << "Found empty ind value: " << ind << std::endl;
+        continue;
+      }
+      int idx = pheno_df.get_row_idx(ind);
+      if (idx == -1) {
+        Rcpp::Rcout << "Ind value not found in pheno_df: " << ind << std::endl;
+        continue;
+      }
+      ind_set_idx[ct] = idx;
+      ct++;
+    }
+
+    // Rcpp::Rcout << "Init matrices" << std::endl;
+    // initialize matrices
+    FRMatrix pheno_matrix = pheno_df; // check col names
+    // n individuals x # covariates
+    FRMatrix covar_matrix = covar_df;
+
+    FRMatrix covar_poi_interaction_matrix;
+    covar_poi_interaction_matrix.data =
+        arma::fmat(covar_matrix.data.n_rows, 1, arma::fill::ones);
+    covar_poi_interaction_matrix.row_names = covar_matrix.row_names;
+    covar_poi_interaction_matrix.col_names = {{"poi", 0}};
+    // n individuals x 1 or 1 + num interacting poi covars
+    create_Z_matrix(covar_matrix, config.POI_covar_interactions,
+                    covar_poi_interaction_matrix);
+
+    std::vector<int> nan_idx;
+    std::vector<std::string> ind_set_filtered;
+
+    // Rcpp::Rcout << "Identify missing" << std::endl;
+    // Rcpp::Rcout << "cov mat rows: " << covar_matrix.data.n_rows << std::endl;
+    // Rcpp::Rcout << "pheno mat rows: " << pheno_matrix.data.n_rows <<
+    // std::endl; identify missing values for covar, pheno matrix
+    for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
+      auto idx = std::find(ind_set.begin(), ind_set.end(),
+                           covar_matrix.row_names_arr[i]);
+      if (idx == ind_set.end()) {
+        nan_idx.push_back(i); // Missing individual
+        continue;
+      }
+      arma::uvec covar_nan_idx = arma::find_nonfinite(covar_matrix.data.row(i));
+      arma::uvec pheno_nan_idx = arma::find_nonfinite(pheno_matrix.data.row(i));
+      if (covar_nan_idx.size() > 0 || pheno_nan_idx.size() > 0) {
+        nan_idx.push_back(i);
+      } else {
+        if (ind_set[i].empty()) {
+          Rcpp::Rcout << "Found empty ind string in missing: " << ind_set[i]
+                      << std::endl;
+          continue;
+        }
+        if (ind_set[i].c_str() == nullptr) {
+          Rcpp::Rcout << "Null string found at idx: " << i << std::endl;
+          continue;
+        }
+        ind_set_filtered.push_back(ind_set[i]);
+      }
+    }
+
+    Rcpp::Rcout << "Removing missing" << std::endl;
+    // remove from covar, pheno
+    covar_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
+    pheno_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
+    covar_poi_interaction_matrix.data.shed_rows(
+        arma::conv_to<arma::uvec>::from(nan_idx));
+    covar_matrix.row_names =
+        std::unordered_map<std::string, int>(ind_set_filtered.size());
+    pheno_matrix.row_names =
+        std::unordered_map<std::string, int>(ind_set_filtered.size());
+    for (size_t j = 0; j < covar_matrix.data.n_rows; j++) {
+      covar_matrix.row_names[ind_set_filtered[j]] = j;
+      pheno_matrix.row_names[ind_set_filtered[j]] = j;
+      covar_poi_interaction_matrix.row_names[ind_set_filtered[j]] = j;
+    }
+    std::vector<std::string> strat_individuals(ind_set_filtered.size());
+    std::transform(
+        ind_set_filtered.begin(), ind_set_filtered.end(),
+        strat_individuals.begin(), [&intersected_ind](const std::string &elem) {
+          return intersected_ind[std::distance(
+              intersected_ind.begin(),
+              std::find(intersected_ind.begin(), intersected_ind.end(), elem))];
+        });
+    double nonconvergence_status = 0.0;
+    double filtered_pois = 0.0;
+
+    int num_parallel_poi_blocks =
+        (int)std::ceil((double)num_poi / (double)chunk_size);
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    // allocate memory space for H5 file to read into
+    for (int block = 0; block < num_parallel_poi_blocks; block++) {
+      int start_chunk = block * chunk_size;
+      int end_chunk = start_chunk + chunk_size;
+      if (end_chunk >= num_poi) {
+        end_chunk = num_poi;
+      }
+
+      Rcpp::Rcout << "Reading poi chunk of length: " << end_chunk - start_chunk
+                  << std::endl;
+      std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
+                                               poi_names.begin() + end_chunk);
+      // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " <<
+      // end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks <<
+      // std::endl;
+      POIMatrix poi(&bed_reader);
+      FRMatrix poi_matrix = poi.get_chunk(poi_individuals, poi_names_chunk);
+
+      Rcpp::Rcout << "loaded chunk" << std::endl;
+      std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
+      std::vector<std::string> drop_rows =
+          set_diff(poi_individuals, strat_individuals);
+
+      int num_dropped = poi_individuals.size() - strat_individuals.size();
+      arma::uvec drop_row_idx(drop_rows.size());
+      for (size_t i = 0; i < drop_rows.size(); i++) {
+        drop_row_idx[i] = poi_matrix.row_names[drop_rows[i]];
+      }
+
+      std::unordered_map<std::string, int> new_row_names(
+          strat_individuals.size());
+      for (auto &ind : strat_individuals) {
+        new_row_names[ind] = poi_matrix.row_names[ind] - num_dropped;
+      }
+      poi_matrix.data.shed_rows(drop_row_idx);
+      poi_matrix.row_names = new_row_names;
+
+      srt_cols_2 = poi_matrix.sort_map(false);
+      auto end_time = std::chrono::high_resolution_clock::now();
+      poi_reading_time +=
+          (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+              end_time - start_time)
+              .count();
+
+      if (config.POI_type == "genotype") {
+        FRMatrix filtered =
+            filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
+        arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
+
+        if (filtered.data.n_cols == 0 ||
+            filtered_col.n_elem == poi_matrix.data.n_cols) {
+          Rcpp::Rcout << "no POI passed filtering" << std::endl;
+          return;
+        }
+
+        std::vector<std::string> poi_col_names = filtered.sort_map(false);
+        int cols_erased = 0;
+
+        for (unsigned int i = 0; i < poi_col_names.size(); i++) {
+          if ((unsigned)cols_erased < filtered_col.n_elem &&
+              filtered_col[cols_erased] == i) {
+            poi_matrix.col_names.erase(poi_col_names[i]);
+            cols_erased++;
+          } else {
+            poi_matrix.col_names[poi_col_names[i]] =
+                poi_matrix.col_names[poi_col_names[i]] - cols_erased;
+          }
+        }
+
+        poi_matrix.data.shed_cols(filtered_col);
+        transform_poi(poi_matrix, config.POI_effect_type);
+        start_time = std::chrono::high_resolution_clock::now();
+        std::string summary_name = "POI_Summary";
+        filtered.write_summary(config.output_dir, summary_name, stratum,
+                               process_id);
+        end_time = std::chrono::high_resolution_clock::now();
+        file_writing_time +=
+            (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+                end_time - start_time)
+                .count();
+      }
+
+      filtered_pois += poi_matrix.data.n_cols;
+      Rcpp::Rcout << "filtered pois" << std::endl;
+      start_time = std::chrono::high_resolution_clock::now();
+
+      FRMatrix beta_est;
+      FRMatrix se_beta;
+      FRMatrix beta_est2;
+      FRMatrix se_beta2;
+
+      // Fit 1
+      int num_parms = 1 + covar_matrix.data.n_cols;
+      int num_parms2 =
+          covar_poi_interaction_matrix.data.n_cols + covar_matrix.data.n_cols;
+      beta_est.data =
+          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+      arma::fcolvec beta_rel_errs =
+          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
+      arma::fcolvec beta_abs_errs =
+          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
+      FRMatrix neglog10_pvl;
+      neglog10_pvl.data =
+          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+
+      arma::fcolvec iters =
+          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
+      arma::fmat lls = arma::fmat(poi_matrix.data.n_cols, 4,
+                                  arma::fill::zeros); // LL1, LL2, LRS, LRS_pval
+
+      Rcpp::Rcout << "prepared fit1 mats" << std::endl;
+      // Fit 2
+      beta_est2.data =
+          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
+      arma::fcolvec beta_rel_errs2 =
+          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
+      arma::fcolvec beta_abs_errs2 =
+          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
+
+      se_beta2.data =
+          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
+
+      FRMatrix neglog10_pvl2;
+      neglog10_pvl2.data =
+          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
+      
+      Rcpp::Rcout << "prepared fit2 mats" << std::endl;
+
+      for (auto &col_name : covar_matrix.col_names) {
+        beta_est.row_names[col_name.first] = col_name.second;
+        se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];
+        neglog10_pvl.row_names[col_name.first] =
+            beta_est.row_names[col_name.first];
+        beta_est2.row_names[col_name.first] = col_name.second;
+        se_beta2.row_names[col_name.first] =
+            beta_est2.row_names[col_name.first];
+        neglog10_pvl2.row_names[col_name.first] =
+            beta_est2.row_names[col_name.first];
+      }
+      
+      Rcpp::Rcout << "set row/col names for beta,se, and pvals" << std::endl;
+      int num_int = 0;
+      for (auto &col_name : covar_poi_interaction_matrix.col_names) {
+        if (num_int == 0) { // no interactions for the first fit
+          
+          Rcpp::Rcout << "trying to set poi row name in fit1" << std::endl;
+          beta_est.row_names["poi"] = covar_matrix.col_names.size();
+          se_beta.row_names["poi"] = beta_est.row_names["poi"];
+          neglog10_pvl.row_names["poi"] = beta_est.row_names["poi"];
+          Rcpp::Rcout << "set poi row name in fit1" << std::endl;
+        }
+        beta_est2.row_names[col_name.first] =
+            covar_matrix.col_names.size() + col_name.second;
+        se_beta2.row_names[col_name.first] =
+            beta_est2.row_names[col_name.first];
+        neglog10_pvl2.row_names[col_name.first] =
+            beta_est.row_names[col_name.first];
+      }
+      Rcpp::Rcout << "set row/col names for beta,se, and pvals for interactions" << std::endl;
+      Rcpp::Rcout << "interactions size: " << covar_poi_interaction_matrix.data.size() << std::endl;
+      beta_est.col_names = covar_matrix.row_names;
+      se_beta.col_names = beta_est.col_names;
+      neglog10_pvl.col_names = beta_est.col_names;
+      
+      Rcpp::Rcout << "set col names for beta/se/pval" << std::endl;
+      // Fit 2
+      beta_est2.col_names = covar_matrix.row_names;
+      se_beta2.col_names = beta_est2.col_names;
+      neglog10_pvl2.col_names = beta_est2.col_names;
+      
+      Rcpp::Rcout << "set col names for beta2/se2/pval2" << std::endl;
+      std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
+      
+      Rcpp::Rcout << "sorted poi mat" << std::endl;
+      arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
+                                 arma::fill::ones);
+      for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
+        arma::uvec G_na = arma::find_nonfinite(poi_matrix.data.col(v));
+        for (arma::uword i = 0; i < G_na.n_elem; i++) {
+          W2(G_na(i), v) = 0;
+          poi_matrix.data(G_na(i), v) = 0;
+        }
+      }
+      
+      Rcpp::Rcout << "prepared w2 mat" << std::endl;
+      arma::fmat poi_sqrd_mat = arma::square(poi_matrix.data);
+      
+      Rcpp::Rcout << "sqrd poi" << std::endl;
+      end_time = std::chrono::high_resolution_clock::now();
+      memory_allocation_time +=
+          (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+              end_time - start_time)
+              .count();
+
+#if !defined(__APPLE__) && !defined(__MACH__)
+      omp_set_num_threads(num_threads);
+#endif
+      start_time = std::chrono::high_resolution_clock::now();
+      std::unique_ptr<RegressionBase> regression;
+      regression.reset(new LogisticRegression());
+      
+      Rcpp::Rcout << "starting vla" << std::endl;
+      regression->run_vla(covar_matrix, pheno_matrix, poi_matrix, poi_sqrd_mat,
+                          covar_poi_interaction_matrix, W2, beta_est, se_beta,
+                          neglog10_pvl, beta_rel_errs, beta_abs_errs, beta_est2,
+                          se_beta2, neglog10_pvl2, beta_rel_errs2,
+                          beta_abs_errs2, iters, lls, config.max_iter, config.p_value_type == "t.dist");
+      end_time = std::chrono::high_resolution_clock::now();
+      regression_time +=
+          (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+              end_time - start_time)
+              .count();
+      start_time = std::chrono::high_resolution_clock::now();
+      FRMatrix::write_vla_results(
+          beta_est, se_beta, neglog10_pvl, W2, beta_rel_errs, beta_abs_errs,
+          beta_est2, se_beta2, neglog10_pvl2, beta_rel_errs2, beta_abs_errs2,
+          lls, iters, srt_cols, config.output_dir, "Results", stratum,
+          config.output_exclude_covar, process_id + 1);
+
+      end_time = std::chrono::high_resolution_clock::now();
+      file_writing_time +=
+          std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                start_time)
+              .count();
+      poi_matrix.col_names.clear();
+
+      arma::fcolvec convergence = arma::conv_to<fcolvec>::from(
+          (beta_rel_errs > config.rel_conv_tolerance) &&
+          (beta_abs_errs > config.abs_conv_tolerance));
+      nonconvergence_status = arma::sum(convergence);
+      // proc_res.print_convergence_percentage(nonconvergence_status,
+      // filtered_pois);
+      proc_res.process_nonconvergence_status += nonconvergence_status;
+      proc_res.process_total_filtered_pois += filtered_pois;
+    }
+  }
+
+  auto end =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+  proc_res.timing_results[0] = poi_reading_time;
+  proc_res.timing_results[1] = file_writing_time;
+  proc_res.timing_results[2] = memory_allocation_time;
+  proc_res.timing_results[3] = regression_time;
+  proc_res.print_timing_summary(process_id);
+}
+
 // [[Rcpp::export]]
 Rcpp::List
 FastRegVLA(const std::string phenotype, const std::string regression_type,
@@ -787,17 +1165,149 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi_individuals);
-  Rcpp::Rcout << "Reading bed chunk" << std::endl;
-  FRMatrix Z = bed_reader.read_chunk(intersected_ind, poi_names);
-  Rcpp::List covar =
-      arma_2_df(covar_df.data, covar_df.row_names_arr, covar_df.col_names_arr);
-  Rcpp::List phen =
-      arma_2_df(pheno_df.data, pheno_df.row_names_arr, pheno_df.col_names_arr);
-  Rcpp::List poi = arma_2_df(Z.data, Z.row_names_arr, Z.col_names_arr);
-  Rcpp::List ret_mat =
-      Rcpp::List::create(Rcpp::Named("covariates") = covar,
-                         Rcpp::Named("phenotype") = phen, Rcpp::Named("poi") = poi);
+  // FRMatrix Z = bed_reader.read_chunk(intersected_ind, poi_names);
 
+  Rcout << intersected_ind.size()
+        << " common unique subjects in pheno.file, "
+           "covar.file, and POI.file"
+        << std::endl;
+  if (intersected_ind.empty()) {
+    stop("No overlapping individuals found in POI, pheno, and covar files");
+  }
 
-  return ret_mat;
+  int num_poi = poi_names.size();
+  if (num_poi == 0) {
+    stop("No overlapping individuals found in POI, pheno, covar files");
+  }
+
+  // Stratify data
+  int num_poi_files = config.poi_files.size();
+  Strata stratums;
+  stratums.stratify(config.split_by, covar_df, intersected_ind);
+  Chunker chunker =
+      Chunker(num_poi, intersected_ind.size(), config.max_openmp_threads,
+              config.poi_block_size, num_poi_files, config.max_workers);
+
+  // setup parallel processing
+  // total_num_chunks
+  int parallel_chunk_size =
+      chunker.get_chunk_size() / 2; // twice the memory usage due to 2 fits
+  int num_threads = chunker.get_openmp_threads();
+  const int timing_results_size = 4;
+  double concatenation_time, compression_time = 0.0;
+  ProcResult total_proc_res;
+  int total_timing_results[timing_results_size] = {0, 0, 0, 0};
+#if !defined(__APPLE__) && !defined(__MACH__)
+  omp_set_num_threads(num_threads);
+#endif
+#ifdef _WIN32
+  for (int i = 0; i < num_poi_files; i++) {
+    ProcResult proc_res;
+    int timing_results[] = {0, 0, 0, 0};
+    process_chunk_vla(i, config, pheno_df, covar_df, config.poi_files[i],
+                      parallel_chunk_size, num_threads, false, proc_res);
+
+    total_proc_res.accumulate(proc_res);
+  }
+#else
+
+  int num_processes_total = chunker.get_total_workers();
+  int max_processes = chunker.get_num_workers();
+  std::vector<int> pipe_file_descriptors(num_processes_total * 2);
+  std::vector<pid_t> process_ids(num_processes_total);
+  std::vector<bool> has_completed(num_processes_total, false);
+
+  int num_processes_started = 0;
+  int num_processes_completed = 0;
+
+  while (num_processes_completed < num_processes_total) {
+    while ((num_processes_started - num_processes_completed) < max_processes) {
+      checkInterrupt();
+      if (num_processes_started == num_processes_total) {
+        break;
+      }
+      int i = num_processes_started;
+      if (pipe(&pipe_file_descriptors[i * 2]) == -1) {
+        perror("pipe");
+        return;
+      }
+      process_ids[i] = fork();
+      if (process_ids[i] == -1) {
+        perror("fork");
+        return;
+      }
+      std::string poi_file_path = config.poi_files[i];
+      if (process_ids[i] == 0) {             // child process
+        close(pipe_file_descriptors[i * 2]); // close read pipe
+
+        ProcResult proc_res;
+        process_chunk_vla(i, config, pheno_df, covar_df, poi_file_path,
+                          parallel_chunk_size, num_threads, use_blas, proc_res);
+        ssize_t res = write(pipe_file_descriptors[i * 2 + 1], &proc_res,
+                            sizeof(proc_res));
+        close(pipe_file_descriptors[i * 2 + 1]);
+        _exit(EXIT_SUCCESS);
+        return;
+      } else {
+        close(pipe_file_descriptors[i * 2 + 1]);
+        num_processes_started++;
+      }
+    }
+    // Check for finished processes
+    for (int i = 0; i < num_processes_started; i++) {
+      checkInterrupt();
+      if (process_ids[i] != 0) { // parent process
+        if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
+          has_completed[i] = true;
+
+          ProcResult proc_res;
+          ssize_t res =
+              read(pipe_file_descriptors[i * 2], &proc_res, sizeof(proc_res));
+          close(pipe_file_descriptors[i * 2]);
+          total_proc_res.accumulate(proc_res);
+          num_processes_completed++;
+        }
+      }
+    }
+  }
+#endif
+  auto start_time = std::chrono::high_resolution_clock::now();
+  FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
+  FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
+  if (config.POI_type == "genotype") {
+    FRMatrix::concatenate_results(config.output_dir, "POI_Summary", "Full");
+  }
+  auto end_time = std::chrono::high_resolution_clock::now();
+  concatenation_time =
+      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                    start_time)
+          .count();
+
+  if (config.compress_results) {
+    start_time = std::chrono::high_resolution_clock::now();
+    FRMatrix::zip_results(config.output_dir);
+    end_time = std::chrono::high_resolution_clock::now();
+    compression_time +=
+        (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+            end_time - start_time)
+            .count();
+    Rcpp::Rcout << "Results compression: " << compression_time / 1000.0 << "s"
+                << std::endl;
+  }
+  total_proc_res.print_nonconvergence_summary();
+  total_proc_res.print_totals_summary(
+      concatenation_time, compression_time, config.regression_type,
+      intersected_ind.size(), num_poi * num_poi_files, num_threads);
+  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  // Rcpp::Rcout << "Convergence Summary: " << std::endl;
+  // Rcpp::Rcout << "Reading HDF5: " << total_timing_results[0] / 1000.0 << "s";
+  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
+
+  // Rcpp::List covar =
+  //     arma_2_df(covar_df.data, covar_df.row_names_arr,
+  //     covar_df.col_names_arr);
+  // Rcpp::List phen =
+  //     arma_2_df(pheno_df.data, pheno_df.row_names_arr,
+  //     pheno_df.col_names_arr);
+  // Rcpp::List poi = arma_2_df(Z.data, Z.row_names_arr, Z.col_names_arr);
 }

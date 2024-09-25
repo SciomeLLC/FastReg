@@ -134,7 +134,7 @@ void create_Z_matrix(FRMatrix &df,
   }
 
   if (!interaction_cols.empty()) {
-    // Rcpp::Rcout << "Found poi covar interactions" << std::endl;
+    Rcpp::Rcout << "Found poi covar interactions" << std::endl;
     std::vector<int> col_idx;
     int count = 0;
     for (const auto &col_name : interaction_cols) {
