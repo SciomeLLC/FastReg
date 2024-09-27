@@ -173,7 +173,6 @@ VLA <- function(
 #' @import Rcpp
 #' @import RcppArmadillo
 #' @import parallel
-#' @import RhpcBLASctl
 FastReg <- function(
     phenotype = "bin.resp",
     regression.type = "logistic",
@@ -220,9 +219,9 @@ FastReg <- function(
   #   return(FALSE)
   # }
 
-  if (max.blas.threads > 0) {
-    blas_set_num_threads(max.blas.threads)
-  }
+  # if (max.blas.threads > 0) {
+  #   blas_set_num_threads(max.blas.threads)
+  # }
 
   if (max.workers < 0) {
     cat("Error: max.workers must be a positive integer.\n")

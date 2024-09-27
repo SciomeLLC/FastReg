@@ -22,3 +22,6 @@ MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
 OBJECTS      = $(MAIN:.cpp=.o)
 
 all: $(SHLIB)
+
+clean:
+	@rm -f $(OBJECTS)

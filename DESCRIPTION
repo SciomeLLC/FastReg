@@ -30,7 +30,7 @@ Depends: R (>= 4.0)
 URL: https://github.com/SciomeLLC/FastReg
 BugReports: https://github.com/SciomeLLC/FastReg/issues
 biocViews: Software
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, float, RhpcBLASctl
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, float
 LinkingTo: Rcpp, RcppArmadillo, float, RcppEigen, BEDMatrix
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3

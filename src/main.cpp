@@ -960,6 +960,10 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
           covar_poi_interaction_matrix.data.n_cols + covar_matrix.data.n_cols;
       beta_est.data =
           arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+          
+      se_beta.data =
+          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
+
       arma::fcolvec beta_rel_errs =
           arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
       arma::fcolvec beta_abs_errs =
@@ -1229,25 +1233,22 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
       int i = num_processes_started;
       if (pipe(&pipe_file_descriptors[i * 2]) == -1) {
         perror("pipe");
-        return;
       }
       process_ids[i] = fork();
       if (process_ids[i] == -1) {
         perror("fork");
-        return;
       }
       std::string poi_file_path = config.poi_files[i];
       if (process_ids[i] == 0) {             // child process
         close(pipe_file_descriptors[i * 2]); // close read pipe
 
         ProcResult proc_res;
-        process_chunk_vla(i, config, pheno_df, covar_df, poi_file_path,
-                          parallel_chunk_size, num_threads, use_blas, proc_res);
+        process_chunk_vla(i, config, pheno_df, covar_df, config.poi_files[i],
+                      parallel_chunk_size, num_threads, false, proc_res);
         ssize_t res = write(pipe_file_descriptors[i * 2 + 1], &proc_res,
                             sizeof(proc_res));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
-        return;
       } else {
         close(pipe_file_descriptors[i * 2 + 1]);
         num_processes_started++;
