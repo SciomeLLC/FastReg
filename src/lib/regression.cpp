@@ -441,7 +441,7 @@ void LogisticRegression::run_vla(
   no_interactions.row_names = interactions.row_names;
   no_interactions.col_names_arr = {"poi"};
   no_interactions.col_names = {{"poi", 0}};
-
+  arma::fcolvec poi_col;
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
 
