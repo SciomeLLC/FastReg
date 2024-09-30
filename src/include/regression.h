@@ -32,7 +32,7 @@ public:
                        arma::fcolvec &beta_abs_errs, FRMatrix &beta_est2,
                        FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
                        arma::fcolvec &beta_rel_errs2,
-                       arma::fcolvec &beta_abs_errs2, arma::fcolvec &iters,
+                       arma::fcolvec &beta_abs_errs2, arma::fmat &iters,
                        arma::fmat &lls, int max_iter, bool is_t_dist)=0;
 };
 
@@ -53,7 +53,7 @@ public:
                arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
                FRMatrix &beta_est2, FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
                arma::fcolvec &beta_rel_errs2, arma::fcolvec &beta_abs_errs2,
-               arma::fcolvec &iters, arma::fmat &lls, int max_iter,
+               arma::fmat &iters, arma::fmat &lls, int max_iter,
                bool is_t_dist);
 
 private:
@@ -86,7 +86,7 @@ public:
                        arma::fcolvec &beta_abs_errs, FRMatrix &beta_est2,
                        FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
                        arma::fcolvec &beta_rel_errs2,
-                       arma::fcolvec &beta_abs_errs2, arma::fcolvec &iters,
+                       arma::fcolvec &beta_abs_errs2, arma::fmat &iters,
                        arma::fmat &lls, int max_iter, bool is_t_dist) {
                         return;
                        }

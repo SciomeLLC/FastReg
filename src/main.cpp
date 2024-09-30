@@ -764,7 +764,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
   double regression_time = 0.0;
   for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
     std::string outfile_suffix = stratums.ids[stratum];
-    Rcpp::Rcout << "outfile suffix: " << outfile_suffix << std::endl;
     if (!config.split_by[0].empty()) {
       Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
                   << std::endl;
@@ -804,10 +803,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
 
-    // Rcpp::Rcout << "Identify missing" << std::endl;
-    // Rcpp::Rcout << "cov mat rows: " << covar_matrix.data.n_rows << std::endl;
-    // Rcpp::Rcout << "pheno mat rows: " << pheno_matrix.data.n_rows <<
-    // std::endl; identify missing values for covar, pheno matrix
     for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
       auto idx = std::find(ind_set.begin(), ind_set.end(),
                            covar_matrix.row_names_arr[i]);
@@ -833,21 +828,11 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       }
     }
 
-    Rcpp::Rcout << "Removing missing" << std::endl;
-    // remove from covar, pheno
-    covar_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
-    pheno_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
-    covar_poi_interaction_matrix.data.shed_rows(
-        arma::conv_to<arma::uvec>::from(nan_idx));
-    covar_matrix.row_names =
-        std::unordered_map<std::string, int>(ind_set_filtered.size());
-    pheno_matrix.row_names =
-        std::unordered_map<std::string, int>(ind_set_filtered.size());
-    for (size_t j = 0; j < covar_matrix.data.n_rows; j++) {
-      covar_matrix.row_names[ind_set_filtered[j]] = j;
-      pheno_matrix.row_names[ind_set_filtered[j]] = j;
-      covar_poi_interaction_matrix.row_names[ind_set_filtered[j]] = j;
-    }
+    // remove from covar, pheno, and interactions
+    covar_matrix.shed_rows(nan_idx, ind_set_filtered);
+    pheno_matrix.shed_rows(nan_idx, ind_set_filtered);
+    covar_poi_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
+
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
         ind_set_filtered.begin(), ind_set_filtered.end(),
@@ -870,9 +855,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       if (end_chunk >= num_poi) {
         end_chunk = num_poi;
       }
-
-      Rcpp::Rcout << "Reading poi chunk of length: " << end_chunk - start_chunk
-                  << std::endl;
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
       // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " <<
@@ -881,7 +863,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       POIMatrix poi(&bed_reader);
       FRMatrix poi_matrix = poi.get_chunk(poi_individuals, poi_names_chunk);
 
-      Rcpp::Rcout << "loaded chunk" << std::endl;
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
           set_diff(poi_individuals, strat_individuals);
@@ -946,9 +927,8 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       }
 
       filtered_pois += poi_matrix.data.n_cols;
-      Rcpp::Rcout << "filtered pois" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
-
+      Rcpp::Rcout << "Init betas " << std::endl;
       FRMatrix beta_est;
       FRMatrix se_beta;
       FRMatrix beta_est2;
@@ -972,12 +952,11 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       neglog10_pvl.data =
           arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
 
-      arma::fcolvec iters =
-          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
-      arma::fmat lls = arma::fmat(poi_matrix.data.n_cols, 4,
-                                  arma::fill::zeros); // LL1, LL2, LRS, LRS_pval
-
-      Rcpp::Rcout << "prepared fit1 mats" << std::endl;
+      arma::fmat iters =
+          arma::fmat(poi_matrix.data.n_cols, 2, arma::fill::zeros);
+      Rcpp::Rcout << "Init iters " << std::endl;
+      arma::fmat lls = arma::fmat(poi_matrix.data.n_cols, 5,
+                                  arma::fill::zeros); // LL1, LL2, LRS, LRS_pval, 2vs3 unique
       // Fit 2
       beta_est2.data =
           arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
@@ -992,8 +971,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       FRMatrix neglog10_pvl2;
       neglog10_pvl2.data =
           arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
-      
-      Rcpp::Rcout << "prepared fit2 mats" << std::endl;
 
       for (auto &col_name : covar_matrix.col_names) {
         beta_est.row_names[col_name.first] = col_name.second;
@@ -1007,16 +984,13 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
             beta_est2.row_names[col_name.first];
       }
       
-      Rcpp::Rcout << "set row/col names for beta,se, and pvals" << std::endl;
+      Rcpp::Rcout << "set col and row names for betas " << std::endl;
       int num_int = 0;
       for (auto &col_name : covar_poi_interaction_matrix.col_names) {
         if (num_int == 0) { // no interactions for the first fit
-          
-          Rcpp::Rcout << "trying to set poi row name in fit1" << std::endl;
           beta_est.row_names["poi"] = covar_matrix.col_names.size();
           se_beta.row_names["poi"] = beta_est.row_names["poi"];
           neglog10_pvl.row_names["poi"] = beta_est.row_names["poi"];
-          Rcpp::Rcout << "set poi row name in fit1" << std::endl;
         }
         beta_est2.row_names[col_name.first] =
             covar_matrix.col_names.size() + col_name.second;
@@ -1025,22 +999,18 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
         neglog10_pvl2.row_names[col_name.first] =
             beta_est.row_names[col_name.first];
       }
-      Rcpp::Rcout << "set row/col names for beta,se, and pvals for interactions" << std::endl;
-      Rcpp::Rcout << "interactions size: " << covar_poi_interaction_matrix.data.size() << std::endl;
       beta_est.col_names = covar_matrix.row_names;
       se_beta.col_names = beta_est.col_names;
       neglog10_pvl.col_names = beta_est.col_names;
       
-      Rcpp::Rcout << "set col names for beta/se/pval" << std::endl;
       // Fit 2
       beta_est2.col_names = covar_matrix.row_names;
       se_beta2.col_names = beta_est2.col_names;
       neglog10_pvl2.col_names = beta_est2.col_names;
       
-      Rcpp::Rcout << "set col names for beta2/se2/pval2" << std::endl;
+      Rcpp::Rcout << "set col and row names for betas " << std::endl;
       std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
       
-      Rcpp::Rcout << "sorted poi mat" << std::endl;
       arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
                                  arma::fill::ones);
       for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
@@ -1051,10 +1021,9 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
         }
       }
       
-      Rcpp::Rcout << "prepared w2 mat" << std::endl;
+      Rcpp::Rcout << "set W2 " << std::endl;
       arma::fmat poi_sqrd_mat = arma::square(poi_matrix.data);
       
-      Rcpp::Rcout << "sqrd poi" << std::endl;
       end_time = std::chrono::high_resolution_clock::now();
       memory_allocation_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1067,8 +1036,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
       regression.reset(new LogisticRegression());
-      
-      Rcpp::Rcout << "starting vla" << std::endl;
       regression->run_vla(covar_matrix, pheno_matrix, poi_matrix, poi_sqrd_mat,
                           covar_poi_interaction_matrix, W2, beta_est, se_beta,
                           neglog10_pvl, beta_rel_errs, beta_abs_errs, beta_est2,
