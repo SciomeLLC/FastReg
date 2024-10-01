@@ -18,4 +18,6 @@ mats <- VLA(
   POI.file.format = "bed",
   POI.effect.type = "additive", # keep as additive unless you have integer SNP data and are calling a dominant or recessive model,
   POI.covar.interactions = c("age", "treatment"),
-  output.dir = "win_R4.2.2")
+  output.dir = "win_R4.2.2", 
+  compress.results = FALSE,
+  max.iter = 10)

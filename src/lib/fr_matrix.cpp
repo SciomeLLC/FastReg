@@ -412,20 +412,19 @@ void FRMatrix::write_vla_results(
       float estimate2 = beta2.data.at(row2, col);
       float std_error2 = se_beta2.data.at(row2, col);
       float neglog10_pval2 = neglog102.data.at(row2, col);
-      // outfile
-      //       <<
-      //       "POI\tEffect\tN\tDF_fit1\tEstimate_fit1\tSE_fit1\tmlog10P_fit1\tAbs
-      //       "
-      //          "Err_fit1\tRel
-      //          Err_fit1\tDF_fit2\tEstimate_fit2\tSE_fit2\tmlog10P_fit2\tAbs "
-      //          "Err_fit2\tRel
-      //          Err_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\titers"
-      //       << std::endl;
+    // outfile
+    //     << "POI\tEffect\tN\tDF_fit1\tEstimate_fit1\tSE_fit1\tmlog10P_fit1\tAbs_"
+    //        "Err_fit1\tRel_"
+    //        "Err_fit1\titers_fit1\tDF_fit2\tEstimate_fit2\tSE_fit2\tmlog10P_"
+    //        "fit2\tAbs_"
+    //        "Err_fit2\tRel_"
+    //        "Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG"
+    //     << std::endl;
       buffer << poi_name << "\t" << effect_name << "\t" << N << "\t" << df
              << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval
              << "\t" << abs_err_val << "\t" << rel_err_val << "\t" << iter1
              << "\t" << df2 << "\t" << estimate2 << "\t" << std_error2 << "\t"
-             << neglog10_pval2 << "\t" << abs_err_val2 << "\t" << rel_err_val2
+             << neglog10_pval2 << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t"
              << iter2 << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t"
              << lrs_pval << "\t" << num_G << std::endl;
       row2 += adder2;

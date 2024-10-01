@@ -60,7 +60,7 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
   // arma::fcolvec temp_se2(poi_col_size, arma::fill::zeros);
   arma::fcolvec neg_abs_z(poi_col_size, arma::fill::zeros);
   arma::fcolvec neg_abs_z2(poi_col_size, arma::fill::zeros);
-  arma::fcolvec poi_col(poi_col_size, arma::fill::zeros);
+  arma::fmat poi_col(poi_col_size, 1, arma::fill::zeros);
   Eigen::MatrixXf cov_w_mat = Eigen::Map<Eigen::MatrixXf>(
       cov.data.memptr(), cov.data.n_rows, cov.data.n_cols);
   Eigen::MatrixXf int_w_mat = Eigen::Map<Eigen::MatrixXf>(
@@ -70,7 +70,7 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       interactions.data.memptr(), interactions.data.n_rows,
       interactions.data.n_cols);
   arma::uword n_parms2 = cov.data.n_cols + interactions.data.n_cols;
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int poi_col_idx : poi_2_idx) {
     checkInterrupt();
     Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n_parms, n_parms);
@@ -84,9 +84,10 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                                             no_interactions.data.n_rows,
                                             no_interactions.data.n_cols);
     Eigen::VectorXf w2_col = W2f.col(poi_col_idx);
-    arma::fmat POI_ARMA = poi_data.data.col(poi_col_idx);
+    poi_col = poi_data.data.col(poi_col_idx);
+    // Rcpp::Rcout << poi_col << std::endl;
     Eigen::MatrixXf POI =
-        Eigen::Map<Eigen::MatrixXf>(POI_ARMA.memptr(), POI_ARMA.n_rows, 1);
+        Eigen::Map<Eigen::MatrixXf>(poi_col.memptr(), poi_col.n_rows, 1);
     Eigen::MatrixXf temp_mat_e = int_w_mat;
     int_w_mat = temp_mat_e.array().colwise() * POI.col(0).array();
     Eigen::MatrixXf X =
@@ -108,7 +109,7 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                                              interactions.data.n_cols);
     Eigen::VectorXf w2_col2 = W2f.col(poi_col_idx);
     Eigen::MatrixXf POI2 =
-        Eigen::Map<Eigen::MatrixXf>(POI_ARMA.memptr(), POI_ARMA.n_rows, 1);
+        Eigen::Map<Eigen::MatrixXf>(poi_col.memptr(), poi_col.n_rows, 1);
     Eigen::MatrixXf temp_mat_e2 = int_w_mat2;
     int_w_mat2 = temp_mat_e2.array().colwise() * POI2.col(0).array();
     Eigen::MatrixXf X2 = Eigen::MatrixXf::Zero(
@@ -174,9 +175,6 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       beta_old2 = beta2;
     }
 
-    beta_abs_errs.at(poi_col_idx) = beta_diff.maxCoeff();
-    beta_rel_errs.at(poi_col_idx) =
-        (beta_diff.array() / beta.array().abs()).maxCoeff();
     int df = w2_col.array().sum() - n_parms;
     Eigen::MatrixXf temp_inv = A.inverse();
     Eigen::VectorXf diag = temp_inv.diagonal().array().sqrt();
@@ -189,15 +187,37 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     Eigen::VectorXf diag2 = temp_inv2.diagonal().array().sqrt();
 
     // calculate LLs
+    eta = X * beta;
+    p = -eta.array();
+    p = p.array().exp() + 1;
+    p = 1 / p.array();
+    eta2 = X2 * beta2;
+    p2 = -eta2.array();
+    p2 = p2.array().exp() + 1;
+    p2 = 1 / p2.array();
     arma::fcolvec p_arma = arma::fcolvec(p.data(), p.size(), true, false);
     arma::fcolvec p2_arma = arma::fcolvec(p2.data(), p2.size(), true, false);
     arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true, false);
     arma::fcolvec eta2_arma =
         arma::fcolvec(eta2.data(), eta2.size(), true, false);
-    ll1 = arma::accu(log(1.0 - p_arma)) +
-          arma::accu(W2.col(poi_col_idx) % eta_arma);
-    ll2 = arma::accu(log(1.0 - p2_arma)) +
-          arma::accu(W2.col(poi_col_idx) % eta2_arma);
+    // ll2 = arma::accu(W2.col(poi_col_idx) % eta_arma %
+    //                    poi_data.data.col(poi_col_idx));
+    // Rcpp::Rcout << "poi_col: " << poi_col << std::endl;
+    // Rcpp::Rcout << "W2: " << W2.col(poi_col_idx) << std::endl;
+    // Rcpp::Rcout << "eta_arma: " << eta_arma << std::endl;
+    double ll_1_log = arma::accu(log(1.0 - p_arma) % W2.col(poi_col_idx));
+    double ll_2_log =
+        arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta_arma);
+
+    // Rcpp::Rcout << "ll_1_log: " << ll_1_log << std::endl;
+    // Rcpp::Rcout << "ll_2_log: " << ll_2_log << std::endl;
+    ll1 = arma::accu(log(1.0 - p_arma) % W2.col(poi_col_idx)) +
+          arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta_arma);
+    ll2 = arma::accu(log(1.0 - p2_arma) % W2.col(poi_col_idx)) +
+          arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta2_arma);
+
+    // Rcpp::Rcout << "ll1: " << ll1 << std::endl;
+    // Rcpp::Rcout << "ll2: " << ll2 << std::endl;
     lrs = 2.0 * (ll1 - ll2);
     lrs_pval = chisq(std::abs(lrs), n_parms2);
     lls.at(poi_col_idx, 0) = ll1;
@@ -225,7 +245,7 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     neg_abs_z = arma::abs(temp_b / temp_se) * -1;
     neglog10_pvl.data.col(poi_col_idx) = (*dist_func_r)(neg_abs_z, df);
     // pval for fit2
-    arma::fcolvec neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
+    neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
     neglog10_pvl2.data.col(poi_col_idx) = (*dist_func_r)(neg_abs_z2, df2);
   } // #pragma omp parallel for
 };
@@ -234,12 +254,12 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //                arma::fmat &poi_sqrd, FRMatrix &interactions, arma::umat &W2,
 //                FRMatrix &beta_est, FRMatrix &se_beta, FRMatrix &neglog10_pvl,
 //                arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
-//                FRMatrix &beta_est2, FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
-//                arma::fcolvec &beta_rel_errs2, arma::fcolvec &beta_abs_errs2,
-//                arma::fmat &iters, arma::fmat &lls, int max_iter, bool is_t_dist,
-//                std::vector<int> &poi_2_idx, MatrixUd &W2_EIG,
-//                Eigen::MatrixXf &W2f, Eigen::MatrixXf &tphenoD,
-//                FRMatrix &no_interactions) {
+//                FRMatrix &beta_est2, FRMatrix &se_beta2, FRMatrix
+//                &neglog10_pvl2, arma::fcolvec &beta_rel_errs2, arma::fcolvec
+//                &beta_abs_errs2, arma::fmat &iters, arma::fmat &lls, int
+//                max_iter, bool is_t_dist, std::vector<int> &poi_2_idx,
+//                MatrixUd &W2_EIG, Eigen::MatrixXf &W2f, Eigen::MatrixXf
+//                &tphenoD, FRMatrix &no_interactions) {
 //   arma::fmat interactions_sqrd =
 //       arma::join_rows(interactions.data, arma::square(interactions.data));
 //   arma::fmat pois = arma::join_rows(poi_data.data, poi_sqrd);
@@ -274,7 +294,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //     A(n_parms, n_parms) = 10;
 //     Eigen::VectorXf beta = Eigen::VectorXf::Zero(n_parms, 1);
 //     Eigen::VectorXf beta_old = beta;
-//     cov_w_mat = Eigen::Map<Eigen::MatrixXf>(cov.data.memptr(), cov.data.n_rows,
+//     cov_w_mat = Eigen::Map<Eigen::MatrixXf>(cov.data.memptr(),
+//     cov.data.n_rows,
 //                                             cov.data.n_cols);
 //     int_w_mat = Eigen::Map<Eigen::MatrixXf>(no_interactions.data.memptr(),
 //                                             no_interactions.data.n_rows,
@@ -318,7 +339,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //     // initialize eta and p for fit 1/2
 //     Eigen::MatrixXf eta, eta2, p, p2;
 
-//     for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col_idx) > 1e-4;
+//     for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col_idx) >
+//     1e-4;
 //          iter++) {
 //       // Fit 1
 //       eta = Eigen::MatrixXf::Zero(cov.data.n_rows, 1);
@@ -345,7 +367,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //     }
 
 //     // Fit 2
-//     for (int iter = 0; iter < max_iter && beta_rel_errs2.at(poi_col_idx) > 1e-4;
+//     for (int iter = 0; iter < max_iter && beta_rel_errs2.at(poi_col_idx) >
+//     1e-4;
 //          iter++) {
 //       eta2 = Eigen::MatrixXf::Zero(cov.data.n_rows, 1);
 //       eta2 = X2 * beta2;
@@ -360,7 +383,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //       Eigen::MatrixXf B2 = Eigen::MatrixXf::Zero(n_parms2, 1);
 //       B2 = X2.transpose() * z2;
 //       beta2 = beta2 +
-//               A2.ldlt().solve(B2); // arma::solve(A, B, arma::solve_opts::fast);
+//               A2.ldlt().solve(B2); // arma::solve(A, B,
+//               arma::solve_opts::fast);
 
 //       beta_diff2 = (beta2.array() - beta_old2.array()).abs();
 //       beta_abs_errs2.at(poi_col_idx) = beta_diff2.array().maxCoeff();
@@ -387,8 +411,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //     // calculate LLs
 //     arma::fcolvec p_arma = arma::fcolvec(p.data(), p.size(), true, false);
 //     arma::fcolvec p2_arma = arma::fcolvec(p2.data(), p2.size(), true, false);
-//     arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true, false);
-//     arma::fcolvec eta2_arma =
+//     arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true,
+//     false); arma::fcolvec eta2_arma =
 //         arma::fcolvec(eta2.data(), eta2.size(), true, false);
 //     ll1 = arma::accu(log(1.0 - p_arma)) +
 //           arma::accu(W2.col(poi_col_idx) % eta_arma);
@@ -404,7 +428,8 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 
 //     // convert it all back to armadillo matrix types
 //     temp_se = arma::fcolvec(diag.data(), diag.size(), true, false);
-//     arma::fcolvec temp_b = arma::fcolvec(beta.data(), beta.size(), true, false);
+//     arma::fcolvec temp_b = arma::fcolvec(beta.data(), beta.size(), true,
+//     false);
 
 //     beta_est.data.col(poi_col_idx) = temp_b;
 //     se_beta.data.col(poi_col_idx) = temp_se;
@@ -469,10 +494,12 @@ void LogisticRegression::run_vla(
             is_t_dist, poi_2_idx, W2_EIG, W2f, tphenoD, no_interactions);
 
   // run regression on G with 3 values
-  // run_vla_3(cov, pheno, poi_data, poi_sqrd, interactions, W2, beta_est, se_beta,
+  // run_vla_3(cov, pheno, poi_data, poi_sqrd, interactions, W2, beta_est,
+  // se_beta,
   //           neglog10_pvl, beta_rel_errs, beta_abs_errs, beta_est2, se_beta2,
-  //           neglog10_pvl2, beta_rel_errs2, beta_abs_errs2, iters, lls, max_iter,
-  //           is_t_dist, poi_2_idx, W2_EIG, W2f, tphenoD, no_interactions);
+  //           neglog10_pvl2, beta_rel_errs2, beta_abs_errs2, iters, lls,
+  //           max_iter, is_t_dist, poi_2_idx, W2_EIG, W2f, tphenoD,
+  //           no_interactions);
 }
 
 // void run_2() {};
