@@ -4,13 +4,12 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <fstream>
-#include <mutex>
 #include <names_map.h>
 #include <sstream>
 #include <string>
-#include <thread>
 #include <unordered_map>
 
+class FRResult;
 class FRMatrix {
 public:
   FRMatrix(){};
@@ -35,7 +34,7 @@ public:
   int get_row_idx(const std::string &row_name);
   void shed_rows(std::vector<int> &idx,
                  std::vector<std::string> &new_row_names);
-      std::vector<std::string> get_col_str(const std::string &col_name);
+  std::vector<std::string> get_col_str(const std::string &col_name);
   void write_summary(std::string dir, std::string name, int stratum,
                      int process_id);
   bool file_exists(const std::string &name);
@@ -49,13 +48,9 @@ public:
                             std::vector<std::string> poi_names, std::string dir,
                             std::string file_name, int stratum,
                             bool exclude_covars, int process_id);
-  static void write_vla_results(
-      FRMatrix &beta, FRMatrix &se_beta, FRMatrix &neglog10, arma::umat &W2,
-      arma::fcolvec &rel_err, arma::fcolvec &abs_err, FRMatrix &beta2,
-      FRMatrix &se_beta2, FRMatrix &neglog102, arma::fcolvec &rel_err2,
-      arma::fcolvec &abs_err2, arma::fmat &lls, arma::fmat &iters,
-      std::vector<std::string> poi_names, std::string dir,
-      std::string file_name, int stratum, bool exclude_covars, int process_id);
+  static void write_vla_results(FRResult &result, std::string dir,
+                                std::string file_name, int stratum,
+                                bool exclude_covars, int process_id);
   static void write_convergence_results(FRMatrix &beta,
                                         std::vector<std::string> poi_names,
                                         std::string dir, std::string file_name,

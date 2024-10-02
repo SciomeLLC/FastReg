@@ -1,15 +1,12 @@
 #include <utils.h>
 
-static void chkIntFn(void *dummy) {
-  R_CheckUserInterrupt();
-}
+static void chkIntFn(void *dummy) { R_CheckUserInterrupt(); }
 
 void checkInterrupt() {
   if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
     Rcpp::stop("Received user interrupt. Stopping FastReg...");
   }
 }
-
 
 bool dir_exists(const std::string &path) {
   fs::path directory(path);
@@ -120,7 +117,7 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold, double hwe_threshold) {
 
 void create_Z_matrix(FRMatrix &df,
                      const std::vector<std::string> &poi_covar_interactions,
-                     FRMatrix &Z) {
+                     FRMatrix &Z, bool has_intercept) {
   std::vector<std::string> interaction_cols;
   if (poi_covar_interactions.size() == 1 && poi_covar_interactions[0].empty()) {
     return;
@@ -134,14 +131,15 @@ void create_Z_matrix(FRMatrix &df,
   }
 
   if (!interaction_cols.empty()) {
-    Rcpp::Rcout << "Found poi covar interactions" << std::endl;
     std::vector<int> col_idx;
-    int count = 0;
+    int count = (has_intercept) ? 1 : 0;
+    Z.col_names_arr.resize(Z.col_names_arr.size() + interaction_cols.size());
     for (const auto &col_name : interaction_cols) {
       int idx = df.get_col_idx(col_name);
       if (idx != -1) {
         col_idx.push_back(idx);
         Z.col_names["poi*" + col_name] = count;
+        Z.col_names_arr.at(count) = "poi*" + col_name;
         count++;
       }
     }
@@ -182,8 +180,7 @@ FRMatrix create_design_matrix(FRMatrix &df, std::vector<Covariate> covariates,
 /// @brief given a string it determines if it is only whitespace
 /// @param str the string in question
 /// @return true if only whitespace, false if true
-bool isWhitespace(const std::string &str)
-{
-  return std::all_of(str.begin(), str.end(), [](char c)
-                     { return std::isspace(c); });
+bool isWhitespace(const std::string &str) {
+  return std::all_of(str.begin(), str.end(),
+                     [](char c) { return std::isspace(c); });
 }

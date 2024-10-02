@@ -42,7 +42,7 @@ std::vector<std::string> set_diff(const std::vector<std::string>& a, const std::
 void transform_poi(FRMatrix &G, std::string effect_type = "additive");
 
 FRMatrix filter_poi(FRMatrix &G, double maf_threshold = 0.01, double hwe_threshold = 0.05);
-void create_Z_matrix(FRMatrix& df, const std::vector<std::string>& poi_covar_interactions, FRMatrix& Z);
+void create_Z_matrix(FRMatrix& df, const std::vector<std::string>& poi_covar_interactions, FRMatrix& Z, bool has_intercept);
 
 
 template <typename T>

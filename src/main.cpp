@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "BEDMatrix.h"
+#include <fr_result.h>
 #include <poi_matrix.h>
 #include <reader.h>
 #include <utils.h>
@@ -208,7 +209,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
     covar_poi_interaction_matrix.col_names = {{"poi", 0}};
     // n individuals x 1 or 1 + num interacting poi covars
     create_Z_matrix(covar_matrix, config.POI_covar_interactions,
-                    covar_poi_interaction_matrix);
+                    covar_poi_interaction_matrix, !config.no_intercept);
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
 
@@ -796,9 +797,18 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
         arma::fmat(covar_matrix.data.n_rows, 1, arma::fill::ones);
     covar_poi_interaction_matrix.row_names = covar_matrix.row_names;
     covar_poi_interaction_matrix.col_names = {{"poi", 0}};
+    covar_poi_interaction_matrix.col_names_arr.push_back("poi");
+
+    FRMatrix no_interaction_matrix;
+    no_interaction_matrix.data =
+        arma::fmat(covar_matrix.data.n_rows, 1, arma::fill::ones);
+    no_interaction_matrix.row_names = covar_matrix.row_names;
+    no_interaction_matrix.col_names = {{"poi", 0}};
+    no_interaction_matrix.col_names_arr.push_back("poi");
+
     // n individuals x 1 or 1 + num interacting poi covars
     create_Z_matrix(covar_matrix, config.POI_covar_interactions,
-                    covar_poi_interaction_matrix);
+                    covar_poi_interaction_matrix, !config.no_intercept);
 
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
@@ -832,6 +842,7 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
     covar_matrix.shed_rows(nan_idx, ind_set_filtered);
     pheno_matrix.shed_rows(nan_idx, ind_set_filtered);
     covar_poi_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
+    no_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
 
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
@@ -857,77 +868,22 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       }
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
-      // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " <<
-      // end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks <<
-      // std::endl;
-      POIMatrix poi(&bed_reader);
+
+      POIMatrix poi(&bed_reader, config.maf_threshold, config.hwe_threshold,
+                    config.POI_effect_type, config.POI_type);
       FRMatrix poi_matrix = poi.get_chunk(poi_individuals, poi_names_chunk);
-      // arma::uvec nans = arma::find_nonfinite(poi_matrix.data.col(0));
-
-      // Rcpp::Rcout << "nans len: " << nans.size() << std::endl;
-      // Rcpp::Rcout << poi_matrix.data.col(0) << std::endl;
-
-      // Rcpp::Rcout << "poi size: " << poi_matrix.data.n_rows << "x" <<
-      // poi_matrix.data.n_cols << std::endl; Rcpp::Rcout << "poi col 1 sum: "
-      // << arma::sum(poi_matrix.data.col(0)) << std::endl;
-      std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
-      std::vector<std::string> drop_rows =
-          set_diff(poi_individuals, strat_individuals);
-
-      int num_dropped = poi_individuals.size() - strat_individuals.size();
-      // Rcpp::Rcout << "num_dropped: " << num_dropped << std::endl;
-      arma::uvec drop_row_idx(drop_rows.size());
-      for (size_t i = 0; i < drop_rows.size(); i++) {
-        drop_row_idx[i] = poi_matrix.row_names[drop_rows[i]];
-      }
-
-      std::unordered_map<std::string, int> new_row_names(
-          strat_individuals.size());
-      for (auto &ind : strat_individuals) {
-        new_row_names[ind] = poi_matrix.row_names[ind] - num_dropped;
-      }
-      poi_matrix.data.shed_rows(drop_row_idx);
-      poi_matrix.row_names = new_row_names;
-
-      srt_cols_2 = poi_matrix.sort_map(false);
-      // nans = arma::find_nonfinite(poi_matrix.data.col(0));
-      // Rcpp::Rcout << "nans len: " << nans.size() << std::endl;
+      poi.filter_rows(poi_matrix, strat_individuals);
       auto end_time = std::chrono::high_resolution_clock::now();
       poi_reading_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
 
-      if (config.POI_type == "genotype") {
-        FRMatrix filtered =
-            filter_poi(poi_matrix, config.maf_threshold, config.hwe_threshold);
-        arma::uvec filtered_col = arma::find(filtered.data.row(5) == 0);
+      FRMatrix filtered = poi.filter_genotype(poi_matrix);
 
-        if (filtered.data.n_cols == 0 ||
-            filtered_col.n_elem == poi_matrix.data.n_cols) {
-          Rcpp::Rcout << "no POI passed filtering" << std::endl;
-          return;
-        }
-
-        std::vector<std::string> poi_col_names = filtered.sort_map(false);
-        int cols_erased = 0;
-
-        for (unsigned int i = 0; i < poi_col_names.size(); i++) {
-          if ((unsigned)cols_erased < filtered_col.n_elem &&
-              filtered_col[cols_erased] == i) {
-            poi_matrix.col_names.erase(poi_col_names[i]);
-            cols_erased++;
-          } else {
-            poi_matrix.col_names[poi_col_names[i]] =
-                poi_matrix.col_names[poi_col_names[i]] - cols_erased;
-          }
-        }
-
-        poi_matrix.data.shed_cols(filtered_col);
-        transform_poi(poi_matrix, config.POI_effect_type);
+      if (filtered.data.size() > 0) {
         start_time = std::chrono::high_resolution_clock::now();
-        std::string summary_name = "POI_Summary";
-        filtered.write_summary(config.output_dir, summary_name, stratum,
+        filtered.write_summary(config.output_dir, "POI_Summary", stratum,
                                process_id);
         end_time = std::chrono::high_resolution_clock::now();
         file_writing_time +=
@@ -936,112 +892,12 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
                 .count();
       }
 
-      // nans = arma::find_nonfinite(poi_matrix.data.col(0));
-      // Rcpp::Rcout << "nans len: " << nans.size() << std::endl;
       filtered_pois += poi_matrix.data.n_cols;
+
       start_time = std::chrono::high_resolution_clock::now();
-      // Rcpp::Rcout << "Init betas " << std::endl;
-      FRMatrix beta_est;
-      FRMatrix se_beta;
-      FRMatrix beta_est2;
-      FRMatrix se_beta2;
 
-      // Fit 1
-      int num_parms = 1 + covar_matrix.data.n_cols;
-      int num_parms2 =
-          covar_poi_interaction_matrix.data.n_cols + covar_matrix.data.n_cols;
-      beta_est.data =
-          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
-
-      se_beta.data =
-          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
-
-      arma::fcolvec beta_rel_errs =
-          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
-      arma::fcolvec beta_abs_errs =
-          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
-      FRMatrix neglog10_pvl;
-      neglog10_pvl.data =
-          arma::fmat(num_parms, poi_matrix.data.n_cols, arma::fill::zeros);
-
-      arma::fmat iters =
-          arma::fmat(poi_matrix.data.n_cols, 2, arma::fill::zeros);
-      // Rcpp::Rcout << "Init iters " << std::endl;
-      arma::fmat lls =
-          arma::fmat(poi_matrix.data.n_cols, 5,
-                     arma::fill::zeros); // LL1, LL2, LRS, LRS_pval, 2vs3 unique
-      // Fit 2
-      beta_est2.data =
-          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
-      arma::fcolvec beta_rel_errs2 =
-          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
-      arma::fcolvec beta_abs_errs2 =
-          arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
-
-      se_beta2.data =
-          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
-
-      FRMatrix neglog10_pvl2;
-      neglog10_pvl2.data =
-          arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
-
-      for (auto &col_name : covar_matrix.col_names) {
-        beta_est.row_names[col_name.first] = col_name.second;
-        se_beta.row_names[col_name.first] = beta_est.row_names[col_name.first];
-        neglog10_pvl.row_names[col_name.first] =
-            beta_est.row_names[col_name.first];
-        beta_est2.row_names[col_name.first] = col_name.second;
-        se_beta2.row_names[col_name.first] =
-            beta_est2.row_names[col_name.first];
-        neglog10_pvl2.row_names[col_name.first] =
-            beta_est2.row_names[col_name.first];
-      }
-
-      // Rcpp::Rcout << "set col and row names for betas " << std::endl;
-      int num_int = 0;
-      for (auto &col_name : covar_poi_interaction_matrix.col_names) {
-        if (num_int == 0) { // no interactions for the first fit
-          beta_est.row_names["poi"] = covar_matrix.col_names.size();
-          se_beta.row_names["poi"] = beta_est.row_names["poi"];
-          neglog10_pvl.row_names["poi"] = beta_est.row_names["poi"];
-        }
-        beta_est2.row_names[col_name.first] =
-            covar_matrix.col_names.size() + col_name.second;
-        se_beta2.row_names[col_name.first] =
-            beta_est2.row_names[col_name.first];
-        neglog10_pvl2.row_names[col_name.first] =
-            beta_est.row_names[col_name.first];
-      }
-      beta_est.col_names = covar_matrix.row_names;
-      se_beta.col_names = beta_est.col_names;
-      neglog10_pvl.col_names = beta_est.col_names;
-
-      // Fit 2
-      beta_est2.col_names = covar_matrix.row_names;
-      se_beta2.col_names = beta_est2.col_names;
-      neglog10_pvl2.col_names = beta_est2.col_names;
-
-      // Rcpp::Rcout << "set col and row names for betas " << std::endl;
-      std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
-
-      // nans = arma::find_nonfinite(poi_matrix.data.col(0));
-      // Rcpp::Rcout << "nans len: " << nans.size() << std::endl;
-      arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
-                                 arma::fill::ones);
-      for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
-        arma::uvec G_na = arma::find_nonfinite(poi_matrix.data.col(v));
-        for (arma::uword i = 0; i < G_na.n_elem; i++) {
-          W2(G_na(i), v) = 0;
-          poi_matrix.data(G_na(i), v) = 0;
-        }
-      }
-
-      // nans = arma::find_nonfinite(poi_matrix.data.col(0));
-      // Rcpp::Rcout << "nans len: " << nans.size() << std::endl;
-      // Rcpp::Rcout << "col1 sum: " << arma::sum(poi_matrix.data.col(0)) << std::endl;
-      // Rcpp::Rcout << "set W2 " << std::endl;
-      arma::fmat poi_sqrd_mat = arma::square(poi_matrix.data);
-
+      FRResult result(covar_matrix, poi_matrix, no_interaction_matrix,
+                      covar_poi_interaction_matrix);
       end_time = std::chrono::high_resolution_clock::now();
       memory_allocation_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1054,23 +910,16 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
       regression.reset(new LogisticRegression());
-      regression->run_vla(covar_matrix, pheno_matrix, poi_matrix, poi_sqrd_mat,
-                          covar_poi_interaction_matrix, W2, beta_est, se_beta,
-                          neglog10_pvl, beta_rel_errs, beta_abs_errs, beta_est2,
-                          se_beta2, neglog10_pvl2, beta_rel_errs2,
-                          beta_abs_errs2, iters, lls, config.max_iter,
-                          config.p_value_type == "t.dist");
+      regression->run_vla(covar_matrix, pheno_matrix, poi_matrix, result,
+                          config.max_iter, config.p_value_type == "t.dist");
       end_time = std::chrono::high_resolution_clock::now();
       regression_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
       start_time = std::chrono::high_resolution_clock::now();
-      FRMatrix::write_vla_results(
-          beta_est, se_beta, neglog10_pvl, W2, beta_rel_errs, beta_abs_errs,
-          beta_est2, se_beta2, neglog10_pvl2, beta_rel_errs2, beta_abs_errs2,
-          lls, iters, srt_cols, config.output_dir, "Results", stratum,
-          config.output_exclude_covar, process_id + 1);
+      FRMatrix::write_vla_results(result, config.output_dir, "Results", stratum,
+                                  config.output_exclude_covar, process_id + 1);
 
       end_time = std::chrono::high_resolution_clock::now();
       file_writing_time +=
@@ -1080,8 +929,8 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       poi_matrix.col_names.clear();
 
       arma::fcolvec convergence = arma::conv_to<fcolvec>::from(
-          (beta_rel_errs > config.rel_conv_tolerance) &&
-          (beta_abs_errs > config.abs_conv_tolerance));
+          (result.beta_rel_errs > config.rel_conv_tolerance) &&
+          (result.beta_abs_errs > config.abs_conv_tolerance));
       nonconvergence_status = arma::sum(convergence);
       // proc_res.print_convergence_percentage(nonconvergence_status,
       // filtered_pois);
@@ -1089,9 +938,6 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       proc_res.process_total_filtered_pois += filtered_pois;
     }
   }
-
-  auto end =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   proc_res.timing_results[0] = poi_reading_time;
   proc_res.timing_results[1] = file_writing_time;

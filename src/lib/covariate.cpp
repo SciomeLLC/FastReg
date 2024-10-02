@@ -66,14 +66,13 @@ FRMatrix Covariate::create_numeric_matrix(std::vector<std::string> col_vals) {
       }
     }
   }
-
+  
   return candidate_mat;
 }
 
 FRMatrix
 Covariate::create_categorical_matrix(std::vector<std::string> col_vals) {
   FRMatrix candidate_mat;
-
   // move reference level to the start of the levels list
   levels.erase(std::find(levels.begin(), levels.end(), ref_level));
   levels.insert(levels.begin(), ref_level);

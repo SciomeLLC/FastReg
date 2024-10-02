@@ -6,6 +6,8 @@
 
 #include <RcppEigen.h>
 
+typedef Eigen::Matrix<arma::uword, Eigen::Dynamic, Eigen::Dynamic> MatrixUd;
+
 template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
   return Rcpp::NumericVector(x.begin(), x.end());
 }
@@ -34,22 +36,14 @@ arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df) {
   // return Rcpp::dnorm(arma2vec(abs_z), 1.0, 1.0, true);
 }
 
-typedef Eigen::Matrix<arma::uword, Eigen::Dynamic, Eigen::Dynamic> MatrixUd;
-
 arma::fcolvec pmean(arma::fcolvec a, arma::fcolvec b) { return (a + b) / 2; }
 
 void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-               arma::fmat &poi_sqrd, FRMatrix &interactions, arma::umat &W2,
-               FRMatrix &beta_est, FRMatrix &se_beta, FRMatrix &neglog10_pvl,
-               arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
-               FRMatrix &beta_est2, FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
-               arma::fcolvec &beta_rel_errs2, arma::fcolvec &beta_abs_errs2,
-               arma::fmat &iters, arma::fmat &lls, int max_iter, bool is_t_dist,
-               std::vector<int> &poi_2_idx, MatrixUd &W2_EIG,
-               Eigen::MatrixXf &W2f, Eigen::MatrixXf &tphenoD,
-               FRMatrix &no_interactions) {
+               FRResult &result, int max_iter, bool is_t_dist,
+               std::vector<int> &poi_2_idx, Eigen::MatrixXf &W2f,
+               Eigen::MatrixXf &tphenoD) {
 
-  arma::uword n_parms = cov.data.n_cols + no_interactions.data.n_cols;
+  // arma::uword n_parms = cov.data.n_cols + no_interactions.data.n_cols;
   // create a pointer to the specified distribution function
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
@@ -63,29 +57,25 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
   arma::fmat poi_col(poi_col_size, 1, arma::fill::zeros);
   Eigen::MatrixXf cov_w_mat = Eigen::Map<Eigen::MatrixXf>(
       cov.data.memptr(), cov.data.n_rows, cov.data.n_cols);
-  Eigen::MatrixXf int_w_mat = Eigen::Map<Eigen::MatrixXf>(
-      no_interactions.data.memptr(), no_interactions.data.n_rows,
-      no_interactions.data.n_cols);
-  Eigen::MatrixXf int_w_mat2 = Eigen::Map<Eigen::MatrixXf>(
-      interactions.data.memptr(), interactions.data.n_rows,
-      interactions.data.n_cols);
-  arma::uword n_parms2 = cov.data.n_cols + interactions.data.n_cols;
-  #pragma omp parallel for
+  Eigen::MatrixXf int_w_mat, int_w_mat2;
+  arma::uword n_parms2 = result.cov_int_names.size();
+#pragma omp parallel for
   for (int poi_col_idx : poi_2_idx) {
     checkInterrupt();
-    Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n_parms, n_parms);
+    Eigen::MatrixXf A =
+        Eigen::MatrixXf::Zero(result.num_parms, result.num_parms);
     A(0, 0) = 1;
-    A(n_parms, n_parms) = 10;
-    Eigen::VectorXf beta = Eigen::VectorXf::Zero(n_parms, 1);
+    A(result.num_parms, result.num_parms) = 10;
+    Eigen::VectorXf beta = Eigen::VectorXf::Zero(result.num_parms, 1);
     Eigen::VectorXf beta_old = beta;
     cov_w_mat = Eigen::Map<Eigen::MatrixXf>(cov.data.memptr(), cov.data.n_rows,
                                             cov.data.n_cols);
-    int_w_mat = Eigen::Map<Eigen::MatrixXf>(no_interactions.data.memptr(),
-                                            no_interactions.data.n_rows,
-                                            no_interactions.data.n_cols);
+    int_w_mat =
+        Eigen::Map<Eigen::MatrixXf>(result.no_interactions->data.memptr(),
+                                    result.no_interactions->data.n_rows,
+                                    result.no_interactions->data.n_cols);
     Eigen::VectorXf w2_col = W2f.col(poi_col_idx);
     poi_col = poi_data.data.col(poi_col_idx);
-    // Rcpp::Rcout << poi_col << std::endl;
     Eigen::MatrixXf POI =
         Eigen::Map<Eigen::MatrixXf>(poi_col.memptr(), poi_col.n_rows, 1);
     Eigen::MatrixXf temp_mat_e = int_w_mat;
@@ -96,7 +86,7 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     X.topRightCorner(int_w_mat.rows(), int_w_mat.cols()) = int_w_mat;
 
     Eigen::VectorXf beta_diff = (beta - beta_old).array().abs();
-    beta_rel_errs.at(poi_col_idx) = 1e8;
+    result.beta_rel_errs.at(poi_col_idx) = 1e8;
 
     // Fit 2
     Eigen::MatrixXf A2 = Eigen::MatrixXf::Zero(n_parms2, n_parms2);
@@ -104,26 +94,27 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     A2(n_parms2, n_parms2) = 10;
     Eigen::VectorXf beta2 = Eigen::VectorXf::Zero(n_parms2, 1);
     Eigen::VectorXf beta_old2 = beta2;
-    int_w_mat2 = Eigen::Map<Eigen::MatrixXf>(interactions.data.memptr(),
-                                             interactions.data.n_rows,
-                                             interactions.data.n_cols);
+    int_w_mat2 = Eigen::Map<Eigen::MatrixXf>(result.interactions->data.memptr(),
+                                             result.interactions->data.n_rows,
+                                             result.interactions->data.n_cols);
     Eigen::VectorXf w2_col2 = W2f.col(poi_col_idx);
-    Eigen::MatrixXf POI2 =
-        Eigen::Map<Eigen::MatrixXf>(poi_col.memptr(), poi_col.n_rows, 1);
     Eigen::MatrixXf temp_mat_e2 = int_w_mat2;
-    int_w_mat2 = temp_mat_e2.array().colwise() * POI2.col(0).array();
+    int_w_mat2 = temp_mat_e2.array().colwise() * POI.col(0).array();
+    // int_w_mat^2 = temp_mat_e2.array().colwise() * POI^2.col(0).array();
+    //
     Eigen::MatrixXf X2 = Eigen::MatrixXf::Zero(
         int_w_mat2.rows(), cov_w_mat.cols() + int_w_mat2.cols());
     X2.topLeftCorner(int_w_mat2.rows(), cov_w_mat.cols()) = cov_w_mat;
     X2.topRightCorner(int_w_mat2.rows(), int_w_mat2.cols()) = int_w_mat2;
 
     Eigen::VectorXf beta_diff2 = (beta2 - beta_old2).array().abs();
-    beta_rel_errs2.at(poi_col_idx) = 1e8;
+    result.beta_rel_errs2.at(poi_col_idx) = 1e8;
 
     // initialize eta and p for fit 1/2
     Eigen::MatrixXf eta, eta2, p, p2;
 
-    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col_idx) > 1e-4;
+    for (int iter = 0;
+         iter < max_iter && result.beta_rel_errs.at(poi_col_idx) > 1e-4;
          iter++) {
       // Fit 1
       eta = Eigen::MatrixXf::Zero(cov.data.n_rows, 1);
@@ -136,21 +127,21 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       A = temp1.transpose() * X;
       Eigen::MatrixXf z =
           w2_col.array() * (tphenoD.array() - p.array()).array();
-      Eigen::MatrixXf B = Eigen::MatrixXf::Zero(n_parms, 1);
-      B = X.transpose() * z;
+      Eigen::MatrixXf B = X.transpose() * z;
       beta = beta +
              A.ldlt().solve(B); // arma::solve(A, B, arma::solve_opts::fast);
 
       beta_diff = (beta.array() - beta_old.array()).abs();
-      beta_abs_errs.at(poi_col_idx) = beta_diff.array().maxCoeff();
-      iters.at(poi_col_idx, 0) = iter + 1;
+      result.beta_abs_errs.at(poi_col_idx) = beta_diff.array().maxCoeff();
+      result.iters.at(poi_col_idx, 0) = iter + 1;
       Eigen::MatrixXf mTemp = (beta_diff.array() / beta_old.array());
-      beta_rel_errs.at(poi_col_idx) = mTemp.maxCoeff();
+      result.beta_rel_errs.at(poi_col_idx) = mTemp.maxCoeff();
       beta_old = beta;
     }
 
     // Fit 2
-    for (int iter = 0; iter < max_iter && beta_rel_errs2.at(poi_col_idx) > 1e-4;
+    for (int iter = 0;
+         iter < max_iter && result.beta_rel_errs2.at(poi_col_idx) > 1e-10;
          iter++) {
       eta2 = Eigen::MatrixXf::Zero(cov.data.n_rows, 1);
       eta2 = X2 * beta2;
@@ -162,29 +153,23 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       A2 = temp1_2.transpose() * X2;
       Eigen::MatrixXf z2 =
           w2_col2.array() * (tphenoD.array() - p2.array()).array();
-      Eigen::MatrixXf B2 = Eigen::MatrixXf::Zero(n_parms2, 1);
-      B2 = X2.transpose() * z2;
+      Eigen::MatrixXf B2 = X2.transpose() * z2;
       beta2 = beta2 +
               A2.ldlt().solve(B2); // arma::solve(A, B, arma::solve_opts::fast);
 
       beta_diff2 = (beta2.array() - beta_old2.array()).abs();
-      beta_abs_errs2.at(poi_col_idx) = beta_diff2.array().maxCoeff();
+      result.beta_abs_errs2.at(poi_col_idx) = beta_diff2.array().maxCoeff();
       Eigen::MatrixXf mTemp2 = (beta_diff2.array() / beta_old2.array());
-      iters.at(poi_col_idx, 1) = iter + 1;
-      beta_rel_errs2.at(poi_col_idx) = mTemp2.maxCoeff();
+      result.iters.at(poi_col_idx, 1) = iter + 1;
+      result.beta_rel_errs2.at(poi_col_idx) = mTemp2.maxCoeff();
       beta_old2 = beta2;
     }
 
-    int df = w2_col.array().sum() - n_parms;
-    Eigen::MatrixXf temp_inv = A.inverse();
-    Eigen::VectorXf diag = temp_inv.diagonal().array().sqrt();
+    int df = w2_col.array().sum() - result.num_parms;
+    Eigen::VectorXf diag = A.inverse().diagonal().array().sqrt();
 
-    beta_abs_errs2.at(poi_col_idx) = beta_diff2.maxCoeff();
-    beta_rel_errs2.at(poi_col_idx) =
-        (beta_diff2.array() / beta2.array().abs()).maxCoeff();
     int df2 = w2_col.array().sum() - n_parms2;
-    Eigen::MatrixXf temp_inv2 = A2.inverse();
-    Eigen::VectorXf diag2 = temp_inv2.diagonal().array().sqrt();
+    Eigen::VectorXf diag2 = A2.inverse().diagonal().array().sqrt();
 
     // calculate LLs
     eta = X * beta;
@@ -200,53 +185,30 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true, false);
     arma::fcolvec eta2_arma =
         arma::fcolvec(eta2.data(), eta2.size(), true, false);
-    // ll2 = arma::accu(W2.col(poi_col_idx) % eta_arma %
-    //                    poi_data.data.col(poi_col_idx));
-    // Rcpp::Rcout << "poi_col: " << poi_col << std::endl;
-    // Rcpp::Rcout << "W2: " << W2.col(poi_col_idx) << std::endl;
-    // Rcpp::Rcout << "eta_arma: " << eta_arma << std::endl;
-    double ll_1_log = arma::accu(log(1.0 - p_arma) % W2.col(poi_col_idx));
-    double ll_2_log =
-        arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta_arma);
 
-    // Rcpp::Rcout << "ll_1_log: " << ll_1_log << std::endl;
-    // Rcpp::Rcout << "ll_2_log: " << ll_2_log << std::endl;
-    ll1 = arma::accu(log(1.0 - p_arma) % W2.col(poi_col_idx)) +
-          arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta_arma);
-    ll2 = arma::accu(log(1.0 - p2_arma) % W2.col(poi_col_idx)) +
-          arma::accu(pheno.data.col(0) % W2.col(poi_col_idx) % eta2_arma);
+    ll1 = arma::accu((log(1.0 - p_arma) + pheno.data.col(0) % eta_arma) %
+                     result.W2.col(poi_col_idx));
 
-    // Rcpp::Rcout << "ll1: " << ll1 << std::endl;
-    // Rcpp::Rcout << "ll2: " << ll2 << std::endl;
-    lrs = 2.0 * (ll1 - ll2);
-    lrs_pval = chisq(std::abs(lrs), n_parms2);
-    lls.at(poi_col_idx, 0) = ll1;
-    lls.at(poi_col_idx, 1) = ll2;
-    lls.at(poi_col_idx, 2) = lrs;
-    lls.at(poi_col_idx, 3) = lrs_pval;
-    lls.at(poi_col_idx, 4) = 2;
+    ll2 = arma::accu((log(1.0 - p2_arma) + pheno.data.col(0) % eta2_arma) %
+                     result.W2.col(poi_col_idx));
+    lrs = 2.0 * (ll2 - ll1);
+    lrs_pval = chisq(lrs, n_parms2 - result.num_parms);
 
-    // convert it all back to armadillo matrix types
+    // calc and set betas
     temp_se = arma::fcolvec(diag.data(), diag.size(), true, false);
     arma::fcolvec temp_b = arma::fcolvec(beta.data(), beta.size(), true, false);
-
-    beta_est.data.col(poi_col_idx) = temp_b;
-    se_beta.data.col(poi_col_idx) = temp_se;
-
-    // convert it all back to armadillo matrix types
+    neg_abs_z = arma::abs(temp_b / temp_se) * -1;
     arma::fcolvec temp_se2 =
         arma::fcolvec(diag2.data(), diag2.size(), true, false);
     arma::fcolvec temp_b2 =
         arma::fcolvec(beta2.data(), beta2.size(), true, false);
-    beta_est2.data.col(poi_col_idx) = temp_b2;
-    se_beta2.data.col(poi_col_idx) = temp_se2;
-
-    // pval for fit1
-    neg_abs_z = arma::abs(temp_b / temp_se) * -1;
-    neglog10_pvl.data.col(poi_col_idx) = (*dist_func_r)(neg_abs_z, df);
-    // pval for fit2
     neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
-    neglog10_pvl2.data.col(poi_col_idx) = (*dist_func_r)(neg_abs_z2, df2);
+
+    result.set_lls(ll1, ll2, lrs, lrs_pval, 2, poi_col_idx);
+    arma::fcolvec pval = (*dist_func_r)(neg_abs_z, df);
+    arma::fcolvec pval2 = (*dist_func_r)(neg_abs_z2, df2);
+    result.set_betas_fit1(temp_b, temp_se, pval, poi_col_idx);
+    result.set_betas_fit2(temp_b2, temp_se2, pval2, poi_col_idx);
   } // #pragma omp parallel for
 };
 
@@ -451,21 +413,10 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 //   } // #pragma omp parallel for
 // };
 
-void LogisticRegression::run_vla(
-    FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data, arma::fmat &poi_sqrd,
-    FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
-    FRMatrix &se_beta, FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
-    arma::fcolvec &beta_abs_errs, FRMatrix &beta_est2, FRMatrix &se_beta2,
-    FRMatrix &neglog10_pvl2, arma::fcolvec &beta_rel_errs2,
-    arma::fcolvec &beta_abs_errs2, arma::fmat &iters, arma::fmat &lls,
-    int max_iter, bool is_t_dist) {
+void LogisticRegression::run_vla(FRMatrix &cov, FRMatrix &pheno,
+                                 FRMatrix &poi_data, FRResult &result,
+                                 int max_iter, bool is_t_dist) {
 
-  FRMatrix no_interactions = interactions;
-  no_interactions.data = no_interactions.data.col(0); // first col is poi
-  no_interactions.row_names_arr = interactions.row_names_arr;
-  no_interactions.row_names = interactions.row_names;
-  no_interactions.col_names_arr = {"poi"};
-  no_interactions.col_names = {{"poi", 0}};
   arma::fcolvec poi_col;
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
@@ -482,16 +433,15 @@ void LogisticRegression::run_vla(
     }
   }
   // convert to Eigen matrices
-  MatrixUd W2_EIG = Eigen::Map<MatrixUd>(W2.memptr(), W2.n_rows, W2.n_cols);
-  Eigen::MatrixXf W2f = W2_EIG.cast<float>();
+
+  // Eigen::MatrixXf W2f = result.to_eigen(result.W2);
   Eigen::MatrixXf tphenoD = Eigen::Map<Eigen::MatrixXf>(
       pheno.data.memptr(), pheno.data.n_rows, pheno.data.n_cols);
-
+  Eigen::MatrixXf W2f = Eigen::Map<Eigen::MatrixXf>(
+      result.W2.memptr(), result.W2.n_rows, result.W2.n_cols);
   // run regression on G with 2 values
-  run_vla_2(cov, pheno, poi_data, poi_sqrd, interactions, W2, beta_est, se_beta,
-            neglog10_pvl, beta_rel_errs, beta_abs_errs, beta_est2, se_beta2,
-            neglog10_pvl2, beta_rel_errs2, beta_abs_errs2, iters, lls, max_iter,
-            is_t_dist, poi_2_idx, W2_EIG, W2f, tphenoD, no_interactions);
+  run_vla_2(cov, pheno, poi_data, result, max_iter, is_t_dist, poi_2_idx, W2f,
+            tphenoD);
 
   // run regression on G with 3 values
   // run_vla_3(cov, pheno, poi_data, poi_sqrd, interactions, W2, beta_est,
@@ -501,9 +451,6 @@ void LogisticRegression::run_vla(
   //           max_iter, is_t_dist, poi_2_idx, W2_EIG, W2f, tphenoD,
   //           no_interactions);
 }
-
-// void run_2() {};
-// void run_3() {};
 
 void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno,
                                   FRMatrix &poi_data, FRMatrix &interactions,

@@ -79,7 +79,7 @@ void CSVReader::set_row_names(const std::string& rowname_id) {
 /// column specified by 'col_idx'
 std::vector<std::string> CSVReader::get_col(const int col_idx) const {
   std::vector<std::string> column;
-  if (col_idx > headers.size() || col_idx < 0) {
+  if (col_idx > (int)headers.size() || col_idx < 0) {
     Rcpp::stop("Column index %d is greater than the number of columns in %s.",
                col_idx, file_name);
   }

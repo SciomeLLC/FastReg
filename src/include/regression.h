@@ -13,6 +13,7 @@
 #include <Rmath.h>
 #include <covariate.h>
 #include <fr_matrix.h>
+#include <fr_result.h>
 
 using namespace arma;
 
@@ -26,14 +27,7 @@ public:
                    arma::fcolvec &iters, int max_iter, bool is_t_dist,
                    bool use_blas) = 0;
   virtual void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-                       arma::fmat &poi_sqrd, FRMatrix &interactions,
-                       arma::umat &W2, FRMatrix &beta_est, FRMatrix &se_beta,
-                       FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
-                       arma::fcolvec &beta_abs_errs, FRMatrix &beta_est2,
-                       FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
-                       arma::fcolvec &beta_rel_errs2,
-                       arma::fcolvec &beta_abs_errs2, arma::fmat &iters,
-                       arma::fmat &lls, int max_iter, bool is_t_dist)=0;
+                       FRResult& result, int max_iter, bool is_t_dist) = 0;
 };
 
 class LogisticRegression : public RegressionBase {
@@ -48,13 +42,7 @@ public:
            arma::fcolvec &iters, int max_iter, bool is_t_dist, bool use_blas);
 
   void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-               arma::fmat &poi_sqrd, FRMatrix &interactions, arma::umat &W2,
-               FRMatrix &beta_est, FRMatrix &se_beta, FRMatrix &neglog10_pvl,
-               arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
-               FRMatrix &beta_est2, FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
-               arma::fcolvec &beta_rel_errs2, arma::fcolvec &beta_abs_errs2,
-               arma::fmat &iters, arma::fmat &lls, int max_iter,
-               bool is_t_dist);
+               FRResult& result, int max_iter, bool is_t_dist);
 
 private:
   void run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
@@ -72,7 +60,7 @@ private:
 class LinearRegression : public RegressionBase {
 public:
   LinearRegression() {}
-  
+
   ~LinearRegression() {}
   void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
            FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
@@ -80,15 +68,8 @@ public:
            arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
            arma::fcolvec &iters, int max_iter, bool is_t_dist, bool use_blas);
   void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-                       arma::fmat &poi_sqrd, FRMatrix &interactions,
-                       arma::umat &W2, FRMatrix &beta_est, FRMatrix &se_beta,
-                       FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
-                       arma::fcolvec &beta_abs_errs, FRMatrix &beta_est2,
-                       FRMatrix &se_beta2, FRMatrix &neglog10_pvl2,
-                       arma::fcolvec &beta_rel_errs2,
-                       arma::fcolvec &beta_abs_errs2, arma::fmat &iters,
-                       arma::fmat &lls, int max_iter, bool is_t_dist) {
-                        return;
-                       }
+               FRResult& result, int max_iter, bool is_t_dist) {
+    return;
+  }
 };
 #endif // REGRESSION_H

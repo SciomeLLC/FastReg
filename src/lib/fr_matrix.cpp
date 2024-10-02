@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <fr_matrix.h>
+#include <fr_result.h>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -56,6 +57,7 @@ void FRMatrix::shed_rows(std::vector<int> &idx,
                          std::vector<std::string> &new_row_names) {
   data.shed_rows(arma::conv_to<arma::uvec>::from(idx));
   row_names = std::unordered_map<std::string, int>(new_row_names.size());
+  row_names_arr = new_row_names;
   for (size_t j = 0; j < data.n_rows; j++) {
     row_names[new_row_names[j]] = j;
   }
@@ -318,21 +320,20 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
   outfile.close();
 }
 
-void FRMatrix::write_vla_results(
-    FRMatrix &beta, FRMatrix &se_beta, FRMatrix &neglog10, arma::umat &W2,
-    arma::fcolvec &rel_err, arma::fcolvec &abs_err, FRMatrix &beta2,
-    FRMatrix &se_beta2, FRMatrix &neglog102, arma::fcolvec &rel_err2,
-    arma::fcolvec &abs_err2, arma::fmat &lls, arma::fmat &iters,
-    std::vector<std::string> poi_names, std::string dir, std::string file_name,
-    int stratum, bool exclude_covars, int process_id) {
-  int n_parms = beta.data.n_rows;
-  int n_parms2 = beta2.data.n_rows;
+void FRMatrix::write_vla_results(FRResult &result, std::string dir,
+                                 std::string file_name, int stratum,
+                                 bool exclude_covars, int process_id) {
+  int n_parms = result.beta_est.n_rows;
+  int n_parms2 = result.beta_est2.n_rows;
 
-  std::vector<std::string> sorted_row_names = beta.sort_map(true);
+  std::vector<std::string> sorted_row_names = result.srt_cols;
+  std::vector<std::string> sorted_row_names2 =
+      result.srt_cols; // TODO: double check this size and names
+
   // create dir if it doesn't exist
   fs::create_directory(dir);
   // Rcpp::Rcout << "Dir created or already exists" << std::endl;
-  if (poi_names.size() != beta.data.n_cols) {
+  if (result.srt_cols.size() != result.beta_est.n_cols) {
     Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
                    "columns in the beta matrix."
                 << std::endl;
@@ -361,6 +362,14 @@ void FRMatrix::write_vla_results(
                   << std::endl;
       return;
     }
+    auto tmp_idx = std::find(result.cov_int_names.begin(),
+                              result.cov_int_names.end(), "poi");
+
+    if (tmp_idx == result.cov_int_names.end()) {
+      Rcpp::stop("Couldn't find a poi column");
+    }
+    int idx = tmp_idx - result.cov_int_names.begin();
+    int num_poi = result.cov_int_names.size() - idx;
     outfile
         << "POI\tEffect\tN\tDF_fit1\tEstimate_fit1\tSE_fit1\tmlog10P_fit1\tAbs_"
            "Err_fit1\tRel_"
@@ -375,22 +384,23 @@ void FRMatrix::write_vla_results(
   outfile << std::fixed << std::setprecision(17);
 
   std::stringstream buffer;
-  for (int col = 0; col < (int)beta.data.n_cols; col++) {
-    std::string poi_name = poi_names[col];
-    arma::uvec w2_col = W2.col(col);
-    float abs_err_val = abs_err.at(col);
-    float rel_err_val = rel_err.at(col);
-    float iter1 = iters.at(col, 0);
-    float iter2 = iters.at(col, 1);
-    float abs_err_val2 = abs_err2.at(col);
-    float rel_err_val2 = rel_err2.at(col);
-    float ll1 = lls.at(col, 0);
-    float ll2 = lls.at(col, 1);
-    float lrs = lls.at(col, 2);
-    float lrs_pval = lls.at(col, 3);
-    float num_G = lls.at(col, 4);
+  for (int col = 0; col < (int)result.beta_est.n_cols; col++) {
+    std::string poi_name = result.srt_cols[col];
+    arma::fcolvec w2_col = result.W2.col(col);
+    float abs_err_val = result.beta_abs_errs.at(col);
+    float rel_err_val = result.beta_rel_errs.at(col);
+    float iter1 = result.iters.at(col, 0);
+    float iter2 = result.iters.at(col, 1);
+    float abs_err_val2 = result.beta_abs_errs2.at(col);
+    float rel_err_val2 = result.beta_rel_errs2.at(col);
+    float ll1 = result.lls.at(col, 0);
+    float ll2 = result.lls.at(col, 1);
+    float lrs = result.lls.at(col, 2);
+    float lrs_pval = result.lls.at(col, 3);
+    float num_G = result.lls.at(col, 4);
 
     int N = arma::as_scalar(arma::sum(w2_col, 0));
+
     int df = N - n_parms;
     int df2 = N - n_parms2;
     int adder = 1;
@@ -404,30 +414,40 @@ void FRMatrix::write_vla_results(
       row2 = n_parms2 - 1;
     }
 
-    for (; row < (int)beta.data.n_rows; row += adder) {
-      std::string effect_name = sorted_row_names[row];
-      float estimate = beta.data.at(row, col);
-      float std_error = se_beta.data.at(row, col);
-      float neglog10_pval = neglog10.data.at(row, col);
-      float estimate2 = beta2.data.at(row2, col);
-      float std_error2 = se_beta2.data.at(row2, col);
-      float neglog10_pval2 = neglog102.data.at(row2, col);
-    // outfile
-    //     << "POI\tEffect\tN\tDF_fit1\tEstimate_fit1\tSE_fit1\tmlog10P_fit1\tAbs_"
-    //        "Err_fit1\tRel_"
-    //        "Err_fit1\titers_fit1\tDF_fit2\tEstimate_fit2\tSE_fit2\tmlog10P_"
-    //        "fit2\tAbs_"
-    //        "Err_fit2\tRel_"
-    //        "Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG"
-    //     << std::endl;
+    for (; row2 < (int)result.beta_est2.n_rows; row += adder, row2 += adder2) {
+      float estimate, std_error, neglog10_pval;
+      std::string effect_name = result.cov_int_names[row2];
+      if (row < (int)result.beta_est.n_rows) {
+        estimate = result.beta_est.at(row, col);
+        std_error = result.se_beta.at(row, col);
+        neglog10_pval = result.neglog10_pvl.at(row, col);
+      } else {
+        estimate = 0.0;
+        std_error = 0.0;
+        neglog10_pval = 0.0;
+      }
+      // float estimate = beta.data.at(row, col);
+      // float std_error = se_beta.data.at(row, col);
+      // float neglog10_pval = neglog10.data.at(row, col);
+      float estimate2 = result.beta_est2.at(row2, col);
+      float std_error2 = result.se_beta2.at(row2, col);
+      float neglog10_pval2 = result.neglog10_pvl2.at(row2, col);
+      // outfile
+      //     <<
+      //     "POI\tEffect\tN\tDF_fit1\tEstimate_fit1\tSE_fit1\tmlog10P_fit1\tAbs_"
+      //        "Err_fit1\tRel_"
+      //        "Err_fit1\titers_fit1\tDF_fit2\tEstimate_fit2\tSE_fit2\tmlog10P_"
+      //        "fit2\tAbs_"
+      //        "Err_fit2\tRel_"
+      //        "Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG"
+      //     << std::endl;
       buffer << poi_name << "\t" << effect_name << "\t" << N << "\t" << df
              << "\t" << estimate << "\t" << std_error << "\t" << neglog10_pval
              << "\t" << abs_err_val << "\t" << rel_err_val << "\t" << iter1
              << "\t" << df2 << "\t" << estimate2 << "\t" << std_error2 << "\t"
-             << neglog10_pval2 << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t"
-             << iter2 << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t"
-             << lrs_pval << "\t" << num_G << std::endl;
-      row2 += adder2;
+             << neglog10_pval2 << "\t" << abs_err_val2 << "\t" << rel_err_val2
+             << "\t" << iter2 << "\t" << ll1 << "\t" << ll2 << "\t" << lrs
+             << "\t" << lrs_pval << "\t" << num_G << std::endl;
     }
   }
   outfile << buffer.str();
@@ -593,6 +613,10 @@ void FRMatrix::join(FRMatrix &fmat) {
     data = fmat.data;
     col_names = fmat.col_names;
     row_names = fmat.row_names;
+    col_names_arr.resize(fmat.col_names.size());
+    for (auto &el : fmat.col_names) {
+      col_names_arr.at(el.second) = el.first;
+    }
     return;
   }
 
