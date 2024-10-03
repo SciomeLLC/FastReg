@@ -48,9 +48,6 @@ public:
                             std::vector<std::string> poi_names, std::string dir,
                             std::string file_name, int stratum,
                             bool exclude_covars, int process_id);
-  static void write_vla_results(FRResult &result, std::string dir,
-                                std::string file_name, int stratum,
-                                bool exclude_covars, int process_id);
   static void write_convergence_results(FRMatrix &beta,
                                         std::vector<std::string> poi_names,
                                         std::string dir, std::string file_name,

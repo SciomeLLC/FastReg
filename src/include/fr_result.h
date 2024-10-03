@@ -17,7 +17,8 @@ namespace fs = std::experimental::filesystem;
 #endif
 
 class FRMatrix;
-class FRResult {
+class FRResult
+{
 public:
   arma::fmat beta_est;
   arma::fmat beta_est2;
@@ -54,10 +55,9 @@ public:
   std::unordered_map<std::string, int> col_names;
   std::unordered_map<std::string, int> col_names2;
 
-  int num_parms;
-  int num_parms2;
+  int num_parms, num_parms2, num_parms2_sqrd;
 
-  FRResult(){};
+  FRResult() {};
   FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
            FRMatrix &no_interactions, FRMatrix &interactions);
 
@@ -67,7 +67,9 @@ public:
                       arma::fcolvec &pval, int idx);
   void set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
                       arma::fcolvec &pval, int idx);
-  void write_to_file(std::string dir, std::string file_name, int stratum,
-                     bool exclude_covars, int process_id);
+  void write_to_file(std::string dir, std::string file_name, int stratum, int process_id);
+  static void concatenate(std::string output_dir,
+                   std::string file_name_prefix,
+                   std::string file_concatenation_prefix);
 };
 #endif // FRRESULT_H

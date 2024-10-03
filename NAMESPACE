@@ -1,6 +1,6 @@
 useDynLib(FastReg, .registration=TRUE)
 exportPattern("^[[:alpha:]]+")
-export(FastReg)
+export(VLA)
 export(TextToH5)
 export(H5_To_Bed)
 export(data)
