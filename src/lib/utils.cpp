@@ -2,37 +2,46 @@
 
 static void chkIntFn(void *dummy) { R_CheckUserInterrupt(); }
 
-void checkInterrupt() {
-  if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
+void checkInterrupt()
+{
+  if (R_ToplevelExec(chkIntFn, NULL) == FALSE)
+  {
     Rcpp::stop("Received user interrupt. Stopping FastReg...");
   }
 }
 
-bool dir_exists(const std::string &path) {
+bool dir_exists(const std::string &path)
+{
   fs::path directory(path);
   return fs::is_directory(directory);
 }
 
-void delete_dir(const std::string &path) {
+void delete_dir(const std::string &path)
+{
   fs::path directory(path);
 
-  if (fs::exists(directory) && fs::is_directory(directory)) {
+  if (fs::exists(directory) && fs::is_directory(directory))
+  {
     fs::remove_all(directory);
     Rcpp::Rcout << "Directory deleted: " << path << std::endl;
-  } else {
+  }
+  else
+  {
     Rcpp::Rcout << "Directory does not exist: " << path << std::endl;
   }
 }
 
 template <typename T, typename U>
-bool isin(const T &value, const U &container) {
+bool isin(const T &value, const U &container)
+{
   return std::find(std::begin(container), std::end(container), value) !=
          std::end(container);
 }
 
 std::vector<std::string>
 intersect_row_names(const std::vector<std::string> &a,
-                    const std::vector<std::string> &b) {
+                    const std::vector<std::string> &b)
+{
   std::vector<std::string> result;
   result.reserve(std::min(a.size(), b.size()));
   std::set_intersection(a.begin(), a.end(), b.begin(), b.end(),
@@ -41,35 +50,42 @@ intersect_row_names(const std::vector<std::string> &a,
 }
 
 std::vector<std::string> set_diff(const std::vector<std::string> &a,
-                                  const std::vector<std::string> &b) {
+                                  const std::vector<std::string> &b)
+{
   std::vector<std::string> result;
   std::set_difference(a.begin(), a.end(), b.begin(), b.end(),
                       std::back_inserter(result));
   return result;
 }
 
-void transform_poi(FRMatrix &G, std::string effect_type) {
-  if (effect_type == "dominant") {
+void transform_poi(FRMatrix &G, std::string effect_type)
+{
+  if (effect_type == "dominant")
+  {
     G.data.elem(find(G.data == 2)).fill(1);
-  } else if (effect_type == "recessive") {
+  }
+  else if (effect_type == "recessive")
+  {
     G.data.elem(find(G.data == 1)).fill(0);
     G.data.elem(find(G.data == 2)).fill(1);
   }
 }
 
-FRMatrix filter_poi(FRMatrix &G, double maf_threshold, double hwe_threshold) {
+FRMatrix filter_poi(FRMatrix &G, double maf_threshold, double hwe_threshold)
+{
 
   FRMatrix res;
   res.col_names = G.col_names;
-  res.row_names = {{"Freq (a)", 0},  {"Freq (b)", 1},   {"MAF", 2},
-                   {"HWE Chisq", 3}, {"HWE Pvalue", 4}, {"keep", 5}};
+  res.row_names = {{"Freq (a)", 0}, {"Freq (b)", 1}, {"MAF", 2}, {"HWE Chisq", 3}, {"HWE Pvalue", 4}, {"keep", 5}};
   res.data = arma::fmat(res.row_names.size(), G.data.n_cols, arma::fill::ones);
 
   umat isnan_mat = umat(G.data.n_rows, G.data.n_cols, arma::fill::zeros);
-  for (uword col = 0; col < G.data.n_cols; ++col) {
+  for (uword col = 0; col < G.data.n_cols; ++col)
+  {
     uvec nonfinite_indices = arma::find_nonfinite(G.data.col(col));
     // isnan_mat.col(col).
-    for (uword i = 0; i < nonfinite_indices.n_elem; ++i) {
+    for (uword i = 0; i < nonfinite_indices.n_elem; ++i)
+    {
       isnan_mat(nonfinite_indices(i), col) = 1;
     }
   }
@@ -115,31 +131,39 @@ FRMatrix filter_poi(FRMatrix &G, double maf_threshold, double hwe_threshold) {
   return res;
 }
 
-void create_Z_matrix(FRMatrix &df,
-                     const std::vector<std::string> &poi_covar_interactions,
-                     FRMatrix &Z, bool has_intercept) {
+void create_interactions(FRMatrix &df,
+                         const std::vector<std::string> &poi_covar_interactions,
+                         FRMatrix &Z, bool has_intercept, std::string prefix)
+{
   std::vector<std::string> interaction_cols;
-  if (poi_covar_interactions.size() == 1 && poi_covar_interactions[0].empty()) {
+  if (poi_covar_interactions.size() == 1 && poi_covar_interactions[0].empty())
+  {
     return;
   }
-  for (const auto &interaction : poi_covar_interactions) {
-    for (const auto &col_name : df.col_names) {
-      if (col_name.first.find(interaction) != std::string::npos) {
+  for (const auto &interaction : poi_covar_interactions)
+  {
+    for (const auto &col_name : df.col_names)
+    {
+      if (col_name.first.find(interaction) != std::string::npos)
+      {
         interaction_cols.push_back(col_name.first);
       }
     }
   }
 
-  if (!interaction_cols.empty()) {
+  if (!interaction_cols.empty())
+  {
     std::vector<int> col_idx;
     int count = (has_intercept) ? 1 : 0;
     Z.col_names_arr.resize(Z.col_names_arr.size() + interaction_cols.size());
-    for (const auto &col_name : interaction_cols) {
+    for (const auto &col_name : interaction_cols)
+    {
       int idx = df.get_col_idx(col_name);
-      if (idx != -1) {
+      if (idx != -1)
+      {
         col_idx.push_back(idx);
-        Z.col_names["poi*" + col_name] = count;
-        Z.col_names_arr.at(count) = "poi*" + col_name;
+        Z.col_names[prefix + col_name] = count;
+        Z.col_names_arr.at(count) = prefix + col_name;
         count++;
       }
     }
@@ -150,7 +174,9 @@ void create_Z_matrix(FRMatrix &df,
   }
 }
 
-template <typename T> std::vector<T> fr_unique(const frowvec &vec) {
+template <typename T>
+std::vector<T> fr_unique(const frowvec &vec)
+{
   std::vector<T> result(vec);
   std::sort(result.begin(), result.end());
   result.erase(std::unique(result.begin(), result.end()), result.end());
@@ -158,20 +184,25 @@ template <typename T> std::vector<T> fr_unique(const frowvec &vec) {
 }
 
 FRMatrix create_design_matrix(FRMatrix &df, std::vector<Covariate> covariates,
-                              bool no_intercept, double colinearity_rsq) {
+                              bool no_intercept, double colinearity_rsq)
+{
   FRMatrix X;
   X.row_names = df.row_names;
 
-  if (!no_intercept) {
+  if (!no_intercept)
+  {
     X.data = fmat(df.data.n_rows, 1, fill::ones);
     X.col_names["Intercept"] = 0;
-  } else {
+  }
+  else
+  {
     X.data = fmat(df.data.n_rows, 0, fill::zeros);
   }
   if (covariates.empty())
     return X;
 
-  for (auto &cv : covariates) {
+  for (auto &cv : covariates)
+  {
     cv.add_to_matrix(df, X, colinearity_rsq);
   }
   return X;
@@ -180,7 +211,9 @@ FRMatrix create_design_matrix(FRMatrix &df, std::vector<Covariate> covariates,
 /// @brief given a string it determines if it is only whitespace
 /// @param str the string in question
 /// @return true if only whitespace, false if true
-bool isWhitespace(const std::string &str) {
+bool isWhitespace(const std::string &str)
+{
   return std::all_of(str.begin(), str.end(),
-                     [](char c) { return std::isspace(c); });
+                     [](char c)
+                     { return std::isspace(c); });
 }

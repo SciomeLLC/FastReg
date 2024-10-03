@@ -17,7 +17,8 @@
 
 using namespace arma;
 
-class RegressionBase {
+class RegressionBase
+{
 public:
   virtual ~RegressionBase() {}
   virtual void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
@@ -27,10 +28,11 @@ public:
                    arma::fcolvec &iters, int max_iter, bool is_t_dist,
                    bool use_blas) = 0;
   virtual void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-                       FRResult& result, int max_iter, bool is_t_dist) = 0;
+                       FRResult &result, int max_iter, bool is_t_dist) = 0;
 };
 
-class LogisticRegression : public RegressionBase {
+class LogisticRegression : public RegressionBase
+{
 
 public:
   LogisticRegression() {}
@@ -42,7 +44,7 @@ public:
            arma::fcolvec &iters, int max_iter, bool is_t_dist, bool use_blas);
 
   void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-               FRResult& result, int max_iter, bool is_t_dist);
+               FRResult &result, int max_iter, bool is_t_dist);
 
 private:
   void run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
@@ -57,7 +59,8 @@ private:
                  arma::fcolvec &iters, int max_iter, bool is_t_dist);
 };
 
-class LinearRegression : public RegressionBase {
+class LinearRegression : public RegressionBase
+{
 public:
   LinearRegression() {}
 
@@ -68,7 +71,8 @@ public:
            arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
            arma::fcolvec &iters, int max_iter, bool is_t_dist, bool use_blas);
   void run_vla(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-               FRResult& result, int max_iter, bool is_t_dist) {
+               FRResult &result, int max_iter, bool is_t_dist)
+  {
     return;
   }
 };

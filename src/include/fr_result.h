@@ -48,6 +48,7 @@ public:
   std::vector<std::string> srt_rows2;
 
   std::vector<std::string> cov_int_names;
+  std::vector<std::string> cov_int_names_sqrd;
   std::vector<std::string> cov_no_int_names;
 
   std::unordered_map<std::string, int> row_names;
@@ -59,7 +60,7 @@ public:
 
   FRResult() {};
   FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
-           FRMatrix &no_interactions, FRMatrix &interactions);
+           FRMatrix &no_interactions, FRMatrix &interactions, FRMatrix &interactions_sqrd);
 
   void set_lls(double ll1, double ll2, double lrs, double lrs_pval, int num_g,
                int idx);
@@ -69,7 +70,7 @@ public:
                       arma::fcolvec &pval, int idx);
   void write_to_file(std::string dir, std::string file_name, int stratum, int process_id);
   static void concatenate(std::string output_dir,
-                   std::string file_name_prefix,
-                   std::string file_concatenation_prefix);
+                          std::string file_name_prefix,
+                          std::string file_concatenation_prefix);
 };
 #endif // FRRESULT_H

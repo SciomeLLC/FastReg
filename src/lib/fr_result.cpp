@@ -2,7 +2,7 @@
 #include <fr_result.h>
 
 FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
-                   FRMatrix &no_interactions, FRMatrix &interactions)
+                   FRMatrix &no_interactions, FRMatrix &interactions, FRMatrix &interactions_sqrd)
 {
   num_parms = no_interactions.data.n_cols + covar_matrix.data.n_cols;
   num_parms2 = interactions.data.n_cols + covar_matrix.data.n_cols;
@@ -34,6 +34,7 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
 
   cov_no_int_names.resize(num_parms);
   cov_int_names.resize(num_parms2);
+  cov_int_names_sqrd.resize(num_parms2_sqrd);
   // set row names
   for (auto &col_name : covar_matrix.col_names)
   {
@@ -41,6 +42,7 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
     row_names2[col_name.first] = col_name.second;
     cov_no_int_names.at(col_name.second) = col_name.first;
     cov_int_names.at(col_name.second) = col_name.first;
+    cov_int_names_sqrd.at(col_name.second) = col_name.first;
   }
 
   // set interaction names
@@ -56,6 +58,8 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
         covar_matrix.col_names.size() + col_name.second;
     cov_int_names.at(col_name.second + covar_matrix.col_names.size()) =
         col_name.first;
+    
+    cov_int_names_sqrd.at(col_name.second + covar_matrix.col_names.size()) = col_name.first;
   }
 
   // set col names
@@ -163,22 +167,22 @@ void FRResult::write_to_file(std::string dir, std::string file_name,
     }
 
     outfile
-        << "POI\tN\tDF_fit1\tEstimate_fit1_poi\tSE_fit1_poi\tmlog10P_fit1_poi\tAbs_"
+        << "POI\tN\tDF_fit1\tEstimate_fit1_[poi]\tSE_fit1_[poi]\tmlog10P_fit1_[poi]\tAbs_"
            "Err_fit1\tRel_Err_fit1\titers_fit1\tDF_fit2";
 
     // estimate, se, pval for each poi and poi interactions
     for (int i = idx; i < cov_int_names.size(); i++)
     {
-      outfile << "\tEstimate_" << cov_int_names[i]
-              << "\tSE_" << cov_int_names[i] << "\tmlog10P_" << cov_int_names[i];
+      outfile << "\tEstimate_[" << cov_int_names[i]
+              << "]\tSE_[" << cov_int_names[i] << "]\tmlog10P_[" << cov_int_names[i] << "]";
     }
 
     // estimate, se, pval for each poi^2 and poi^2 interactions
     for (int i = idx; i < cov_int_names.size(); i++)
     {
-      outfile << "\tEstimate_" << cov_int_names[i] << "_sqrd"
-              << "\tSE_" << cov_int_names[i] << "_sqrd"
-              << "\tmlog10P_" << cov_int_names[i] << "_sqrd";
+      outfile << "\tEstimate_[" << cov_int_names[i] << "_sqrd]"
+              << "\tSE_[" << cov_int_names[i] << "_sqrd]"
+              << "\tmlog10P_[" << cov_int_names[i] << "_sqrd]";
     }
 
     outfile << "\tAbs_Err_fit2\tRel_Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG" << std::endl;

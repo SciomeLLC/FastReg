@@ -21,5 +21,5 @@ mats <- VLA(
   output.dir = "win_R4.2.2", 
   output.exclude.covar = FALSE,
   compress.results = FALSE,
-  max.iter = 30, 
+  max.iter = 15, 
   no.intercept = F)

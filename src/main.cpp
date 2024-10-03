@@ -57,15 +57,18 @@ namespace fs = std::experimental::filesystem;
 
 #include <RcppEigen.h>
 
-struct ProcResult {
+struct ProcResult
+{
   int timing_results[4] = {0, 0, 0, 0};
   double process_nonconvergence_status = 0.0;
   double process_total_filtered_pois = 0.0;
   std::mutex mtx;
 
-  void accumulate(ProcResult &proc_res) {
+  void accumulate(ProcResult &proc_res)
+  {
     std::lock_guard<std::mutex> lock(mtx);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
       timing_results[i] += proc_res.timing_results[i];
     }
     process_nonconvergence_status += proc_res.process_nonconvergence_status;
@@ -73,10 +76,12 @@ struct ProcResult {
   }
 
   void print_convergence_percentage(double nonconvergence_status,
-                                    double filtered_pois) {
+                                    double filtered_pois)
+  {
     double noncovergence_percent =
         (nonconvergence_status / filtered_pois) * 100;
-    if (noncovergence_percent > 0.0) {
+    if (noncovergence_percent > 0.0)
+    {
       Rcpp::Rcout << nonconvergence_status << " out of " << filtered_pois
                   << " (" << std::setprecision(2) << std::fixed
                   << noncovergence_percent
@@ -85,7 +90,8 @@ struct ProcResult {
                   << std::endl;
     }
   }
-  void print_nonconvergence_summary() {
+  void print_nonconvergence_summary()
+  {
     double noncovergence_percent =
         (process_nonconvergence_status / process_total_filtered_pois) * 100;
     Rcpp::Rcout << process_nonconvergence_status << " out of "
@@ -95,7 +101,8 @@ struct ProcResult {
                    "threshold."
                 << std::endl;
   }
-  void print_timing_summary(int process_id) {
+  void print_timing_summary(int process_id)
+  {
     auto end =
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     Rcpp::Rcout << "Timing Summary for process: " << process_id + 1
@@ -114,7 +121,8 @@ struct ProcResult {
 
   void print_totals_summary(double concatenation_time, double compression_time,
                             std::string regression_type, size_t individuals,
-                            int num_pois, int num_threads) {
+                            int num_pois, int num_threads)
+  {
     Rcpp::Rcout << "-----------------------------------------" << std::endl;
     Rcpp::Rcout << "Timing Summary: " << std::endl;
     Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
@@ -142,33 +150,41 @@ struct ProcResult {
 
 Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
                           std::vector<std::string> row_names,
-                          std::vector<std::string> col_names) {
+                          std::vector<std::string> col_names)
+{
   int n_rows = mat.n_rows;
   int n_cols = mat.n_cols;
 
-  if (col_names.size() != static_cast<size_t>(n_cols)) {
+  if (col_names.size() != static_cast<size_t>(n_cols))
+  {
     Rcpp::stop("Number of column names does not match number of columns in "
                "matrix. n_cols: %s, col_names: %s",
                n_cols, col_names.size());
   }
 
-  if (row_names.size() != static_cast<size_t>(n_rows)) {
+  if (row_names.size() != static_cast<size_t>(n_rows))
+  {
     Rcpp::stop("Number of row names does not match number of rows in matrix.");
   }
 
-  for (size_t i = 0; i < col_names.size(); ++i) {
-    if (col_names[i].empty()) {
+  for (size_t i = 0; i < col_names.size(); ++i)
+  {
+    if (col_names[i].empty())
+    {
       Rcpp::stop("Column name at position %d is empty.", i);
     }
   }
 
-  for (size_t i = 0; i < row_names.size(); ++i) {
-    if (row_names[i].empty()) {
+  for (size_t i = 0; i < row_names.size(); ++i)
+  {
+    if (row_names[i].empty())
+    {
       Rcpp::stop("Row name at position %d is empty.", i);
     }
   }
   Rcpp::List df_cols;
-  for (int i = 0; i < n_cols; i++) {
+  for (int i = 0; i < n_cols; i++)
+  {
     df_cols[col_names[i]] =
         Rcpp::NumericVector(mat.colptr(i), mat.colptr(i) + n_rows);
   }
@@ -182,7 +198,8 @@ Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
 void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
                        FRMatrix &covar_df, std::string poi_file_path,
                        int chunk_size, int num_threads, bool use_blas,
-                       ProcResult &proc_res) {
+                       ProcResult &proc_res)
+{
   // Load POI file
   BEDReader bed_reader(poi_file_path);
 
@@ -193,12 +210,14 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi_individuals);
-  if (intersected_ind.empty()) {
+  if (intersected_ind.empty())
+  {
     stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
   int num_poi = poi_names.size();
-  if (num_poi == 0) {
+  if (num_poi == 0)
+  {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
 
@@ -210,22 +229,27 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
   double file_writing_time = 0.0;
   double poi_reading_time = 0.0;
   double regression_time = 0.0;
-  for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
+  for (int stratum = 0; stratum < stratums.nstrata; ++stratum)
+  {
     std::string outfile_suffix = stratums.ids[stratum];
-    if (!config.split_by[0].empty()) {
+    if (!config.split_by[0].empty())
+    {
       Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
                   << std::endl;
     }
     std::vector<std::string> ind_set = stratums.index_list[outfile_suffix];
     int ct = 0;
     std::vector<int> ind_set_idx(ind_set.size());
-    for (std::string ind : ind_set) {
-      if (ind.empty()) {
+    for (std::string ind : ind_set)
+    {
+      if (ind.empty())
+      {
         Rcpp::Rcout << "Found empty ind value: " << ind << std::endl;
         continue;
       }
       int idx = pheno_df.get_row_idx(ind);
-      if (idx == -1) {
+      if (idx == -1)
+      {
         Rcpp::Rcout << "Ind value not found in pheno_df: " << ind << std::endl;
         continue;
       }
@@ -239,12 +263,19 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
     // n individuals x # covariates
     FRMatrix covar_matrix = covar_df;
 
-    FRMatrix covar_poi_interaction_matrix;
-    covar_poi_interaction_matrix.data =
+    FRMatrix interactions;
+    interactions.data =
         arma::fmat(covar_matrix.data.n_rows, 1, arma::fill::ones);
-    covar_poi_interaction_matrix.row_names = covar_matrix.row_names;
-    covar_poi_interaction_matrix.col_names = {{"poi", 0}};
-    covar_poi_interaction_matrix.col_names_arr.push_back("poi");
+    interactions.row_names = covar_matrix.row_names;
+    interactions.col_names = {{"poi", 0}};
+    interactions.col_names_arr.push_back("poi");
+
+    FRMatrix interactions_sqrd;
+    interactions_sqrd.data =
+        arma::fmat(covar_matrix.data.n_rows, 1, arma::fill::ones);
+    interactions_sqrd.row_names = covar_matrix.row_names;
+    interactions_sqrd.col_names = {{"poi^2", 0}};
+    interactions_sqrd.col_names_arr.push_back("poi^2");
 
     FRMatrix no_interaction_matrix;
     no_interaction_matrix.data =
@@ -254,30 +285,39 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
     no_interaction_matrix.col_names_arr.push_back("poi");
 
     // n individuals x 1 or 1 + num interacting poi covars
-    create_Z_matrix(covar_matrix, config.POI_covar_interactions,
-                    covar_poi_interaction_matrix, !config.no_intercept);
-
+    create_interactions(covar_matrix, config.POI_covar_interactions,
+                        interactions, !config.no_intercept, "poi");
+    create_interactions(covar_matrix, config.POI_covar_interactions,
+                        interactions_sqrd, !config.no_intercept, "poi^2");
+    
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
 
-    for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
+    for (size_t i = 0; i < covar_matrix.data.n_rows; i++)
+    {
       auto idx = std::find(ind_set.begin(), ind_set.end(),
                            covar_matrix.row_names_arr[i]);
-      if (idx == ind_set.end()) {
+      if (idx == ind_set.end())
+      {
         nan_idx.push_back(i); // Missing individual
         continue;
       }
       arma::uvec covar_nan_idx = arma::find_nonfinite(covar_matrix.data.row(i));
       arma::uvec pheno_nan_idx = arma::find_nonfinite(pheno_matrix.data.row(i));
-      if (covar_nan_idx.size() > 0 || pheno_nan_idx.size() > 0) {
+      if (covar_nan_idx.size() > 0 || pheno_nan_idx.size() > 0)
+      {
         nan_idx.push_back(i);
-      } else {
-        if (ind_set[i].empty()) {
+      }
+      else
+      {
+        if (ind_set[i].empty())
+        {
           Rcpp::Rcout << "Found empty ind string in missing: " << ind_set[i]
                       << std::endl;
           continue;
         }
-        if (ind_set[i].c_str() == nullptr) {
+        if (ind_set[i].c_str() == nullptr)
+        {
           Rcpp::Rcout << "Null string found at idx: " << i << std::endl;
           continue;
         }
@@ -288,17 +328,17 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
     // remove from covar, pheno, and interactions
     covar_matrix.shed_rows(nan_idx, ind_set_filtered);
     pheno_matrix.shed_rows(nan_idx, ind_set_filtered);
-    covar_poi_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
+    interactions.shed_rows(nan_idx, ind_set_filtered);
+    interactions_sqrd.shed_rows(nan_idx, ind_set_filtered);
     no_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
 
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
         ind_set_filtered.begin(), ind_set_filtered.end(),
-        strat_individuals.begin(), [&intersected_ind](const std::string &elem) {
-          return intersected_ind[std::distance(
+        strat_individuals.begin(), [&intersected_ind](const std::string &elem)
+        { return intersected_ind[std::distance(
               intersected_ind.begin(),
-              std::find(intersected_ind.begin(), intersected_ind.end(), elem))];
-        });
+              std::find(intersected_ind.begin(), intersected_ind.end(), elem))]; });
     double nonconvergence_status = 0.0;
     double filtered_pois = 0.0;
 
@@ -307,10 +347,12 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
 
     auto start_time = std::chrono::high_resolution_clock::now();
     // allocate memory space for H5 file to read into
-    for (int block = 0; block < num_parallel_poi_blocks; block++) {
+    for (int block = 0; block < num_parallel_poi_blocks; block++)
+    {
       int start_chunk = block * chunk_size;
       int end_chunk = start_chunk + chunk_size;
-      if (end_chunk >= num_poi) {
+      if (end_chunk >= num_poi)
+      {
         end_chunk = num_poi;
       }
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
@@ -328,7 +370,8 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
 
       FRMatrix filtered = poi.filter_genotype(poi_matrix);
 
-      if (filtered.data.size() > 0) {
+      if (filtered.data.size() > 0)
+      {
         start_time = std::chrono::high_resolution_clock::now();
         filtered.write_summary(config.output_dir, "POI_Summary", stratum,
                                process_id);
@@ -344,7 +387,7 @@ void process_chunk_vla(int process_id, Config &config, FRMatrix &pheno_df,
       start_time = std::chrono::high_resolution_clock::now();
 
       FRResult result(covar_matrix, poi_matrix, no_interaction_matrix,
-                      covar_poi_interaction_matrix);
+                      interactions, interactions_sqrd);
       end_time = std::chrono::high_resolution_clock::now();
       memory_allocation_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -415,7 +458,8 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
            const Rcpp::StringVector covariate_ref_level,
            const Rcpp::StringVector POI_covar_interactions_str,
            const Rcpp::StringVector split_by_str, const std::string output_dir,
-           bool compress_results, int max_workers) {
+           bool compress_results, int max_workers)
+{
   Config config(
       phenotype, regression_type, pvalue_dist, output_exclude_covar,
       maf_threshold, hwe_threshold, no_intercept, colinearity_rsq,
@@ -428,7 +472,8 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
       compress_results, max_workers);
 
   config.print();
-  if (dir_exists(config.output_dir)) {
+  if (dir_exists(config.output_dir))
+  {
     delete_dir(config.output_dir);
   }
   CovariateMatrix cov_mat = CovariateMatrix(
@@ -455,12 +500,14 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
         << " common unique subjects in pheno.file, "
            "covar.file, and POI.file"
         << std::endl;
-  if (intersected_ind.empty()) {
+  if (intersected_ind.empty())
+  {
     stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
   int num_poi = poi_names.size();
-  if (num_poi == 0) {
+  if (num_poi == 0)
+  {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
 
@@ -485,7 +532,8 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
   omp_set_num_threads(num_threads);
 #endif
 #ifdef _WIN32
-  for (int i = 0; i < num_poi_files; i++) {
+  for (int i = 0; i < num_poi_files; i++)
+  {
     ProcResult proc_res;
     int timing_results[] = {0, 0, 0, 0};
     process_chunk_vla(i, config, pheno_df, covar_df, config.poi_files[i],
@@ -504,22 +552,28 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
   int num_processes_started = 0;
   int num_processes_completed = 0;
 
-  while (num_processes_completed < num_processes_total) {
-    while ((num_processes_started - num_processes_completed) < max_processes) {
+  while (num_processes_completed < num_processes_total)
+  {
+    while ((num_processes_started - num_processes_completed) < max_processes)
+    {
       checkInterrupt();
-      if (num_processes_started == num_processes_total) {
+      if (num_processes_started == num_processes_total)
+      {
         break;
       }
       int i = num_processes_started;
-      if (pipe(&pipe_file_descriptors[i * 2]) == -1) {
+      if (pipe(&pipe_file_descriptors[i * 2]) == -1)
+      {
         perror("pipe");
       }
       process_ids[i] = fork();
-      if (process_ids[i] == -1) {
+      if (process_ids[i] == -1)
+      {
         perror("fork");
       }
       std::string poi_file_path = config.poi_files[i];
-      if (process_ids[i] == 0) {             // child process
+      if (process_ids[i] == 0)
+      {                                      // child process
         close(pipe_file_descriptors[i * 2]); // close read pipe
 
         ProcResult proc_res;
@@ -529,16 +583,21 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
                             sizeof(proc_res));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
-      } else {
+      }
+      else
+      {
         close(pipe_file_descriptors[i * 2 + 1]);
         num_processes_started++;
       }
     }
     // Check for finished processes
-    for (int i = 0; i < num_processes_started; i++) {
+    for (int i = 0; i < num_processes_started; i++)
+    {
       checkInterrupt();
-      if (process_ids[i] != 0) { // parent process
-        if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0) {
+      if (process_ids[i] != 0)
+      { // parent process
+        if (!has_completed[i] && waitpid(process_ids[i], NULL, WNOHANG) > 0)
+        {
           has_completed[i] = true;
 
           ProcResult proc_res;
@@ -554,7 +613,8 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
 #endif
   auto start_time = std::chrono::high_resolution_clock::now();
   FRResult::concatenate(config.output_dir, "Results", "Full");
-  if (config.POI_type == "genotype") {
+  if (config.POI_type == "genotype")
+  {
     FRResult::concatenate(config.output_dir, "POI_Summary", "Full");
   }
   auto end_time = std::chrono::high_resolution_clock::now();
@@ -563,7 +623,8 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
                                                                     start_time)
           .count();
 
-  if (config.compress_results) {
+  if (config.compress_results)
+  {
     start_time = std::chrono::high_resolution_clock::now();
     FRMatrix::zip_results(config.output_dir);
     end_time = std::chrono::high_resolution_clock::now();
@@ -585,10 +646,10 @@ FastRegVLA(const std::string phenotype, const std::string regression_type,
 
   Rcpp::DataFrame covar =
       arma_2_df(covar_df.data, covar_df.row_names_arr,
-      covar_df.col_names_arr);
-  Rcpp::DataFrame  phen =
+                covar_df.col_names_arr);
+  Rcpp::DataFrame phen =
       arma_2_df(pheno_df.data, pheno_df.row_names_arr,
-      pheno_df.col_names_arr);
+                pheno_df.col_names_arr);
   // Rcpp::List poi = arma_2_df(Z.data, Z.row_names_arr, Z.col_names_arr);
   Rcpp::List res = Rcpp::List::create(Rcpp::Named("covar") = covar, Rcpp::Named("pheno") = phen);
   return res;
