@@ -162,8 +162,8 @@ void create_interactions(FRMatrix &df,
       if (idx != -1)
       {
         col_idx.push_back(idx);
-        Z.col_names[prefix + col_name] = count;
-        Z.col_names_arr.at(count) = prefix + col_name;
+        Z.col_names[prefix + "*" + col_name] = count;
+        Z.col_names_arr.at(count) = prefix + "*" + col_name;
         count++;
       }
     }

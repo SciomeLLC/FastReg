@@ -2,8 +2,8 @@
 #include <fr_result.h>
 
 FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
-                   FRMatrix &no_interactions, FRMatrix &interactions, FRMatrix &interactions_sqrd)
-{
+                   FRMatrix &no_interactions, FRMatrix &interactions,
+                   FRMatrix &interactions_sqrd) {
   num_parms = no_interactions.data.n_cols + covar_matrix.data.n_cols;
   num_parms2 = interactions.data.n_cols + covar_matrix.data.n_cols;
   num_parms2_sqrd = 2 * interactions.data.n_cols + covar_matrix.data.n_cols;
@@ -15,8 +15,10 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
 
   beta_est2 = arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
   se_beta2 = arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
-  beta_est2_sqrd = arma::fmat(num_parms2_sqrd, poi_matrix.data.n_cols, arma::fill::zeros);
-  se_beta2_sqrd = arma::fmat(num_parms2_sqrd, poi_matrix.data.n_cols, arma::fill::zeros);
+  beta_est2_sqrd =
+      arma::fmat(num_parms2_sqrd, poi_matrix.data.n_cols, arma::fill::zeros);
+  se_beta2_sqrd =
+      arma::fmat(num_parms2_sqrd, poi_matrix.data.n_cols, arma::fill::zeros);
   neglog10_pvl2 =
       arma::fmat(num_parms2, poi_matrix.data.n_cols, arma::fill::zeros);
   neglog10_pvl2_sqrd =
@@ -28,7 +30,7 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
   beta_abs_errs2 = arma::fcolvec(poi_matrix.data.n_cols, arma::fill::zeros);
 
   iters = arma::fmat(poi_matrix.data.n_cols, 2, arma::fill::zeros);
-  lls = arma::fmat(poi_matrix.data.n_cols, 5, arma::fill::zeros);
+  lls = arma::fmat(poi_matrix.data.n_cols, 6, arma::fill::zeros);
   W2 = arma::fmat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
                   arma::fill::ones);
 
@@ -36,8 +38,7 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
   cov_int_names.resize(num_parms2);
   cov_int_names_sqrd.resize(num_parms2_sqrd);
   // set row names
-  for (auto &col_name : covar_matrix.col_names)
-  {
+  for (auto &col_name : covar_matrix.col_names) {
     row_names[col_name.first] = col_name.second;
     row_names2[col_name.first] = col_name.second;
     cov_no_int_names.at(col_name.second) = col_name.first;
@@ -46,31 +47,32 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
   }
 
   // set interaction names
-  for (auto &col_name : no_interactions.col_names)
-  {
+  for (auto &col_name : no_interactions.col_names) {
     row_names["poi"] = covar_matrix.col_names.size();
     cov_no_int_names.at(covar_matrix.col_names.size()) = "poi";
   }
 
-  for (auto &col_name : interactions.col_names)
-  {
+  for (auto &col_name : interactions.col_names) {
     row_names2[col_name.first] =
         covar_matrix.col_names.size() + col_name.second;
     cov_int_names.at(col_name.second + covar_matrix.col_names.size()) =
         col_name.first;
-    
-    cov_int_names_sqrd.at(col_name.second + covar_matrix.col_names.size()) = col_name.first;
+    cov_int_names_sqrd.at(col_name.second + covar_matrix.col_names.size()) =
+        col_name.first;
+  }
+
+  for (auto &col_name : interactions_sqrd.col_names) {
+    cov_int_names_sqrd.at(col_name.second + cov_int_names.size()) =
+        col_name.first;
   }
 
   // set col names
   col_names = covar_matrix.row_names;
   col_names2 = covar_matrix.row_names;
 
-  for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++)
-  {
+  for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
     arma::uvec G_na = arma::find_nonfinite(poi_matrix.data.col(v));
-    for (arma::uword i = 0; i < G_na.n_elem; i++)
-    {
+    for (arma::uword i = 0; i < G_na.n_elem; i++) {
       W2(G_na(i), v) = 0.0;
       poi_matrix.data(G_na(i), v) = 0.0;
     }
@@ -81,37 +83,42 @@ FRResult::FRResult(FRMatrix &covar_matrix, FRMatrix &poi_matrix,
   srt_rows = covar_matrix.sort_map(true);
   this->interactions = &interactions;
   this->no_interactions = &no_interactions;
+  this->interactions_sqrd = &interactions_sqrd;
 }
 
 void FRResult::set_lls(double ll1, double ll2, double lrs, double lrs_pval,
-                       int num_g, int idx)
-{
+                       int num_g, int idx, int rank) {
   lls.at(idx, 0) = ll1;
   lls.at(idx, 1) = ll2;
   lls.at(idx, 2) = lrs;
   lls.at(idx, 3) = lrs_pval;
   lls.at(idx, 4) = num_g;
+  lls.at(idx, 5) = rank;
 }
 
 void FRResult::set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se,
-                              arma::fcolvec &pval, int idx)
-{
+                              arma::fcolvec &pval, int idx) {
   beta_est.col(idx) = beta;
   se_beta.col(idx) = se;
   neglog10_pvl.col(idx) = pval;
 }
 
 void FRResult::set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
-                              arma::fcolvec &pval, int idx)
-{
+                              arma::fcolvec &pval, int idx) {
   beta_est2.col(idx) = beta;
   se_beta2.col(idx) = se;
   neglog10_pvl2.col(idx) = pval;
 }
 
+void FRResult::set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
+                                   arma::fcolvec &pval, int idx) {
+  beta_est2_sqrd.col(idx) = beta;
+  se_beta2_sqrd.col(idx) = se;
+  neglog10_pvl2_sqrd.col(idx) = pval;
+}
+
 void FRResult::write_to_file(std::string dir, std::string file_name,
-                             int stratum, int process_id)
-{
+                             int stratum, int process_id) {
   int n_parms = beta_est.n_rows;
   int n_parms2 = beta_est2.n_rows;
 
@@ -122,8 +129,7 @@ void FRResult::write_to_file(std::string dir, std::string file_name,
   // create dir if it doesn't exist
   fs::create_directory(dir);
   // Rcpp::Rcout << "Dir created or already exists" << std::endl;
-  if (srt_cols.size() != beta_est.n_cols)
-  {
+  if (srt_cols.size() != beta_est.n_cols) {
     Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
                    "columns in the beta matrix."
                 << std::endl;
@@ -136,63 +142,46 @@ void FRResult::write_to_file(std::string dir, std::string file_name,
   std::string result_file = ss.str();
   std::ofstream outfile;
 
-  auto tmp_idx = std::find(cov_int_names.begin(), cov_int_names.end(), "poi");
+  auto tmp_idx = std::find(cov_int_names_sqrd.begin(), cov_int_names_sqrd.end(), "poi");
 
-  if (tmp_idx == cov_int_names.end())
-  {
+  if (tmp_idx == cov_int_names_sqrd.end()) {
     Rcpp::stop("Couldn't find a poi column");
   }
-  int idx = tmp_idx - cov_int_names.begin();
-  Rcpp::Rcout << "POIs start from idx: " << idx << std::endl;
-  int num_poi = cov_int_names.size() - idx;
-  // TODO: Change this to use poi_sqrd
-  int num_poi_sqrd = cov_int_names.size() - idx;
+  int idx = tmp_idx - cov_int_names_sqrd.begin();
 
-  if (fs::exists(result_file))
-  {
+  if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
-    if (!outfile.is_open())
-    {
+    if (!outfile.is_open()) {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
     // Rcpp::Rcout << "File already exists and opened for writing/appending." <<
     // std::endl;
-  }
-  else
-  {
+  } else {
     outfile.open(result_file);
-    if (!outfile.is_open())
-    {
+    if (!outfile.is_open()) {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
 
-    outfile
-        << "POI\tN\tDF_fit1\tEstimate_fit1_[poi]\tSE_fit1_[poi]\tmlog10P_fit1_[poi]\tAbs_"
-           "Err_fit1\tRel_Err_fit1\titers_fit1\tDF_fit2";
+    outfile << "POI\tN\tDF_fit1\tEstimate_fit1_[poi]\tSE_fit1_[poi]\tmlog10P_"
+               "fit1_[poi]\tAbs_"
+               "Err_fit1\tRel_Err_fit1\titers_fit1\tDF_fit2";
 
-    // estimate, se, pval for each poi and poi interactions
-    for (int i = idx; i < cov_int_names.size(); i++)
-    {
-      outfile << "\tEstimate_[" << cov_int_names[i]
-              << "]\tSE_[" << cov_int_names[i] << "]\tmlog10P_[" << cov_int_names[i] << "]";
+    // estimate, se, pval for poi, poi^2 ineraction terms
+    for (int i = idx; i < cov_int_names_sqrd.size(); i++) {
+      outfile << "\tEstimate_[" << cov_int_names_sqrd[i] << "]"
+              << "\tSE_[" << cov_int_names_sqrd[i] << "]"
+              << "\tmlog10P_[" << cov_int_names_sqrd[i] << "]";
     }
 
-    // estimate, se, pval for each poi^2 and poi^2 interactions
-    for (int i = idx; i < cov_int_names.size(); i++)
-    {
-      outfile << "\tEstimate_[" << cov_int_names[i] << "_sqrd]"
-              << "\tSE_[" << cov_int_names[i] << "_sqrd]"
-              << "\tmlog10P_[" << cov_int_names[i] << "_sqrd]";
-    }
-
-    outfile << "\tAbs_Err_fit2\tRel_Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG" << std::endl;
+    outfile << "\tAbs_Err_fit2\tRel_Err_fit2\titers_fit2\tLL_fit1\tLL_"
+               "fit2\tLRS\tLRS_mlog10pvl\tnumG\trank"
+            << std::endl;
   }
 
   outfile << std::fixed << std::setprecision(17);
 
   std::stringstream buffer;
-  for (int col = 0; col < (int)beta_est.n_cols; col++)
-  {
+  for (int col = 0; col < (int)beta_est.n_cols; col++) {
     std::string poi_name = srt_cols[col];
     float abs_err_val = beta_abs_errs.at(col);
     float rel_err_val = beta_rel_errs.at(col);
@@ -205,72 +194,70 @@ void FRResult::write_to_file(std::string dir, std::string file_name,
     float lrs = lls.at(col, 2);
     float lrs_pval = lls.at(col, 3);
     float num_G = lls.at(col, 4);
-    if (num_G == 0)
-    {
-      continue;
-    }
+    float rank = lls.at(col, 5);
+
     int N = arma::as_scalar(arma::sum(W2.col(col), 0));
     int df = N - n_parms;
+    n_parms2 = (num_G == 3) ? beta_est2_sqrd.n_rows : beta_est2.n_rows;
     int df2 = N - n_parms2;
     int adder2 = 1;
-    buffer << poi_name << "\t" << N << "\t" << df << "\t" << beta_est.at(idx, col) << "\t" << se_beta.at(idx, col) << "\t" << neglog10_pvl.at(idx, col)
-           << "\t" << abs_err_val << "\t" << rel_err_val << "\t" << iter1 << "\t" << df2;
+    buffer << poi_name << "\t" << N << "\t" << df << "\t"
+           << beta_est.at(idx, col) << "\t" << se_beta.at(idx, col) << "\t"
+           << neglog10_pvl.at(idx, col) << "\t" << abs_err_val << "\t"
+           << rel_err_val << "\t" << iter1 << "\t" << df2;
 
     int row2 = idx;
-    for (; row2 < (int)beta_est2.n_rows; row2 += adder2)
-    {
-      buffer << "\t" << beta_est2.at(row2, col) << "\t" << se_beta2.at(row2, col) << "\t"
-             << neglog10_pvl2.at(row2, col);
-    }
-    // TODO: Change this to use beta_sqrd values
-    int row3 = idx;
-    for (; row3 < (int)beta_est2.n_rows; row3 += adder2)
-    {
-      buffer << "\t" << beta_est2.at(row3, col) << "\t" << se_beta2.at(row3, col) << "\t"
-             << neglog10_pvl2.at(row3, col);
+    int row3 = (int)beta_est2.n_rows;
+    if (num_G == 2) {
+      for (; row2 < (int)beta_est2.n_rows; row2 += adder2) {
+        buffer << "\t" << beta_est2.at(row2, col) << "\t"
+               << se_beta2.at(row2, col) << "\t" << neglog10_pvl2.at(row2, col);
+      }
+    } else {
+      for (; row2 < (int)beta_est2.n_rows; row2 += adder2) {
+        buffer << "\t" << beta_est2_sqrd.at(row2, col) << "\t"
+               << se_beta2_sqrd.at(row2, col) << "\t"
+               << neglog10_pvl2_sqrd.at(row2, col);
+      }
     }
 
-    // outfile << "\tAbs_Err_fit2\tRel_Err_fit2\titers_fit2\tLL_fit1\tLL_fit2\tLRS\tLRS_mlog10pvl\tnumG" << std::endl;
-    buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2
-           << "\t" << iter2 << "\t" << ll1 << "\t" << ll2 << "\t" << lrs
-           << "\t" << lrs_pval << "\t" << num_G << std::endl;
+    for (; row3 < (int)beta_est2_sqrd.n_rows; row3 += adder2) {
+      buffer << "\t" << beta_est2_sqrd.at(row3, col) << "\t"
+             << se_beta2_sqrd.at(row3, col) << "\t"
+             << neglog10_pvl2_sqrd.at(row3, col);
+    }
+
+    buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
+           << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t" << lrs_pval
+           << "\t" << num_G << "\t" << rank << std::endl;
   }
   outfile << buffer.str();
   outfile.close();
 }
 
-void FRResult::concatenate(std::string output_dir,
-                           std::string file_name_prefix,
-                           std::string file_concatenation_prefix)
-{
+void FRResult::concatenate(std::string output_dir, std::string file_name_prefix,
+                           std::string file_concatenation_prefix) {
   std::set<int> stratums;
   std::map<int, std::set<std::string>> stratum_files;
-  for (const auto &entry : fs::directory_iterator(output_dir))
-  {
+  for (const auto &entry : fs::directory_iterator(output_dir)) {
     if (entry.path().extension() == ".tsv" &&
         entry.path().filename().string().find(file_name_prefix) !=
-            std::string::npos)
-    {
+            std::string::npos) {
       // Extract stratum from filename
       std::string filename = entry.path().filename().stem().string();
       std::vector<std::string> tokens;
       std::stringstream ss(filename);
       std::string token;
-      while (std::getline(ss, token, '_'))
-      {
+      while (std::getline(ss, token, '_')) {
         tokens.push_back(token);
       }
-      if (tokens.size() >= 2)
-      {
-        try
-        {
+      if (tokens.size() >= 2) {
+        try {
           int stratum =
               std::stoi(tokens[tokens.size() - 2]); // Second-to-last token
           stratums.insert(stratum);
           stratum_files[stratum].insert(filename);
-        }
-        catch (const std::invalid_argument &ex)
-        {
+        } catch (const std::invalid_argument &ex) {
           Rcpp::Rcerr << "Invalid stratum found in filename: " << filename
                       << std::endl;
         }
@@ -279,46 +266,38 @@ void FRResult::concatenate(std::string output_dir,
   }
 
   // Concatenate files for each unique stratum
-  for (int stratum : stratums)
-  {
+  for (int stratum : stratums) {
     std::string outputFile = output_dir + "/" + file_concatenation_prefix +
                              "_" + file_name_prefix + "_stratum_" +
                              std::to_string(stratum) + ".tsv";
 
     // Check if the output file already exists
-    if (fs::exists(outputFile))
-    {
+    if (fs::exists(outputFile)) {
       Rcpp::Rcerr << "Output file already exists: " << outputFile
                   << ". It will be overwritten.\n";
     }
 
     std::ofstream out(outputFile);
 
-    if (!out.is_open())
-    {
+    if (!out.is_open()) {
       Rcpp::Rcerr << "Failed to open the output file: " << outputFile
                   << std::endl;
       continue;
     }
     bool header_written = false;
-    for (const auto &filename : stratum_files[stratum])
-    {
+    for (const auto &filename : stratum_files[stratum]) {
       fs::path file_path = output_dir + "/" + filename + ".tsv";
       std::ifstream in(file_path.string());
 
-      if (!in.is_open())
-      {
+      if (!in.is_open()) {
         Rcpp::Rcerr << "Failed to open " << file_path << std::endl;
         continue;
       }
       // Skip header line if it has already been written
-      if (header_written)
-      {
+      if (header_written) {
         std::string headerLine;
         std::getline(in, headerLine);
-      }
-      else
-      {
+      } else {
         std::string headerLine;
         std::getline(in, headerLine);
         out << headerLine << std::endl;

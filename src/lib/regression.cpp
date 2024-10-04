@@ -200,6 +200,9 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     ll1 = arma::accu((log(1.0 - p_arma) + pheno.data.col(0) % eta_arma) %
                      result.W2.col(poi_col_idx));
 
+    p2_arma.elem(arma::find_nonfinite(p2_arma)).zeros();
+    p2_arma.elem(arma::find(p2_arma >= 1.0)).fill(1.0 - 1e-4);
+    eta2_arma.elem(arma::find_nonfinite(eta2_arma)).zeros();
     ll2 = arma::accu((log(1.0 - p2_arma) + pheno.data.col(0) % eta2_arma) %
                      result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
@@ -215,7 +218,9 @@ void run_vla_2(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
         arma::fcolvec(beta2.data(), beta2.size(), true, false);
     neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
 
-    result.set_lls(ll1, ll2, lrs, lrs_pval, 2, poi_col_idx);
+    Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
+    auto rank = lu_decomp.rank();
+    result.set_lls(ll1, ll2, lrs, lrs_pval, 2, poi_col_idx, rank);
     arma::fcolvec pval = (*dist_func_r)(neg_abs_z, df);
     arma::fcolvec pval2 = (*dist_func_r)(neg_abs_z2, df2);
     result.set_betas_fit1(temp_b, temp_se, pval, poi_col_idx);
@@ -246,7 +251,7 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       cov.data.memptr(), cov.data.n_rows, cov.data.n_cols);
   Eigen::MatrixXf int_w_mat, int_w_mat2, int_w_mat2_sqrd;
   arma::uword n_parms2 = result.cov_int_names_sqrd.size();
-#pragma omp parallel for
+// #pragma omp parallel for
   for (int poi_col_idx : poi_3_idx)
   {
     checkInterrupt();
@@ -264,11 +269,9 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                                     result.no_interactions->data.n_cols);
     Eigen::VectorXf w2_col = W2f.col(poi_col_idx);
     poi_col = poi_data.data.col(poi_col_idx);
-    poi_col_sqrd = result.poi_sqrd_mat.col(poi_col_idx);
+    
     Eigen::MatrixXf POI =
         Eigen::Map<Eigen::MatrixXf>(poi_col.memptr(), poi_col.n_rows, 1);
-    Eigen::MatrixXf POI_sqrd =
-        Eigen::Map<Eigen::MatrixXf>(poi_col_sqrd.memptr(), poi_col_sqrd.n_rows, 1);
     Eigen::MatrixXf temp_mat_e = int_w_mat;
     int_w_mat = temp_mat_e.array().colwise() * POI.col(0).array();
     Eigen::MatrixXf X =
@@ -280,6 +283,9 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     result.beta_rel_errs.at(poi_col_idx) = 1e8;
 
     // Fit 2
+    poi_col_sqrd = result.poi_sqrd_mat.col(poi_col_idx);
+    Eigen::MatrixXf POI_sqrd =
+        Eigen::Map<Eigen::MatrixXf>(poi_col_sqrd.memptr(), poi_col_sqrd.n_rows, 1);
     Eigen::MatrixXf A2 = Eigen::MatrixXf::Zero(n_parms2, n_parms2);
     A2(0, 0) = 1;
     A2(n_parms2, n_parms2) = 10;
@@ -363,7 +369,7 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       result.beta_rel_errs2.at(poi_col_idx) = mTemp2.maxCoeff();
       beta_old2 = beta2;
     }
-
+    
     int df = w2_col.array().sum() - result.num_parms;
     Eigen::VectorXf diag = A.inverse().diagonal().array().sqrt();
 
@@ -376,6 +382,9 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     p = p.array().exp() + 1;
     p = 1 / p.array();
     eta2 = X2 * beta2;
+
+    Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
+    auto rank = lu_decomp.rank();
     p2 = -eta2.array();
     p2 = p2.array().exp() + 1;
     p2 = 1 / p2.array();
@@ -387,12 +396,13 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 
     ll1 = arma::accu((log(1.0 - p_arma) + pheno.data.col(0) % eta_arma) %
                      result.W2.col(poi_col_idx));
-
+    p2_arma.elem(arma::find_nonfinite(p2_arma)).zeros();
+    p2_arma.elem(arma::find(p2_arma >= 1.0)).fill(1.0 - 1e-4);
+    eta2_arma.elem(arma::find_nonfinite(eta2_arma)).zeros();
     ll2 = arma::accu((log(1.0 - p2_arma) + pheno.data.col(0) % eta2_arma) %
                      result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
     lrs_pval = chisq(lrs, n_parms2 - result.num_parms);
-
     // calc and set betas
     temp_se = arma::fcolvec(diag.data(), diag.size(), true, false);
     arma::fcolvec temp_b = arma::fcolvec(beta.data(), beta.size(), true, false);
@@ -403,11 +413,11 @@ void run_vla_3(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
         arma::fcolvec(beta2.data(), beta2.size(), true, false);
     neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
 
-    result.set_lls(ll1, ll2, lrs, lrs_pval, 3, poi_col_idx);
+    result.set_lls(ll1, ll2, lrs, lrs_pval, 3, poi_col_idx, rank);
     arma::fcolvec pval = (*dist_func_r)(neg_abs_z, df);
     arma::fcolvec pval2 = (*dist_func_r)(neg_abs_z2, df2);
     result.set_betas_fit1(temp_b, temp_se, pval, poi_col_idx);
-    result.set_betas_fit2(temp_b2, temp_se2, pval2, poi_col_idx);
+    result.set_betas_fit2_sqrd(temp_b2, temp_se2, pval2, poi_col_idx);
   } // #pragma omp parallel for
 };
 

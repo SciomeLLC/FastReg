@@ -63,10 +63,12 @@ public:
            FRMatrix &no_interactions, FRMatrix &interactions, FRMatrix &interactions_sqrd);
 
   void set_lls(double ll1, double ll2, double lrs, double lrs_pval, int num_g,
-               int idx);
+               int idx, int rank);
   void set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se,
                       arma::fcolvec &pval, int idx);
   void set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
+                      arma::fcolvec &pval, int idx);
+  void set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
                       arma::fcolvec &pval, int idx);
   void write_to_file(std::string dir, std::string file_name, int stratum, int process_id);
   static void concatenate(std::string output_dir,
