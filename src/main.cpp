@@ -624,12 +624,10 @@ void FastRegCpp(
   const int timing_results_size = 4;
   double concatenation_time, compression_time = 0.0;
   ProcResult total_proc_res;
-  int total_timing_results[timing_results_size] = {0, 0, 0, 0};
 
 #ifdef _WIN32
   for (int i = 0; i < num_poi_files; i++) {
     ProcResult proc_res;
-    int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, config.poi_files[i],
                   parallel_chunk_size, num_threads, proc_res);
 

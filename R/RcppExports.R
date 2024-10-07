@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 FastRegImportCpp <- function(dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge, vcf, delim, gz, poiPerFile, singleFile, serverThreads, serverMem) {
-  .Call(`_FastReg_FastRegImportCpp`, dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge, vcf, delim, gz, poiPerFile, singleFile, serverThreads, serverMem)
+    .Call(`_FastReg_FastRegImportCpp`, dataFile, h5File, headerRow, idCol, dataCol, buffSize, transpose, chunkEdge, vcf, delim, gz, poiPerFile, singleFile, serverThreads, serverMem)
 }
 
 FastRegCpp <- function(phenotype, regression_type, pvalue_dist, output_exclude_covar, maf_threshold, hwe_threshold, no_intercept, colinearity_rsq, poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance, max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim, covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir, poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates, covariate_type, covariate_standardize, covariate_levels, covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir, compress_results, max_blas_threads, max_workers) {
-  invisible(.Call(`_FastReg_FastRegCpp`, phenotype, regression_type, pvalue_dist, output_exclude_covar, maf_threshold, hwe_threshold, no_intercept, colinearity_rsq, poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance, max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim, covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir, poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates, covariate_type, covariate_standardize, covariate_levels, covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir, compress_results, max_blas_threads, max_workers))
+    invisible(.Call(`_FastReg_FastRegCpp`, phenotype, regression_type, pvalue_dist, output_exclude_covar, maf_threshold, hwe_threshold, no_intercept, colinearity_rsq, poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance, max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim, covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir, poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates, covariate_type, covariate_standardize, covariate_levels, covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir, compress_results, max_blas_threads, max_workers))
 }
 
