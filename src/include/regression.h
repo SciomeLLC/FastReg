@@ -1,109 +1,67 @@
+#ifndef REGRESSION_H
+#define REGRESSION_H
+#pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-#include <string>
 #include <algorithm>
-#include <iterator>
-#include <vector>
 #include <chrono>
+#include <iterator>
+#include <string>
+#include <vector>
 #define R_NO_REMAP
-#include <Rmath.h>
-#include <fr_matrix.h>
-#include <covariate.h>
-#include <stats.hpp>
 #include <RcppEigen.h>
-#pragma once
+#include <Rmath.h>
+#include <covariate.h>
+#include <fr_matrix.h>
 
 using namespace arma;
 
-class RegressionBase
-{
+class RegressionBase {
 public:
-    virtual ~RegressionBase() {}
-    virtual void run(
-        FRMatrix &cov,
-        FRMatrix &pheno,
-        FRMatrix &poi_data,
-        FRMatrix &interactions,
-        arma::umat &W2,
-        FRMatrix &beta_est,
-        FRMatrix &se_beta,
-        FRMatrix &neglog10_pvl,
-        arma::fcolvec &beta_rel_errs,
-        arma::fcolvec &beta_abs_errs,
-        arma::fcolvec &iters,
-        int max_iter,
-        bool is_t_dist, 
-        bool use_blas) = 0;
+  virtual ~RegressionBase() {}
+  virtual void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
+                   FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
+                   FRMatrix &se_beta, FRMatrix &neglog10_pvl,
+                   arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
+                   arma::fcolvec &iters, int max_iter, arma::fmat &x_mean,
+                   arma::fmat &x_sd, arma::fmat &xi_mean, arma::fmat &xi_sd,
+                   bool is_t_dist) = 0;
 };
 
-class LogisticRegression : public RegressionBase
-{
+class LogisticRegression : public RegressionBase {
 
 public:
-    LogisticRegression(){}
-
-    void run(
-        FRMatrix &cov,
-        FRMatrix &pheno,
-        FRMatrix &poi_data,
-        FRMatrix &interactions,
-        arma::umat &W2,
-        FRMatrix &beta_est,
-        FRMatrix &se_beta,
-        FRMatrix &neglog10_pvl,
-        arma::fcolvec &beta_rel_errs,
-        arma::fcolvec &beta_abs_errs,
-        arma::fcolvec &iters,
-        int max_iter,
-        bool is_t_dist,
-        bool use_blas);
+  LogisticRegression() {}
+  ~LogisticRegression() {}
+  void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
+           FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
+           FRMatrix &se_beta, FRMatrix &neglog10_pvl,
+           arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
+           arma::fcolvec &iters, int max_iter, arma::fmat &x_mean,
+           arma::fmat &x_sd, arma::fmat &xi_mean, arma::fmat &xi_sd,
+           bool is_t_dist);
 
 private:
-    void run_BLAS(
-        FRMatrix &cov,
-        FRMatrix &pheno,
-        FRMatrix &poi_data,
-        FRMatrix &interactions,
-        arma::umat &W2,
-        FRMatrix &beta_est,
-        FRMatrix &se_beta,
-        FRMatrix &neglog10_pvl,
-        arma::fcolvec &beta_rel_errs,
-        arma::fcolvec &beta_abs_errs,
-        arma::fcolvec &iters,
-        int max_iter,
-        bool is_t_dist);
-    void run_EIGEN(FRMatrix &cov,
-                   FRMatrix &pheno,
-                   FRMatrix &poi_data,
-                   FRMatrix &interactions,
-                   arma::umat &W2,
-                   FRMatrix &beta_est,
-                   FRMatrix &se_beta,
-                   FRMatrix &neglog10_pvl,
-                   arma::fcolvec &beta_rel_errs,
-                   arma::fcolvec &beta_abs_errs,
-                   arma::fcolvec &iters,
-                   int max_iter,
-                   bool is_t_dist);
+  void run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
+                FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
+                FRMatrix &se_beta, FRMatrix &neglog10_pvl,
+                arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
+                arma::fcolvec &iters, int max_iter, arma::fmat &x_mean,
+                arma::fmat &x_sd, arma::fmat &xi_mean, arma::fmat &xi_sd,
+                bool is_t_dist);
 };
 
-class LinearRegression : public RegressionBase
-{
+class LinearRegression : public RegressionBase {
 public:
-    void run(
-        FRMatrix &cov,
-        FRMatrix &pheno,
-        FRMatrix &poi_data,
-        FRMatrix &interactions,
-        arma::umat &W2,
-        FRMatrix &beta_est,
-        FRMatrix &se_beta,
-        FRMatrix &neglog10_pvl,
-        arma::fcolvec &beta_rel_errs,
-        arma::fcolvec &beta_abs_errs,
-        arma::fcolvec &iters,
-        int max_iter,
-        bool is_t_dist,
-        bool use_blas);
+  LinearRegression() {}
+
+  ~LinearRegression() {}
+  void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
+           FRMatrix &interactions, arma::umat &W2, FRMatrix &beta_est,
+           FRMatrix &se_beta, FRMatrix &neglog10_pvl,
+           arma::fcolvec &beta_rel_errs, arma::fcolvec &beta_abs_errs,
+           arma::fcolvec &iters, int max_iter, arma::fmat &x_mean,
+           arma::fmat &x_sd, arma::fmat &xi_mean, arma::fmat &xi_sd,
+           bool is_t_dist);
 };
+#endif // REGRESSION_H

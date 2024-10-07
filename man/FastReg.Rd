@@ -111,6 +111,8 @@ FastReg(
 \item{compress.results}{TRUE|FALSE. Default: FALSE. Compress results inside the output directory.}
 
 \item{max.workers}{Default: 0. Number of processes FastReg will spawn. By default FastReg will spawn min(# of poi files, # of available workers)}
+
+\item{max.blas.threads}{Default: -1. Set the number of BLAS threads that Eigen/Armadillo will use. The default value will use the system/BLAS library default.}
 }
 \value{
 numeric denoting elapsed.time

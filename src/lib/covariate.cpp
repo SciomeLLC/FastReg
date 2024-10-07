@@ -47,9 +47,12 @@ void Covariate::generate_levels(std::vector<std::string> col_vals) {
 FRMatrix Covariate::create_numeric_matrix(std::vector<std::string> col_vals) {
   FRMatrix candidate_mat;
   candidate_mat.data = arma::fmat(col_vals.size(), 1, arma::fill::zeros);
+  
+  // fill col names
   candidate_mat.col_names[name] = 0;
-
   col_names_arr.push_back(name);
+  candidate_mat.col_names_arr.push_back(name);
+
   for (size_t row = 0; row < col_vals.size(); row++) {
     try {
       candidate_mat.data(row, 0) = std::stof(col_vals[row]);
@@ -94,6 +97,7 @@ Covariate::create_categorical_matrix(std::vector<std::string> col_vals) {
     }
 
     candidate_mat.data.insert_cols(count, res);
+    candidate_mat.col_names_arr.push_back(col_name);
     candidate_mat.col_names[col_name] = count;
     col_names_arr.push_back(col_name);
     count++;
@@ -112,35 +116,35 @@ void Covariate::standardize_matrix(FRMatrix &frmat) {
   }
 }
 
-void Covariate::create_matrix(std::vector<std::vector<std::string>> tokenized,
+void Covariate::create_matrix(std::vector<std::vector<std::string>> values,
                               std::vector<std::string> row_names) {
   // Get covariate column values
   std::vector<std::string> col_vals;
-  for (std::vector<std::string> line : tokenized) {
+  for (std::vector<std::string> line : values) {
     col_vals.push_back(line.at(col_idx));
   }
   col_vals.erase(col_vals.begin()); // remove th header value
-  // int num_rows = col_vals.size();
 
-  // Generate unique covariate levels if categorical and user-specified levels
-  // are empty
-  if (levels.empty() && cov_type != "numeric") {
-    generate_levels(col_vals);
-  }
   // Create the matrix for the covariate
-  std::vector<std::string> col_names;
   if (cov_type == "numeric") {
     frmat = create_numeric_matrix(col_vals);
   } else {
+    // Generate unique covariate levels if categorical and user-specified levels
+    // are empty
+    if (levels.empty()) {
+      generate_levels(col_vals);
+    }
     frmat = create_categorical_matrix(col_vals);
   }
-
+  
   // Standardize if required
   standardize_matrix(frmat);
 
   // set row names
+  frmat.row_names_arr.resize(row_names.size());
   for (size_t i = 0; i < row_names.size(); i++) {
     frmat.row_names[row_names[i]] = i;
+    frmat.row_names_arr.at(i) = row_names[i];
   }
 }
 
@@ -212,6 +216,7 @@ FRMatrix Covariate::filter_colinear(FRMatrix &design_mat,
     col_count++;
   }
   res_mat.row_names = frmat.row_names;
+  res_mat.row_names_arr = frmat.row_names_arr;
   return res_mat;
 }
 

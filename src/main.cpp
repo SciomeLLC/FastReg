@@ -12,9 +12,9 @@
 #include <ctime>
 #include <fr_matrix.h>
 #include <fstream>
-#include <h5file.h>
 #include <iostream>
 #include <iterator>
+#include <pheno_matrix.h>
 #include <regression.h>
 #include <sstream>
 #include <stdio.h>
@@ -24,6 +24,9 @@
 #include <utility>
 #include <vector>
 
+#include <blas_library_manager.h>
+#include <poi_matrix.h>
+#include <reader.h>
 #include <utils.h>
 
 #if !defined(__APPLE__) && !defined(__MACH__)
@@ -84,12 +87,12 @@ struct ProcResult {
   void print_nonconvergence_summary() {
     double noncovergence_percent =
         (process_nonconvergence_status / process_total_filtered_pois) * 100;
-    Rcpp::Rcout << process_nonconvergence_status << " out of " << process_total_filtered_pois
-                  << " (" << std::setprecision(2) << std::fixed
-                  << noncovergence_percent
-                  << "%) POIs did not meet relative and absolute convergence "
-                     "threshold."
-                  << std::endl;
+    Rcpp::Rcout << process_nonconvergence_status << " out of "
+                << process_total_filtered_pois << " (" << std::setprecision(2)
+                << std::fixed << noncovergence_percent
+                << "%) POIs did not meet relative and absolute convergence "
+                   "threshold."
+                << std::endl;
   }
   void print_timing_summary(int process_id) {
     auto end =
@@ -110,7 +113,8 @@ struct ProcResult {
 
   void print_totals_summary(double concatenation_time, double compression_time,
                             std::string regression_type, size_t individuals,
-                            int num_pois, int num_threads) {
+                            int num_pois, int num_threads,
+                            int num_blas_threads) {
     Rcpp::Rcout << "-----------------------------------------" << std::endl;
     Rcpp::Rcout << "Timing Summary: " << std::endl;
     Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
@@ -131,15 +135,84 @@ struct ProcResult {
     Rcpp::Rcout << "\t\tnum individuals: " << individuals << std::endl;
     Rcpp::Rcout << "\t\t~num pois: " << num_pois << std::endl;
     Rcpp::Rcout << "\t\twith openmp thread(s): " << num_threads << std::endl;
+    Rcpp::Rcout << "\t\twith BLAS thread(s): " << num_threads << std::endl;
     Rcpp::Rcout << "at: " << std::ctime(&end) << std::endl;
     Rcpp::Rcout << "-----------------------------------------" << std::endl;
   }
 };
 
+arma::fmat only_ones_and_zeros(arma::fmat X) {
+  arma::fmat rVal(1, X.n_cols, arma::fill::ones);
+
+  for (unsigned int i = 0; i < X.n_cols; i++) {
+    for (unsigned int j = 0; j < X.n_rows; j++) {
+      if (!(X(j, i) == 0.0 || X(j, i) == 1.0)) {
+        rVal(0, i) = 0.0;
+        break;
+      }
+    }
+  }
+
+  return rVal;
+}
+
+/////////////////////////////////////////////////////////////////////
+//@ breif : Standardize the X (covariate) and X_I (interaction) columns.
+//          note it doesn't ignore the 'bad data,' which are assumed zeroed out,
+//           so it really isn't an actual  standardization but it works for
+//           regression
+//@X      : Covariate Matrix
+//@X_I    : Interaction matrix
+//@CC     : list of good data points
+//@x_mean : returned - column means of X
+//@x_sd   : returned - column sd of X
+//@xi_mean: returned - column means of X_I
+//@xi_sd  : returned - column sds of X_I
+//
+/////////////////////////////////////////////////////////////////////
+void normalize_regression(arma::fmat &X, arma::fmat &X_I, arma::fmat &CC,
+                          arma::fmat &x_mean, arma::fmat &x_sd,
+                          arma::fmat &xi_mean, arma::fmat &xi_sd) {
+  /////////////////////////////////////////////////////////////////
+  x_mean = arma::mean(X, 0); // column means
+  x_sd = arma::stddev(X);    // column std
+  arma::fmat temp = only_ones_and_zeros(X);
+  for (unsigned int i = 0; i < x_mean.n_cols; i++) {
+    if ((x_sd(0, i) == 0) || temp(0, i) == 1.0) {
+      x_mean(0, i) = 0;
+      x_sd(0, i) = 1;
+    }
+  }
+  ///
+  xi_mean = arma::mean(X_I, 0); // column means
+  xi_sd = arma::stddev(X_I);    // column std
+  ///
+  temp = only_ones_and_zeros(X_I);
+  for (unsigned int i = 0; i < xi_mean.n_cols; i++) {
+    if (xi_sd(0, i) == 0 || temp(0, i) == 1.0) {
+      xi_mean(0, i) = 0;
+      xi_sd(0, i) = 1;
+    }
+  }
+
+  for (unsigned int i = 0; i < CC.n_rows; i++) {
+    if (CC(i, 0) == 1.0) {
+      X.row(i) -= x_mean;
+      X_I.row(i) -= xi_mean;
+      X.row(i) /= x_sd;
+      X_I.row(i) /= xi_sd;
+    }
+  }
+
+  x_mean = x_mean.t();
+  x_sd = x_sd.t();
+  xi_mean = xi_mean.t();
+  xi_sd = xi_sd.t();
+}
+
 void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
                    FRMatrix &covar_df, std::string poi_file_path,
-                   int chunk_size, int num_threads, bool use_blas,
-                   ProcResult &proc_res) {
+                   int chunk_size, int num_threads, ProcResult &proc_res) {
   // Load POI file
   POI poi(poi_file_path);
   poi.open(true);
@@ -170,7 +243,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   if (num_poi == 0) {
     stop("No overlapping individuals found in POI, pheno, covar files");
   }
-  // Rcpp::Rcout << "Stratifying data" << std::endl;
   // Stratify data
   Strata stratums;
   stratums.stratify(config.split_by, covar_df, intersected_ind);
@@ -223,19 +295,10 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
     // Rcpp::Rcout << "Removing missing" << std::endl;
     // remove from covar, pheno
-    covar_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
-    pheno_matrix.data.shed_rows(arma::conv_to<arma::uvec>::from(nan_idx));
-    covar_poi_interaction_matrix.data.shed_rows(
-        arma::conv_to<arma::uvec>::from(nan_idx));
-    covar_matrix.row_names =
-        std::unordered_map<std::string, int>(ind_set_filtered.size());
-    pheno_matrix.row_names =
-        std::unordered_map<std::string, int>(ind_set_filtered.size());
-    for (size_t j = 0; j < covar_matrix.data.n_rows; j++) {
-      covar_matrix.row_names[ind_set_filtered[j]] = j;
-      pheno_matrix.row_names[ind_set_filtered[j]] = j;
-      covar_poi_interaction_matrix.row_names[ind_set_filtered[j]] = j;
-    }
+    covar_matrix.shed_rows(nan_idx, ind_set_filtered);
+    pheno_matrix.shed_rows(nan_idx, ind_set_filtered);
+    covar_poi_interaction_matrix.shed_rows(nan_idx, ind_set_filtered);
+
     std::vector<std::string> strat_individuals(ind_set_filtered.size());
     std::transform(
         ind_set_filtered.begin(), ind_set_filtered.end(),
@@ -249,7 +312,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
     int num_parallel_poi_blocks =
         (int)std::ceil((double)num_poi / (double)chunk_size);
-
     FRMatrix poi_matrix;
     auto start_time = std::chrono::high_resolution_clock::now();
     // allocate memory space for H5 file to read into
@@ -263,11 +325,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       // Rcpp::Rcout << "Reading poi chunk" << std::endl;
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
-      // Rcpp::Rcout << "start_chunk: " << start_chunk << "\nend_chunk: " <<
-      // end_chunk << "\nblock: " << block << "/" << num_parallel_poi_blocks <<
-      // std::endl;
-      poi.load_data_chunk(poi_matrix, poi.individuals, poi_names_chunk);
-      // Rcpp::Rcout << "loaded chunk" << std::endl;
+
+      FRMatrix poi_matrix = poi.read_chunk(poi.individuals, poi_names_chunk);
       std::vector<std::string> srt_cols_2 = poi_matrix.sort_map(false);
       std::vector<std::string> drop_rows =
           set_diff(poi.individuals, strat_individuals);
@@ -385,15 +444,20 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         }
       }
 
+      arma::fmat x_mean(1, covar_matrix.data.n_cols);
+      arma::fmat x_sd(1, covar_matrix.data.n_cols, arma::fill::ones);
+      arma::fmat xi_mean(1, covar_poi_interaction_matrix.data.n_cols);
+      arma::fmat xi_sd(1, covar_poi_interaction_matrix.data.n_cols,
+                       arma::fill::ones);
+      arma::fmat rCC(covar_matrix.data.n_rows, covar_matrix.data.n_cols,
+                     arma::fill::ones); // all 1s
+      normalize_regression(covar_matrix.data, covar_poi_interaction_matrix.data,
+                           rCC, x_mean, x_sd, xi_mean, xi_sd);
       end_time = std::chrono::high_resolution_clock::now();
       memory_allocation_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
-
-#if !defined(__APPLE__) && !defined(__MACH__)
-      omp_set_num_threads(num_threads);
-#endif
       start_time = std::chrono::high_resolution_clock::now();
       std::unique_ptr<RegressionBase> regression;
       if (config.regression_type == "logistic") {
@@ -402,10 +466,11 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         regression.reset(new LinearRegression());
       }
 
-      regression->run(
-          covar_matrix, pheno_matrix, poi_matrix, covar_poi_interaction_matrix,
-          W2, beta_est, se_beta, neglog10_pvl, beta_rel_errs, beta_abs_errs,
-          iters, config.max_iter, config.p_value_type == "t.dist", use_blas);
+      regression->run(covar_matrix, pheno_matrix, poi_matrix,
+                      covar_poi_interaction_matrix, W2, beta_est, se_beta,
+                      neglog10_pvl, beta_rel_errs, beta_abs_errs, iters,
+                      config.max_iter, x_mean, x_sd, xi_mean, xi_sd,
+                      config.p_value_type == "t.dist");
       end_time = std::chrono::high_resolution_clock::now();
       regression_time +=
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -428,7 +493,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (beta_abs_errs > config.abs_conv_tolerance));
       nonconvergence_status = arma::sum(convergence);
       // proc_res.print_convergence_percentage(nonconvergence_status,
-                                            // filtered_pois);
+      // filtered_pois);
       proc_res.process_nonconvergence_status += nonconvergence_status;
       proc_res.process_total_filtered_pois += filtered_pois;
     }
@@ -446,41 +511,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   proc_res.print_timing_summary(process_id);
 }
 
-bool is_BLAS_faster() {
-  bool use_blas = true;
-  arma::fmat tempM(250, 10000);
-  tempM.randu(250, 10000);
-  Eigen::MatrixXf mddata =
-      Eigen::Map<Eigen::MatrixXf>(tempM.memptr(), tempM.n_rows, tempM.n_cols);
-  ///////////////
-  auto start = std::chrono::system_clock::now();
-  tempM = tempM.t() * tempM;
-  auto end = std::chrono::system_clock::now();
-  ///////////////
-
-  ///////////////
-  auto start_a = std::chrono::system_clock::now();
-  mddata = mddata.transpose() * mddata;
-  auto end_a = std::chrono::system_clock::now();
-  ///////////////
-  const auto ms_int_a =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-  const auto ms_int_b =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end_a - start_a);
-  double BLAS = std::chrono::duration<double>(ms_int_a).count();
-  double EIGEN = std::chrono::duration<double>(ms_int_b).count();
-
-  if (BLAS / EIGEN < 1) {
-    use_blas = true;
-    Rcpp::Rcout << "Using loaded BLAS ilbrary." << std::endl;
-  } else {
-    use_blas = false;
-    Rcpp::Rcout
-        << "Using RcppEigen as it appears faster than loaded BLAS library. "
-        << std::endl;
-  }
-  return use_blas;
-}
 // [[Rcpp::export]]
 void FastRegCpp(
     const std::string phenotype, const std::string regression_type,
@@ -501,7 +531,8 @@ void FastRegCpp(
     const Rcpp::StringVector covariate_ref_level,
     const Rcpp::StringVector POI_covar_interactions_str,
     const Rcpp::StringVector split_by_str, const std::string output_dir,
-    bool compress_results, int max_workers) {
+    bool compress_results, int max_blas_threads, int max_workers) {
+
   Config config(
       phenotype, regression_type, pvalue_dist, output_exclude_covar,
       maf_threshold, hwe_threshold, no_intercept, colinearity_rsq,
@@ -514,15 +545,24 @@ void FastRegCpp(
       compress_results, max_workers);
 
   config.print();
-  // Check for BLAS speed
-  bool use_blas = is_BLAS_faster();
   // Clean up previous run
   if (dir_exists(config.output_dir)) {
     delete_dir(config.output_dir);
   }
+  // Manage BLAS
+  BLASLibraryManager blas_mgr;
+  blas_mgr.detect_lib();
+  int cur_blas_threads = blas_mgr.get_num_threads();
+  Rcpp::Rcout << "Detected BLAS threads: " << cur_blas_threads << std::endl;
+  if (max_blas_threads > 0) {
+    blas_mgr.set_num_threads(max_blas_threads);
+    Rcpp::Rcout << "Set BLAS threads to: " << max_blas_threads << std::endl;
+  }
 
-  FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
-                    config.pheno_rowname_cols, config.phenotype);
+  // Read pheno and covariate files
+  PhenoMatrix pheno_matrix(config.pheno_file, config.pheno_file_delim,
+                           config.pheno_rowname_cols, config.phenotype);
+  FRMatrix pheno_df = pheno_matrix.create_matrix();
 
   CovariateMatrix cov_mat = CovariateMatrix(
       config.covar_file, config.covar_file_delim, config.covar_rowname_cols,
@@ -575,19 +615,23 @@ void FastRegCpp(
   // total_num_chunks
   int parallel_chunk_size = chunker.get_chunk_size();
   int num_threads = chunker.get_openmp_threads();
+  // Handle threads if OpenMP found
+#if defined(_OPENMP)
+  omp_set_dynamic(0);               // Explicitly disable dynamic teams
+  omp_set_num_threads(num_threads); // Use num_threads for all
+                                    // consecutive parallel regions
+#endif
   const int timing_results_size = 4;
   double concatenation_time, compression_time = 0.0;
   ProcResult total_proc_res;
   int total_timing_results[timing_results_size] = {0, 0, 0, 0};
-#if !defined(__APPLE__) && !defined(__MACH__)
-  omp_set_num_threads(num_threads);
-#endif
+
 #ifdef _WIN32
   for (int i = 0; i < num_poi_files; i++) {
     ProcResult proc_res;
     int timing_results[] = {0, 0, 0, 0};
     process_chunk(i, config, pheno_df, covar_df, config.poi_files[i],
-                  parallel_chunk_size, num_threads, use_blas, proc_res);
+                  parallel_chunk_size, num_threads, proc_res);
 
     total_proc_res.accumulate(proc_res);
   }
@@ -624,9 +668,9 @@ void FastRegCpp(
 
         ProcResult proc_res;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
-                      parallel_chunk_size, num_threads, use_blas, proc_res);
-        ssize_t res =
-            write(pipe_file_descriptors[i * 2 + 1], &proc_res, sizeof(proc_res));
+                      parallel_chunk_size, num_threads, proc_res);
+        ssize_t res = write(pipe_file_descriptors[i * 2 + 1], &proc_res,
+                            sizeof(proc_res));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
         return;
@@ -679,110 +723,45 @@ void FastRegCpp(
   total_proc_res.print_nonconvergence_summary();
   total_proc_res.print_totals_summary(
       concatenation_time, compression_time, config.regression_type,
-      intersected_ind.size(), num_poi * num_poi_files, num_threads);
-  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
-  // Rcpp::Rcout << "Convergence Summary: " << std::endl;
-  // Rcpp::Rcout << "Reading HDF5: " << total_timing_results[0] / 1000.0 << "s";
-  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
+      intersected_ind.size(), num_poi * num_poi_files, num_threads,
+      blas_mgr.get_num_threads());
 }
 
-// [[Rcpp::export]]
-bool compareDesignMatrices(
-    const std::string phenotype, const std::string regression_type,
-    const std::string pvalue_dist, bool output_exclude_covar,
-    double maf_threshold, double hwe_threshold, bool no_intercept,
-    double colinearity_rsq, int poi_block_size, int max_iter,
-    double rel_conv_tolerance, double abs_conv_tolderance,
-    int max_openmp_threads, const std::string pheno_file,
-    const std::string pheno_rowname_cols, const std::string pheno_file_delim,
-    const std::string covar_file, const std::string covar_rowname_cols,
-    const std::string covar_file_delim, const std::string poi_file_dir,
-    const std::string poi_file_delim, const std::string poi_file_format,
-    const std::string poi_type, const std::string poi_effect_type,
-    const Rcpp::StringVector covariates,
-    const Rcpp::StringVector covariate_type,
-    const Rcpp::LogicalVector covariate_standardize,
-    const Rcpp::StringVector covariate_levels,
-    const Rcpp::StringVector covariate_ref_level,
-    const Rcpp::StringVector POI_covar_interactions_str,
-    const Rcpp::StringVector split_by_str, const std::string output_dir,
-    bool compress_results, int max_workers) {
+Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
+                          std::vector<std::string> row_names,
+                          std::vector<std::string> col_names) {
+  int n_rows = mat.n_rows;
+  int n_cols = mat.n_cols;
 
-  Config config(
-      phenotype, regression_type, pvalue_dist, output_exclude_covar,
-      maf_threshold, hwe_threshold, no_intercept, colinearity_rsq,
-      poi_block_size, max_iter, rel_conv_tolerance, abs_conv_tolderance,
-      max_openmp_threads, pheno_file, pheno_rowname_cols, pheno_file_delim,
-      covar_file, covar_rowname_cols, covar_file_delim, poi_file_dir,
-      poi_file_delim, poi_file_format, poi_type, poi_effect_type, covariates,
-      covariate_type, covariate_standardize, covariate_levels,
-      covariate_ref_level, POI_covar_interactions_str, split_by_str, output_dir,
-      compress_results, max_workers);
-  FRMatrix pheno_df(config.pheno_file, config.pheno_file_delim,
-                    config.pheno_rowname_cols, config.phenotype);
-  FRMatrix covar_df(config.covar_file, config.covar_file_delim,
-                    config.covar_rowname_cols, config.covariates,
-                    config.covariate_type);
-  // Load the first POI file to calculate chunks
-  std::string poi_file_path = config.poi_files[0];
-  // Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
-  POI poi(poi_file_path);
-  poi.open(true);
-  poi.get_values_dataset_id();
-  poi.get_names();
-  poi.get_individuals();
-
-  std::vector<std::string> poi_names = poi.names;
-  std::vector<std::string> common_ind =
-      intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
-  std::vector<std::string> intersected_ind =
-      intersect_row_names(common_ind, poi.individuals);
-
-  FRMatrix pheno_matrix = pheno_df; // check col names
-
-  FRMatrix covar_matrix = create_design_matrix(
-      covar_df, config.covs, config.no_intercept, config.colinearity_rsq);
-
-  CovariateMatrix cov_mat = CovariateMatrix(
-      config.covar_file, config.covar_file_delim, config.covar_rowname_cols,
-      config.covs, config.colinearity_rsq, config.no_intercept);
-
-  FRMatrix cov_matrix_2 = cov_mat.create_design_matrix();
-  arma::fmat covar_matrix_2 = cov_matrix_2.data;
-  bool n_cols = covar_matrix_2.n_cols == covar_matrix.data.n_cols;
-  bool n_rows = covar_matrix_2.n_rows == covar_matrix.data.n_rows;
-
-  bool approx_equal =
-      arma::approx_equal(covar_matrix.data, covar_matrix_2, "reldiff", 0.1);
-  arma::uvec idx = arma::find_nonfinite(covar_matrix.data);
-  arma::uvec idx_2 = arma::find_nonfinite(covar_matrix_2);
-  std::vector<std::string> col_names(covar_matrix.col_names.size());
-
-  Rcpp::Rcout << "cov_mat_idx NAN len: " << idx.n_elem << std::endl;
-  Rcpp::Rcout << "cov_mat_2_idx NAN len: " << idx_2.n_elem << std::endl;
-  Rcpp::Rcout << "n_cols covar_mat: " << covar_matrix.data.n_cols << std::endl;
-  Rcpp::Rcout << "n_cols covar_mat_2: " << covar_matrix_2.n_cols << std::endl;
-
-  Rcpp::Rcout << "n_cols eq: " << n_cols << std::endl;
-  Rcpp::Rcout << "n_rows eq: " << n_rows << std::endl;
-  for (auto kv : covar_matrix.col_names) {
-    Rcpp::Rcout << "col_name: " << kv.first << ": " << kv.second << std::endl;
+  if (col_names.size() != static_cast<size_t>(n_cols)) {
+    Rcpp::stop("Number of column names does not match number of columns in "
+               "matrix. n_cols: %s, col_names: %s",
+               n_cols, col_names.size());
   }
 
-  for (auto kv : cov_matrix_2.col_names) {
-    Rcpp::Rcout << "col_name: " << kv.first << ": " << kv.second << std::endl;
+  if (row_names.size() != static_cast<size_t>(n_rows)) {
+    Rcpp::stop("Number of row names does not match number of rows in matrix.");
   }
 
-  // for (size_t i = 0; i < covar_matrix.data.n_cols; i++) {
-  //   arma::fcolvec col = covar_matrix.data.col(i);
-  //   arma::fcolvec col2 = covar_matrix_2.col(i);
+  for (size_t i = 0; i < col_names.size(); ++i) {
+    if (col_names[i].empty()) {
+      Rcpp::stop("Column name at position %d is empty.", i);
+    }
+  }
 
-  //   arma::uvec idx = arma::find_nonfinite(col);
-  //   arma::uvec idx2 = arma::find_nonfinite(col2);
-  //   // if (col_names.at(i) == "Agesq") {
-  //   //   std::string col_name = col_names.at(i);
-  //   // }
-  // }
+  for (size_t i = 0; i < row_names.size(); ++i) {
+    if (row_names[i].empty()) {
+      Rcpp::stop("Row name at position %d is empty.", i);
+    }
+  }
+  Rcpp::List df_cols;
+  for (int i = 0; i < n_cols; i++) {
+    df_cols[col_names[i]] =
+        Rcpp::NumericVector(mat.colptr(i), mat.colptr(i) + n_rows);
+  }
 
-  return n_cols && n_rows && approx_equal;
+  Rcpp::DataFrame df(df_cols);
+  df.attr("row.names") = Rcpp::wrap(row_names);
+
+  return df;
 }

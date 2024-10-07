@@ -459,8 +459,13 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     // create file
     int name_length = 2 * strlen(par->h5file_base) + 100;
     name = (char *)malloc(name_length);
-    snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
-             par->h5file_base, (int)i);
+    if (par->h5file_base[strlen(par->h5file_base) - 1] == '/') {
+      snprintf(name, name_length, "%s%s.%03d.h5", par->h5file_base,
+               par->h5file_base, (int)i);
+    } else {
+      snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
+               par->h5file_base, (int)i);
+    }
     Rcpp::Rcout << "Creating file: " << name << std::endl;
     (*h5vars)[i].file =
         H5Fcreate(name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -885,8 +890,13 @@ static void final_cleanup(struct read_buffers *readbuff,
     if ((*h5vars)[i].written == 0) {
       int name_length = 2 * strlen(par->h5file_base) + 100;
       name = (char *)malloc(name_length);
-      snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
-               par->h5file_base, (int)i);
+      if (par->h5file_base[strlen(par->h5file_base) - 1] == '/') {
+        snprintf(name, name_length, "%s%s.%03d.h5", par->h5file_base,
+                 par->h5file_base, (int)i);
+      } else {
+        snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
+                 par->h5file_base, (int)i);
+      }
       Rcpp::Rcout << name << std::endl;
       remove(name);
       free(name);

@@ -2,7 +2,7 @@ Package: FastReg
 Type: Package
 Title: Fast Regression
 Description: This package efficiently performs large scale linear and logistic regression analysis. 
-Version: 1.0.7
+Version: 1.1.0
 Authors@R: 
     c(
     person(given = "Shail",
@@ -30,8 +30,8 @@ Depends: R (>= 4.0)
 URL: https://github.com/SciomeLLC/FastReg
 BugReports: https://github.com/SciomeLLC/FastReg/issues
 biocViews: Software
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, float, RhpcBLASctl
-LinkingTo: Rcpp, RcppArmadillo, float, RcppEigen
+Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 NeedsCompilation: yes

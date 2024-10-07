@@ -40,7 +40,7 @@
 #' @import Rcpp
 #' @import RcppArmadillo
 #' @import parallel
-#' @import RhpcBLASctl
+#' @import tools
 FastReg <- function(
     phenotype = "bin.resp",
     regression.type = "logistic",
@@ -81,15 +81,9 @@ FastReg <- function(
     cat("Error: max.openmp.threads must be a positive integer.\n")
     return(FALSE)
   }
-
-  if (max.blas.threads > get_num_procs()) {
-    cat("Error: max.blas.threads cannot be greater than number of avaialable processors.\n")
-    return(FALSE)
-  }
-
-  if (max.blas.threads > 0) {
-    blas_set_num_threads(max.blas.threads)
-  }
+  pheno.file = file_path_as_absolute(pheno.file)
+  covar.file = file_path_as_absolute(covar.file)
+  POI.file.dir = file_path_as_absolute(POI.file.dir)
 
   if (max.workers < 0) {
     cat("Error: max.workers must be a positive integer.\n")
@@ -129,12 +123,9 @@ FastReg <- function(
     split.by,
     output.dir,
     compress.results,
+    max.blas.threads,
     max.workers
   )
-
-  if (max.blas.threads > 0) {
-    blas_set_num_threads(get_num_procs())
-  }
 }
 
 #' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()
@@ -245,6 +236,9 @@ TextToH5 <- function(
     cat("Error: server.mem must be a single-member numeric vector\n")
     return(FALSE)
   }
+  
+  data.file = file_path_as_absolute(data.file)
+  h5.dir = file_path_as_absolute(h5.dir)
   server.mem <- as.double(server.mem)
   FastRegImportCpp(
     data.file,

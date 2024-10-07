@@ -1,292 +1,166 @@
 // [[Rcpp::depends(RcppArmadillo)]]
+#include <chrono>
+#include <iostream>
 #include <regression.h>
 #include <utils.h>
-#include <iostream>
-#include <chrono>
 
 #include <RcppEigen.h>
 
-
-template <typename T>
-Rcpp::NumericVector arma2vec(const T &x)
-{
+template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
   return Rcpp::NumericVector(x.begin(), x.end());
 }
 
-arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df)
-{
+arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
-  for(size_t i = 0; i < abs_z.size(); i++) {
+  for (size_t i = 0; i < abs_z.size(); i++) {
     ret_val(i) = -1 * (R::pt(abs_z(i), df, true, true) + log(2)) / log(10);
   }
-  // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
   return ret_val;
 }
 
-arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df)
-{
+float chisq(float lrs, int df) {
+  return R::pchisq(lrs, df, 0, 1) / (-1.0 * log(10));
+}
+
+arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
-  for(size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * (R::pnorm(abs_z(i), 1.0, 1.0, true, true) + log(2)) / log(10);
+  for (size_t i = 0; i < abs_z.size(); i++) {
+    ret_val(i) =
+        -1 * (R::pnorm(abs_z(i), 1.0, 1.0, true, true) + log(2)) / log(10);
   }
-  // Rcpp::NumericVector dt = Rcpp::dt(arma2vec(abs_z), df, true);
   return ret_val;
-  // return Rcpp::dnorm(arma2vec(abs_z), 1.0, 1.0, true);
 }
 
 typedef Eigen::Matrix<arma::uword, Eigen::Dynamic, Eigen::Dynamic> MatrixUd;
-arma::fcolvec t_dist(arma::fcolvec abs_z, int df)
-{
-
-  arma::fcolvec pvalues = conv_to<fcolvec>::from(
-      -1 * (stats2::pt(abs_z, df, true) + log(2)) / log(10));
-  return pvalues;
-}
-
-arma::fcolvec norm_dist(arma::fcolvec abs_z, int df)
-{
-  return conv_to<fcolvec>::from(
-      -1 * (stats2::pnorm(abs_z, 1.0, 1.0, true) + log(2)) / log(10));
-}
 
 arma::fcolvec pmean(arma::fcolvec a, arma::fcolvec b) { return (a + b) / 2; }
 
-void LogisticRegression::run_BLAS(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-                                  FRMatrix &interactions, arma::umat &W2,
-                                  FRMatrix &beta_est, FRMatrix &se_beta,
-                                  FRMatrix &neglog10_pvl,
-                                  arma::fcolvec &beta_rel_errs,
-                                  arma::fcolvec &beta_abs_errs,
-                                  arma::fcolvec &iters, 
-                                  int max_iter,
-                                  bool is_t_dist)
-{
+//////////////////////////////////////////////////
+// @brief creates a matrix that will be modified to create
+//        the estimates that are based upon non-normalized data
+// @mns   mean of the data
+// @stds  standard deviation of the data
+// @n     total number of variables to be estimated
+//        which is the ultimate size of the matrix
+// @start start column to consider
+// @return  Matrix used to recenter values
+//////////////////////////////////////////////////
+arma::fmat createDelta(arma::fcolvec mns, arma::fcolvec stds, unsigned int n,
+                       unsigned int start) {
+  arma::fmat delta(n, n);
+  delta = delta.eye(n, n); // start off with the identity matrix
 
-  arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
-  // create a pointer to the specified distribution function
-  arma::fcolvec (*dist_func_r)(arma::fcolvec, int) = is_t_dist == true ? t_dist_r : norm_dist_r;
-  arma::fcolvec (*dist_func)(arma::fcolvec, int) =
-      is_t_dist == true ? t_dist : norm_dist;
-#pragma omp parallel for
-  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++)
-  {
-    checkInterrupt();
-    arma::fmat A(n_parms, n_parms, arma::fill::zeros);
-    // Initialize beta
-    arma::fcolvec beta(n_parms, arma::fill::zeros);
-    arma::fcolvec beta_old(n_parms, arma::fill::ones);
-    arma::fmat cov_w_mat = cov.data;
-    arma::fmat int_w_mat = interactions.data;
-    arma::ucolvec w2_col = W2.col(poi_col);
-    int_w_mat = interactions.data % arma::repmat(poi_data.data.col(poi_col), 1,
-                                                 interactions.data.n_cols);
-
-    arma::uword first_chunk = cov_w_mat.n_cols - 1;
-    arma::uword second_chunk = n_parms - 1;
-    arma::span first = arma::span(0, first_chunk);
-    arma::span second = arma::span(first_chunk + 1, second_chunk);
-    arma::fcolvec beta_diff = arma::abs(beta - beta_old);
-    // arma::span col_1 = arma::span(0,0);
-    beta_rel_errs.at(poi_col) = 1;
-
-    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4; iter++)
+  for (unsigned int i = start; i < start + mns.size(); i++) {
+    if (i == start) // the start location is assumed to be the intercept
     {
-
-      arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
-      eta += cov_w_mat * beta.subvec(first);
-      eta += int_w_mat * beta.subvec(second);
-
-      arma::fmat p = 1 / (1 + arma::exp(-eta));
-      arma::fmat W1 = p % (1 - p) % w2_col;
-      arma::fmat temp1 = cov_w_mat % arma::repmat(W1, 1, cov_w_mat.n_cols);
-      arma::fmat temp2 = int_w_mat % arma::repmat(W1, 1, int_w_mat.n_cols);
-
-      A.submat(first, first) = temp1.t() * cov_w_mat;        // C'C
-      A.submat(second, second) = temp2.t() * int_w_mat;      // I'I
-      A.submat(first, second) = temp1.t() * int_w_mat;       // C'I
-      A.submat(second, first) = A.submat(first, second).t(); // I'C
-
-      arma::fmat z = w2_col % (pheno.data - p);
-      arma::fmat B = arma::fmat(n_parms, 1, arma::fill::zeros);
-      B.submat(first, arma::span(0, 0)) = cov_w_mat.t() * z;
-      B.submat(second, arma::span(0, 0)) = int_w_mat.t() * z;
-
-      beta = beta + arma::solve(A, B, arma::solve_opts::fast);
-
-      beta_diff = arma::abs(beta - beta_old);
-      beta_abs_errs.at(poi_col) = beta_diff.max();
-      iters.at(poi_col) = iter + 1;
-      beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta_old)).max();
-      beta_old = beta;
+      for (int j = start + 1; j < start + mns.size(); j++) {
+        delta(i, j) = -mns[j] / stds[j];
+      }
+    } else {
+      delta(i, i) = 1 / stds[i];
     }
-
-    if (beta_abs_errs.at(poi_col) > 1e-4)
-    { // update the covariance matrix if there
-      // was a maximum relative change in the
-      // betas greater than 1e-4
-      arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
-      eta += cov_w_mat * beta.subvec(first);
-      eta += int_w_mat * beta.subvec(second);
-
-      arma::fmat p = 1 / (1 + arma::exp(-eta));
-      arma::fmat W1 = p % (1 - p) % w2_col;
-      arma::fmat temp1 = cov_w_mat % arma::repmat(W1, 1, cov_w_mat.n_cols);
-      arma::fmat temp2 = int_w_mat % arma::repmat(W1, 1, int_w_mat.n_cols);
-
-      A.submat(first, first) = temp1.t() * cov_w_mat;        // C'C
-      A.submat(second, second) = temp2.t() * int_w_mat;      // I'I
-      A.submat(first, second) = temp1.t() * int_w_mat;       // C'I
-      A.submat(second, first) = A.submat(first, second).t(); // I'C
-    }
-
-    beta_abs_errs.at(poi_col) = beta_diff.max();
-    beta_rel_errs.at(poi_col) = (beta_diff / arma::abs(beta)).max();
-    int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
-
-    // arma::fcolvec temp_se = arma::sqrt(arma::diagvec(arma::inv_sympd(A)));
-    arma::fcolvec temp_se = arma::sqrt(arma::diagvec(arma::pinv(A)));
-    beta_est.data.col(poi_col) = beta;
-    se_beta.data.col(poi_col) = temp_se;
-    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
-    // if (poi_col == 0) {
-    //   Rcpp::Rcout << "neg_abs_z: " << std::endl;
-    //   neg_abs_z.print();
-    //   arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
-    //   Rcpp::Rcout << "dist_r: " << std::endl;
-    //   dist_r.print();
-    //   arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
-    //   Rcpp::Rcout << "dist: " << std::endl;
-    //   dist.print();
-    // }
-    neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
+
+  return delta;
 }
 
-void LogisticRegression::run_EIGEN(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
-                                   FRMatrix &interactions, arma::umat &W2,
-                                   FRMatrix &beta_est, FRMatrix &se_beta,
-                                   FRMatrix &neglog10_pvl,
-                                   arma::fcolvec &beta_rel_errs,
-                                   arma::fcolvec &beta_abs_errs, 
-                                   arma::fcolvec &iters,  
-                                   int max_iter,
-                                   bool is_t_dist)
-{
+Eigen::MatrixXf createDelta_EIGEN(const Eigen::VectorXf &mns,
+                                  const Eigen::VectorXf &stds, unsigned int n,
+                                  unsigned int start) {
+  Eigen::MatrixXf delta = Eigen::MatrixXf::Identity(n, n);
 
-  arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
-  // create a pointer to the specified distribution function
-  
-  arma::fcolvec (*dist_func_r)(arma::fcolvec, int) = is_t_dist == true ? t_dist_r : norm_dist_r;
-  arma::fcolvec (*dist_func)(arma::fcolvec, int) =
-      is_t_dist == true ? t_dist : norm_dist;
-  MatrixUd W2_EIG = Eigen::Map<MatrixUd>(W2.memptr(),
-                                         W2.n_rows,
-                                         W2.n_cols);
-  Eigen::MatrixXf W2f = W2_EIG.cast<float>();
-  Eigen::MatrixXf tphenoD = Eigen::Map<Eigen::MatrixXf>(pheno.data.memptr(),
-                                                        pheno.data.n_rows,
-                                                        pheno.data.n_cols);
-
-#pragma omp parallel for
-  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++)
-  {
-    checkInterrupt();
-    Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n_parms, n_parms);
-    A(0, 0) = 1;
-    A(n_parms - 1, n_parms - 1) = 10;
-    // Initialize beta
-
-    Eigen::VectorXf beta = Eigen::VectorXf::Zero(n_parms, 1);
-    Eigen::VectorXf beta_old = beta;
-
-    Eigen::MatrixXf cov_w_mat = Eigen::Map<Eigen::MatrixXf>(cov.data.memptr(),
-                                                            cov.data.n_rows,
-                                                            cov.data.n_cols);
-    Eigen::MatrixXf int_w_mat = Eigen::Map<Eigen::MatrixXf>(interactions.data.memptr(),
-                                                            interactions.data.n_rows,
-                                                            interactions.data.n_cols);
-
-    Eigen::VectorXf w2_col = W2f.col(poi_col);
-    arma::fmat POI_ARMA = poi_data.data.col(poi_col);
-    Eigen::MatrixXf POI = Eigen::Map<Eigen::MatrixXf>(POI_ARMA.memptr(),
-                                                      POI_ARMA.n_rows,
-                                                      1);
-    Eigen::MatrixXf temp_mat_e = int_w_mat;
-    int_w_mat = temp_mat_e.array().colwise() * POI.col(0).array();
-    Eigen::MatrixXf X = Eigen::MatrixXf::Zero(int_w_mat.rows(), cov_w_mat.cols() + 1);
-    X.topLeftCorner(int_w_mat.rows(), cov_w_mat.cols()) = cov_w_mat;
-    X.topRightCorner(int_w_mat.rows(), int_w_mat.cols()) = int_w_mat;
-
-    Eigen::VectorXf beta_diff = (beta - beta_old).array().abs();
-    beta_rel_errs.at(poi_col) = 1e8;
-
-    for (int iter = 0; iter < max_iter && beta_rel_errs.at(poi_col) > 1e-4; iter++)
+  for (unsigned int i = start; i < start + mns.size(); ++i) {
+    if (i == start) // the start location is assumed to be the intercept
     {
-      Eigen::MatrixXf eta = Eigen::MatrixXf::Zero(cov.data.n_rows, 1);
-      // arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
-      eta = X * beta;
-      Eigen::MatrixXf p = -eta.array();
-      p = p.array().exp() + 1;
-      p = 1 / p.array();
-
-      Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
-      Eigen::MatrixXf temp1 = X.array().colwise() * W1.col(0).array();
-      A = temp1.transpose() * X;
-
-      Eigen::MatrixXf z = w2_col.array() * (tphenoD.array() - p.array()).array();
-      Eigen::MatrixXf B = Eigen::MatrixXf::Zero(n_parms, 1);
-
-      B = X.transpose() * z;
-
-      beta = beta + A.ldlt().solve(B); // arma::solve(A, B, arma::solve_opts::fast);
-
-      beta_diff = (beta.array() - beta_old.array()).abs();
-      beta_abs_errs.at(poi_col) = beta_diff.array().maxCoeff();
-      iters.at(poi_col) = iter + 1;
-      Eigen::MatrixXf mTemp = (beta_diff.array() / beta_old.array());
-      beta_rel_errs.at(poi_col) = mTemp.maxCoeff();
-      beta_old = beta;
+      for (unsigned int j = start + 1; j < start + mns.size(); ++j) {
+        delta(i, j) = -mns(j - start) / stds(j - start);
+      }
+    } else {
+      delta(i, i) = 1.0f / stds(i - start);
     }
-
-    if (beta_abs_errs.at(poi_col) > 1e-4)
-    { // update the covariance matrix if there
-      // was a maximum relative change in the
-      // betas greater than 1e-4
-      Eigen::MatrixXf p = -X * beta;
-      p = p.array().exp() + 1;
-      p = 1 / p.array();
-
-      Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
-      Eigen::MatrixXf temp1 = X.array().colwise() * W1.col(0).array();
-      A = temp1.transpose() * X;
-    }
-
-    beta_abs_errs.at(poi_col) = beta_diff.maxCoeff();
-    beta_rel_errs.at(poi_col) = (beta_diff.array() / beta.array().abs()).maxCoeff();
-    int df = w2_col.array().sum() - n_parms;
-    Eigen::MatrixXf temp_inv = A.inverse();
-    Eigen::VectorXf diag = temp_inv.diagonal().array().sqrt();
-
-    // convert it all back to armadillo matrix types
-    arma::fcolvec temp_se = arma::fcolvec(diag.data(), diag.size(),
-                                          true, false);
-    arma::fcolvec temp_b = arma::fcolvec(beta.data(), beta.size(),
-                                         true, false);
-    beta_est.data.col(poi_col) = temp_b;
-    se_beta.data.col(poi_col) = temp_se;
-    arma::fcolvec neg_abs_z = arma::abs(temp_b / temp_se) * -1;
-    // if (poi_col == 0) {
-    //   Rcpp::Rcout << "neg_abs_z: " << std::endl;
-    //   neg_abs_z.print();
-    //   arma::fcolvec dist_r = (*dist_func_r)(neg_abs_z, df);
-    //   Rcpp::Rcout << "dist_r: " << std::endl;
-    //   dist_r.print();
-    //   arma::fcolvec dist = (*dist_func)(neg_abs_z, df);
-    //   Rcpp::Rcout << "dist: " << std::endl;
-    //   dist.print();
-    // }
-    neglog10_pvl.data.col(poi_col) = (*dist_func_r)(neg_abs_z, df);
   }
+
+  return delta;
+}
+
+/////////////////////////////////////////////////
+//@brief: Map the identical interaction columns to develop the
+//        delta matrix
+//@X   : Covariate Matrix
+//@X_I : Interaction Matrix
+/////////////////////////////////////////////////
+arma::umat map_is_interaction(arma::fmat X, arma::fmat X_I) {
+  arma::umat interCol(2, X.n_cols + X_I.n_cols);
+
+  for (int i = 1; i < X_I.n_cols; i++) // first col is intercept
+  {
+    for (int j = 1; j < X.n_cols; j++) // first col is intercept
+    {
+      arma::ucolvec tmp = (X.col(j) == X_I.col(i));
+      if (arma::accu(tmp) == X.n_rows) {
+        interCol(0, j) = X.n_cols + i;
+        interCol(1, X.n_cols + i) = j;
+      }
+    }
+  }
+
+  return interCol;
+}
+
+Eigen::MatrixXi map_is_interaction_EIGEN(const Eigen::MatrixXf &X,
+                                         const Eigen::MatrixXf &X_I) {
+  Eigen::MatrixXi interCol = Eigen::MatrixXi::Zero(2, X.cols() + X_I.cols());
+
+  for (int i = 1; i < X_I.cols(); ++i) // first col is intercept
+  {
+    for (int j = 1; j < X.cols(); ++j) // first col is intercept
+    {
+      // Compare columns element-wise
+      if ((X.col(j).array() == X_I.col(i).array()).all()) {
+        interCol(0, j) = X.cols() + i;
+        interCol(1, X.cols() + i) = j;
+      }
+    }
+  }
+
+  return interCol;
+}
+
+// @breif : builds the delta matrix for just the covariates.  This
+//          omits the POI delta
+// @X     : Covariate X matrix
+// @X_I   : Interaction X matrix
+// @x_mean: means of the origional covariate matrix 1xn where n is the number
+//          of columns in X alone
+// @x_sd  : sd of the origional covariate matrix 1xn where n is the number
+//          of columns in X alone
+arma::fmat build_covariate_delta(arma::fmat X, arma::fmat X_I,
+                                 arma::fcolvec x_mean, arma::fcolvec x_sd) {
+  ///////////////////////////////////////////////////////////////////////////
+  unsigned int n_var = X.n_cols + X_I.n_cols;
+  arma::fmat tmeans(n_var, 1, arma::fill::zeros);
+  arma::fmat tsds(n_var, 1, arma::fill::ones);
+  tmeans.submat(0, 0, x_mean.n_rows - 1, 0) = x_mean;
+  tsds.submat(0, 0, x_sd.n_rows - 1, 0) = x_sd;
+  arma::fmat delta = createDelta(tmeans, tsds, n_var, 0);
+
+  return delta;
+}
+
+Eigen::MatrixXf build_covariate_delta_EIGEN(const Eigen::MatrixXf &X,
+                                            const Eigen::MatrixXf &X_I,
+                                            const Eigen::VectorXf &x_mean,
+                                            const Eigen::VectorXf &x_sd) {
+  int n_var = X.cols() + X_I.cols();
+  Eigen::VectorXf tmeans = Eigen::VectorXf::Zero(n_var);
+  Eigen::VectorXf tsds = Eigen::VectorXf::Ones(n_var);
+
+  tmeans.head(x_mean.size()) = x_mean;
+  tsds.head(x_sd.size()) = x_sd;
+
+  Eigen::MatrixXf delta = createDelta_EIGEN(tmeans, tsds, n_var, 0);
+
+  return delta;
 }
 
 void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
@@ -294,23 +168,110 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                              FRMatrix &beta_est, FRMatrix &se_beta,
                              FRMatrix &neglog10_pvl,
                              arma::fcolvec &beta_rel_errs,
-                             arma::fcolvec &beta_abs_errs, 
-                             arma::fcolvec &iters,
-                             int max_iter,
-                             bool is_t_dist,
-                             bool use_blas)
-{
-  if (use_blas)
-  { // use BLAS if faster than Eigen::MatrixXf calculations run_BLAS
-    run_BLAS(cov, pheno, poi_data,
-             interactions, W2, beta_est, se_beta, neglog10_pvl,
-             beta_rel_errs, beta_abs_errs, iters, max_iter, is_t_dist);
-  }
-  else
-  {
-    run_EIGEN(cov, pheno, poi_data,
-              interactions, W2, beta_est, se_beta, neglog10_pvl,
-              beta_rel_errs, beta_abs_errs, iters, max_iter, is_t_dist);
+                             arma::fcolvec &beta_abs_errs, arma::fcolvec &iters,
+                             int max_iter, arma::fmat &x_mean, arma::fmat &x_sd,
+                             arma::fmat &xi_mean, arma::fmat &xi_sd,
+                             bool is_t_dist) {
+
+  arma::fcolvec (*dist_func)(arma::fcolvec, int) =
+      is_t_dist == true ? t_dist_r : norm_dist_r;
+  arma::fmat X_C = cov.data;
+  arma::fmat Y = pheno.data;
+  arma::fmat X_I = interactions.data;
+  arma::fmat POI = poi_data.data;
+  // set up delta-method change
+  arma::fmat delta = build_covariate_delta(X_C, X_I, x_mean, x_sd);
+  arma::umat int_loc = map_is_interaction(X_C, X_I);
+  arma::uword n_parms = X_C.n_cols + X_I.n_cols;
+  arma::fmat I(n_parms, n_parms);
+  I = I.eye();
+  arma::fmat delta2 = I;
+  for (arma::uword poi_col = 0; poi_col < POI.n_cols; poi_col++) {
+    checkInterrupt();
+    arma::fmat A(n_parms, n_parms, arma::fill::zeros);
+    // Initialize beta
+    arma::fcolvec beta(n_parms, arma::fill::zeros);
+    arma::fcolvec beta_old(n_parms, arma::fill::ones);
+    arma::fmat cov_w_mat = X_C;
+    arma::fmat int_w_mat = X_I;
+    arma::ucolvec w2_col = W2.col(poi_col);
+    arma::fcolvec POIs = POI.col(poi_col);
+
+    float meanPOI = arma::mean(POIs);
+    float sdPOI = arma::stddev(POIs);
+    POIs = POIs - meanPOI;
+    POIs /= sdPOI;
+    // POIs = (POIs - meanPOI)/sdPOI;
+
+    int_w_mat.each_col() %= POIs;
+    // Update delta with
+    delta(0, X_C.n_cols) = -meanPOI / sdPOI;
+    delta(X_C.n_cols, X_C.n_cols) = 1 / sdPOI;
+    arma::fmat pdelta = delta; // reset pdelta each iteration
+
+    for (unsigned int i_idx = 1; i_idx < X_I.n_cols; i_idx++) {
+      for (unsigned int j_idx = 1; j_idx < X_C.n_cols; j_idx++) {
+        if (int_loc(0, j_idx) != 0) {
+          // figure out indexes for delta
+          unsigned int idx = X_C.n_cols + i_idx;
+          unsigned int idx_X = int_loc(1, X_C.n_cols + i_idx);
+          //
+          float sd_both = 1 / (xi_sd(i_idx, 0) * sdPOI);
+          float mean_X = x_mean(j_idx, 0);
+          float mean_XI = xi_mean(i_idx, 0);
+          // Covariance Estimate
+          pdelta(idx_X, idx) = -meanPOI * sd_both;
+          // Interaction "Intercept"
+          pdelta(X_C.n_cols, idx) = -mean_XI * sd_both;
+          // Main "Intercept"
+          pdelta(0, idx) = meanPOI * mean_XI * sd_both;
+          // covariate effect
+          pdelta(idx, idx) = sd_both;
+        }
+      }
+    }
+    arma::fmat X = arma::join_rows(cov_w_mat, int_w_mat);
+    // arma::span col_1 = arma::span(0,0);
+    float rel_errs = 1.0;
+    float abs_errs = 1.0;
+    arma::fcolvec beta_diff = beta;
+    int iter;
+    for (iter = 0; iter < (max_iter) && rel_errs > 1e-5; iter++) {
+      beta_old = beta;
+      arma::fmat eta = X * beta;
+      arma::fmat p = 1 / (1 + arma::exp(-eta));
+      arma::fmat W1 = p % (1 - p) % w2_col;
+      arma::fmat temp1 = X.each_col() % W1;
+
+      A = temp1.t() * X;
+      arma::fmat z = w2_col % (Y - p);
+      arma::fmat B = X.t() * z;
+
+      beta = beta + arma::solve(A, B, arma::solve_opts::fast);
+      beta_diff = arma::abs(beta - beta_old);
+      abs_errs = beta_diff.max();
+      // iters.at(poi_col) = iter + 1;
+      rel_errs = (beta_diff / arma::abs(beta_old)).max();
+    }
+
+    abs_errs = beta_diff.max();
+    rel_errs = (beta_diff / arma::abs(beta)).max();
+    int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;
+
+    // variance covariance matrix
+    arma::fmat rV = solve(A, I, arma::solve_opts::fast);
+    rV = (pdelta * rV) * pdelta.t();
+    // temp std error
+    auto temp_buff = arma::conv_to<arma::fcolvec>::from(arma::diagvec(rV));
+    arma::fcolvec temp_se = arma::sqrt(temp_buff);
+
+    beta_est.data.col(poi_col) = pdelta * beta; // beta coeff
+    se_beta.data.col(poi_col) = temp_se;        // temp std errors
+    beta_abs_errs.at(poi_col) = abs_errs;       // convergence abs err
+    beta_rel_errs.at(poi_col) = rel_errs;       // convergence rel err
+    iters.at(poi_col) = iter;                   // num iterations
+    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
+    neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
   }
 }
 
@@ -318,19 +279,17 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
                            FRMatrix &interactions, arma::umat &W2,
                            FRMatrix &beta_est, FRMatrix &se_beta,
                            FRMatrix &neglog10_pvl, arma::fcolvec &beta_rel_errs,
-                           arma::fcolvec &beta_abs_errs, 
-                           arma::fcolvec &iters, 
-                           int max_iter,
-                           bool is_t_dist, bool use_blas)
-{
+                           arma::fcolvec &beta_abs_errs, arma::fcolvec &iters,
+                           int max_iter, arma::fmat &x_mean, arma::fmat &x_sd,
+                           arma::fmat &xi_mean, arma::fmat &xi_sd,
+                           bool is_t_dist) {
 
   arma::uword n_parms = cov.data.n_cols + interactions.data.n_cols;
   arma::span col_1 = arma::span(0, 0);
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
-      is_t_dist == true ? t_dist : norm_dist;
-#pragma omp parallel for
-  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++)
-  {
+      is_t_dist == true ? t_dist_r : norm_dist_r;
+// #pragma omp parallel for
+  for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
     checkInterrupt();
     // Initialize beta
     arma::fmat beta(n_parms, 1, arma::fill::zeros);
@@ -365,19 +324,6 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     beta_est.data.col(poi_col) = beta;
     iters.at(poi_col) = 1;
     arma::fmat eta = cov_w_mat * beta.submat(first, col_1);
-    // arma::fmat eta(cov.data.n_rows, 1, arma::fill::zeros);
-    // eta += cov_w_mat * beta.submat(first, col_1);
-    // eta += int_w_mat * beta.submat(second, col_1);
-    // int df = arma::as_scalar(arma::sum(W2.col(poi_col), 0)) - n_parms;
-    // double mse = arma::conv_to<double>::from(W2.col(poi_col).t() *
-    //                                          arma::square(pheno.data - eta))
-    //                                          /
-    //              (double)df;
-
-    // se_beta.data.col(poi_col) =
-    //     arma::sqrt(mse * arma::abs(arma::diagvec(arma::pinv(A))));
-    // arma::fmat temp_se = se_beta.data.col(poi_col);
-    // arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
     float df = arma::accu(W2.col(poi_col)) - n_parms;
     arma::fmat tmse = (W2.col(poi_col).t() * arma::square(pheno.data - eta));
     float mse = tmse(0, 0) / df;
