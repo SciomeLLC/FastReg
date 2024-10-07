@@ -269,7 +269,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     beta_abs_errs.at(poi_col) = abs_errs;       // convergence abs err
     beta_rel_errs.at(poi_col) = rel_errs;       // convergence rel err
     iters.at(poi_col) = iter;                   // num iterations
-    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
+    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se);
     neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
   }
 }
