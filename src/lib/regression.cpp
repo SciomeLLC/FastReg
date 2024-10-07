@@ -13,7 +13,7 @@ template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
 arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1*log10(2*R::pt(-1*abs_z(i), df, true, false));
+    ret_val(i) = log10(2 * R::pt(-1 * abs_z(i), df, true, false));
   }
   return ret_val;
 }
@@ -288,7 +288,7 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
   arma::span col_1 = arma::span(0, 0);
   arma::fcolvec (*dist_func)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
-// #pragma omp parallel for
+  // #pragma omp parallel for
   for (arma::uword poi_col = 0; poi_col < poi_data.data.n_cols; poi_col++) {
     checkInterrupt();
     // Initialize beta
