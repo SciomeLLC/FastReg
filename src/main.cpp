@@ -616,7 +616,7 @@ void FastRegCpp(
   int parallel_chunk_size = chunker.get_chunk_size();
   int num_threads = chunker.get_openmp_threads();
   // Handle threads if OpenMP found
-#if defined(_OPENMP)
+#if defined(_OPENMP)  && !defined(__APPLE__) && !defined(__MACH__)
   omp_set_dynamic(0);               // Explicitly disable dynamic teams
   omp_set_num_threads(num_threads); // Use num_threads for all
                                     // consecutive parallel regions
