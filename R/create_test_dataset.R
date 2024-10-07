@@ -197,7 +197,7 @@ create_test_dataset <- function(num.poi = 50000,
 generate_values <- function(num.ind, chunk.indices, poi.type, maf, miss.rate) {
   # Initialize the matrix for just this chunk
   if (poi.type == "genotype") {
-    values <- matrix(0, ncol = length(chunk.indices), nrow = num.ind)
+    values <- matrix(0.000, ncol = length(chunk.indices), nrow = num.ind)
   } else {
     values <- matrix(0.000, ncol = length(chunk.indices), nrow = num.ind)
   }
@@ -206,14 +206,14 @@ generate_values <- function(num.ind, chunk.indices, poi.type, maf, miss.rate) {
     if (poi.type == "genotype") {
       dosage.val <- runif(num.ind)
       geno.val <- integer(num.ind)
-      geno.val[dosage.val < (1 - maf[i])^2] <- 0
-      geno.val[((1 - maf[i])^2 <= dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1
-      geno.val[dosage.val >= (1 - maf[i]^2)] <- 2
-      geno.val[runif(num.ind) > 1 - miss.rate[i]] <- NA
+      geno.val[dosage.val < (1.0 - maf[i])^2] <- 0.0
+      geno.val[((1 - maf[i])^2 <= dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1.0
+      geno.val[dosage.val >= (1.0 - maf[i]^2)] <- 2.0
+      geno.val[runif(num.ind) > 1.0 - miss.rate[i]] <- NA
       values[, i] <- geno.val
     } else {
-      geno.val <- ((1 - maf[i])^2) * runif(num.ind, min = 0, max = 0.4) + 2 * (1 - maf[i]) * maf[i] * runif(num.ind, min = 0.25, max = 0.75) + (maf[i]^2) * runif(num.ind, min = 0.6, max = 1)
-      geno.val[runif(num.ind) > 1 - miss.rate[i]] <- NA
+      geno.val <- ((1 - maf[i])^2) * runif(num.ind, min = 0, max = 0.4) + 2 * (1 - maf[i]) * maf[i] * runif(num.ind, min = 0.25, max = 0.75) + (maf[i]^2) * runif(num.ind, min = 0.6, max = 1.0)
+      geno.val[runif(num.ind) > 1.0 - miss.rate[i]] <- NA
       values[, i] <- geno.val
     }
   }
@@ -243,23 +243,23 @@ generate_values2 <- function(num.ind, poi.indices, poi.type, poi.chunk.size) {
   # miss.rate <- runif(block.size, min = 0, max = 0.1)
 
   if (poi.type == "genotype") {
-    values <- matrix(0, ncol = block.size, nrow = num.ind)
+    values <- matrix(0.000, ncol = block.size, nrow = num.ind)
   } else {
     values <- matrix(0.000, ncol = block.size, nrow = num.ind)
   }
   maf <- runif(block.size, min = 0.05, max = 0.5)
-  miss.rate <- runif(block.size, min = 0, max = 0.1)
+  miss.rate <- runif(block.size, min = 0.0, max = 0.1)
   for (i in 1:block.size) {
     if (poi.type == "genotype") {
       dosage.val <- runif(num.ind)
       geno.val <- integer(num.ind)
-      geno.val[dosage.val < (1 - maf[i])^2] <- 0
-      geno.val[((1 - maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1
-      geno.val[dosage.val > (1 - maf[i]^2)] <- 2
-      geno.val[runif(num.ind)> 1 - miss.rate[i]] <- NA;
+      geno.val[dosage.val < (1.0 - maf[i])^2] <- 0.0
+      geno.val[((1 - maf[i])^2 < dosage.val) & (dosage.val < (1 - maf[i]^2))] <- 1.0
+      geno.val[dosage.val > (1.0 - maf[i]^2)] <- 2.0
+      geno.val[runif(num.ind)> 1.0 - miss.rate[i]] <- NA;
       values[, i] <- geno.val
     } else {
-      geno.val <- ((1 - maf[i])^2) * runif(num.ind, min = 0, max = 0.4) + 2 * (1 - maf[i]) * maf[i] * runif(num.ind, min = 0.25, max = 0.75) + (maf[i]^2) * runif(num.ind, min = 0.6, max = 1)
+      geno.val <- ((1 - maf[i])^2) * runif(num.ind, min = 0, max = 0.4) + 2.0 * (1.0 - maf[i]) * maf[i] * runif(num.ind, min = 0.25, max = 0.75) + (maf[i]^2) * runif(num.ind, min = 0.6, max = 1.0)
       geno.val[runif(num.ind) > 1 - miss.rate[i]] <- NA
       values[, i] <- geno.val
       # miss.rate <- runif(block.size, min = 0, max = 0.1)
@@ -335,7 +335,7 @@ write.h5 <- function(
       file = poi.file,
       dataset = "values",
       dims = c(num.ind, num.poi.chunk),
-      storage.mode = ifelse(poi.type == "genotype", "integer", "double"),
+      storage.mode = "double",
       chunk = c(num.ind, min(poi.chunk.size, pois.per.file[k])),
       level = poi.compression.level
     )
