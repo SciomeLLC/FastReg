@@ -13,7 +13,7 @@ template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
 arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = log10(2 * R::pt(-1 * abs_z(i), df, true, false));
+    ret_val(i) = log10(2 * R::pt(-1 * abs_z(i), df, false, false));
   }
   return ret_val;
 }
