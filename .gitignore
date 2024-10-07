@@ -7,3 +7,7 @@ inst/doc
 *.so
 *.dll
 *.tar.gz
+run_*.R
+switch_*.sh
+run_*.sh
+install_*.sh

@@ -12,3 +12,7 @@
 ^\.github$
 ^\.dccache
 ^\.lintr
+^run_*.R$
+^switch_*.sh$
+^run_*.sh$
+^install_*.sh$
