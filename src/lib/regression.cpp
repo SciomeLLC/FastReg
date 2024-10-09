@@ -5,6 +5,16 @@
 
 #include <RcppEigen.h>
 
+static void chkIntFn(void *dummy) {
+  R_CheckUserInterrupt();
+}
+
+void checkInterrupt() {
+  if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
+    Rcpp::stop("Received user interrupt. Stopping FastReg...");
+  }
+}
+
 arma::colvec t_dist_r(arma::colvec abs_z, int df) {
   arma::colvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
@@ -45,7 +55,7 @@ void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
       Eigen::Map<Eigen::MatrixXd>(cov.memptr(), cov.n_rows, cov.n_cols);
   Eigen::MatrixXd int_w_mat, int_w_mat2;
   arma::uword n_parms2 = result.cov_int_names.size();
-#pragma omp parallel for
+// #pragma omp parallel for
   for (int poi_col_idx : poi_2_idx) {
     checkInterrupt();
     Eigen::MatrixXd A =

@@ -9,7 +9,6 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <regression.h>
 #include <sstream>
 #include <stdio.h>
 #include <string>
@@ -18,6 +17,7 @@
 #include <vector>
 
 #include "BEDMatrix.h"
+#include <regression.h>
 #include <vla_result.h>
 
 #if !defined(__APPLE__) && !defined(__MACH__)
@@ -98,17 +98,39 @@ int FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
                          const std::vector<std::string> vnames,
                          const std::string suffix, const double epss = 1e-6,
                          const double &mafthresh = 0.005) {
-  arma::mat G = scanBEDMatrix(Gptr, v_index, i_index);
-  arma::mat pheno = Y;
+
+  int total_variants = v_index.n_elem;
+  int num_chunks = total_variants / chunk_size;
+  if (total_variants % chunk_size != 0) {
+    num_chunks += 1;
+  }
+
+  arma::mat pheno = Y.col(0);
   arma::mat cov = X;
   arma::mat no_interactions = arma::mat(X.n_rows, 1, arma::fill::ones);
   arma::mat interactions = arma::join_rows(no_interactions, X);
   arma::mat interactions_sqrd = arma::join_rows(no_interactions, X);
-  VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd);
+
 #if !defined(__APPLE__) && !defined(__MACH__)
   omp_set_num_threads(1);
 #endif
-  LogisticRegression regression;
-  regression.run_vla(cov, pheno, G, res, 6, true);
-  res.write_to_file(dir, suffix);
+  // cnames = prefix per pheno - make into folder for each pheno
+  // vnames = 1 vname per poi - aka rownames
+  for (int chunk = 0; chunk < num_chunks; ++chunk) {
+    int start_idx = chunk * chunk_size;
+    int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
+    
+    arma::ivec current_variant_indices = v_index.subvec(start_idx, end_idx);
+
+    // Extract corresponding variant names
+    std::vector<std::string> variant_names_chunk(vnames.begin() + start_idx,
+                                                 vnames.begin() + end_idx + 1);
+    arma::mat G = scanBEDMatrix(Gptr, i_index, current_variant_indices);
+    Rcpp::Rcout << "G size: " << G.n_rows << "x" << G.n_cols << std::endl;
+    VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd);
+    // res.interactions->print();
+    LogisticRegression regression;
+    regression.run_vla(cov, pheno, G, res, 6, true);
+    res.write_to_file(dir, suffix + "_" + std::to_string(chunk), cnames[0], vnames);
+  }
 }

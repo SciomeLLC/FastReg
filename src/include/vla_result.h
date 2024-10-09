@@ -69,7 +69,7 @@ public:
                       int idx);
   void set_betas_fit2_sqrd(arma::colvec &beta, arma::colvec &se,
                            arma::colvec &pval, int idx);
-  void write_to_file(std::string dir, std::string file_name);
+  void write_to_file(std::string dir, std::string file_name, std::string pheno_name, std::vector<std::string> row_names);
   static void concatenate(std::string output_dir, std::string file_name_prefix,
                           std::string file_concatenation_prefix);
 };

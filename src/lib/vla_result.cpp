@@ -82,68 +82,38 @@ void VLAResult::set_betas_fit2_sqrd(arma::colvec &beta, arma::colvec &se,
   neglog10_pvl2_sqrd.col(idx) = pval;
 }
 
-void VLAResult::write_to_file(std::string dir, std::string file_name) {
+void VLAResult::write_to_file(std::string dir, std::string file_name,
+                              std::string pheno_name,
+                              std::vector<std::string> row_names) {
   int n_parms = beta_est.n_rows;
   int n_parms2 = beta_est2.n_rows;
 
   // create dir if it doesn't exist
   fs::create_directory(dir);
-  // Rcpp::Rcout << "Dir created or already exists" << std::endl;
-  if (srt_cols.size() != beta_est.n_cols) {
-    Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
-                   "columns in the beta matrix."
-                << std::endl;
-    // return;
-  }
 
   std::stringstream ss;
-  ss << dir << "/" << file_name << ".tsv";
+  ss << dir << "/" << file_name << "_" << pheno_name << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
-  // TODO: figure out column index for interactions
-  //   auto tmp_idx = std::find(cov_int_names_sqrd.begin(),
-  //   cov_int_names_sqrd.end(), "poi");
 
-  //   if (tmp_idx == cov_int_names_sqrd.end()) {
-  //     Rcpp::stop("Couldn't find a poi column");
-  //   }
-  //   int idx = tmp_idx - cov_int_names_sqrd.begin();
   int idx = beta_est.n_rows + 1;
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
     if (!outfile.is_open()) {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
-    // Rcpp::Rcout << "File already exists and opened for writing/appending." <<
-    // std::endl;
   } else {
     outfile.open(result_file);
     if (!outfile.is_open()) {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
-
-    outfile << "POI\tN\tDF_fit1\tEstimate_fit1_[poi]\tSE_fit1_[poi]\tmlog10P_"
-               "fit1_[poi]\tAbs_"
-               "Err_fit1\tRel_Err_fit1\titers_fit1\tDF_fit2";
-
-    // TODO: figure out column names for interactions to write to file
-    // estimate, se, pval for poi, poi^2 ineraction terms
-    // for (int i = idx; i < cov_int_names_sqrd.size(); i++) {
-    //   outfile << "\tEstimate_[" << cov_int_names_sqrd[i] << "]"
-    //           << "\tSE_[" << cov_int_names_sqrd[i] << "]"
-    //           << "\tmlog10P_[" << cov_int_names_sqrd[i] << "]";
-    // }
-
-    outfile << "\tAbs_Err_fit2\tRel_Err_fit2\titers_fit2\tLL_fit1\tLL_"
-               "fit2\tLRS\tLRS_mlog10pvl\tnumG\trank"
-            << std::endl;
   }
 
   outfile << std::fixed << std::setprecision(17);
 
   std::stringstream buffer;
   for (int col = 0; col < (int)beta_est.n_cols; col++) {
-    std::string poi_name = file_name + std::to_string(col);
+    std::string poi_name = row_names[col];
     double abs_err_val = beta_abs_errs.at(col);
     double rel_err_val = beta_rel_errs.at(col);
     double iter1 = iters.at(col, 0);
