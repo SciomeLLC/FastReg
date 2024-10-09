@@ -93,42 +93,42 @@ VLA <- function(
     return(FALSE)
   }
 
-  FastRegVLA(
-    phenotype,
-    regression.type,
-    Pvalue.dist,
-    output.exclude.covar,
-    maf.threshold,
-    hwe.threshold,
-    no.intercept,
-    colinearity.rsq,
-    poi.block.size,
-    max.iter,
-    rel.conv.tolerance,
-    abs.conv.tolerance,
-    max.openmp.threads,
-    pheno.file,
-    pheno.rowname.cols,
-    pheno.file.delim,
-    covar.file,
-    covar.rowname.cols,
-    covar.file.delim,
-    POI.file.dir,
-    POI.file.delim,
-    POI.file.format,
-    POI.type,
-    POI.effect.type,
-    covariates,
-    covariate.type,
-    covariate.standardize,
-    covariate.levels,
-    covariate.ref.level,
-    POI.covar.interactions,
-    split.by,
-    output.dir,
-    compress.results,
-    max.workers
-  )
+  # FastRegVLA(
+  #   phenotype,
+  #   regression.type,
+  #   Pvalue.dist,
+  #   output.exclude.covar,
+  #   maf.threshold,
+  #   hwe.threshold,
+  #   no.intercept,
+  #   colinearity.rsq,
+  #   poi.block.size,
+  #   max.iter,
+  #   rel.conv.tolerance,
+  #   abs.conv.tolerance,
+  #   max.openmp.threads,
+  #   pheno.file,
+  #   pheno.rowname.cols,
+  #   pheno.file.delim,
+  #   covar.file,
+  #   covar.rowname.cols,
+  #   covar.file.delim,
+  #   POI.file.dir,
+  #   POI.file.delim,
+  #   POI.file.format,
+  #   POI.type,
+  #   POI.effect.type,
+  #   covariates,
+  #   covariate.type,
+  #   covariate.standardize,
+  #   covariate.levels,
+  #   covariate.ref.level,
+  #   POI.covar.interactions,
+  #   split.by,
+  #   output.dir,
+  #   compress.results,
+  #   max.workers
+  # )
 }
 
 #' TextToH5 a function to convert textual data to hdf5 format supported by FastReg()
@@ -240,21 +240,21 @@ TextToH5 <- function(
     return(FALSE)
   }
   server.mem <- as.double(server.mem)
-  FastRegImportCpp(
-    data.file,
-    h5.dir,
-    header.row,
-    id.col,
-    data.col,
-    buff.size,
-    transpose,
-    chunk.edge,
-    vcf,
-    delimiter,
-    gz,
-    poi.per.file,
-    single.file,
-    server.threads,
-    server.mem
-  )
+  # FastRegImportCpp(
+  #   data.file,
+  #   h5.dir,
+  #   header.row,
+  #   id.col,
+  #   data.col,
+  #   buff.size,
+  #   transpose,
+  #   chunk.edge,
+  #   vcf,
+  #   delimiter,
+  #   gz,
+  #   poi.per.file,
+  #   single.file,
+  #   server.threads,
+  #   server.mem
+  # )
 }
