@@ -189,7 +189,7 @@ void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
     ll2 = arma::accu((log(1.0 - p2_arma) + pheno.col(0) % eta2_arma) %
                      result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
-    lrs_pval = chisq(lrs, n_parms2 - result.num_parms);
+    lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
 
     // calc and set betas
     temp_se = arma::colvec(diag.data(), diag.size(), true, false);
@@ -382,7 +382,7 @@ void run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
     ll2 = arma::accu((log(1.0 - p2_arma) + pheno.col(0) % eta2_arma) %
                      result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
-    lrs_pval = chisq(lrs, n_parms2 - result.num_parms);
+    lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
     // calc and set betas
     temp_se = arma::colvec(diag.data(), diag.size(), true, false);
     arma::colvec temp_b = arma::colvec(beta.data(), beta.size(), true, false);
@@ -403,7 +403,8 @@ void run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
 
 void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
                                  arma::mat &poi_data, VLAResult &result,
-                                 int max_iter, bool is_t_dist) {
+                                 int max_iter, bool is_t_dist,
+                                 double maf_thresh) {
   arma::colvec poi_col;
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
@@ -411,12 +412,19 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
 #pragma omp parallel for
   for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
        poi_col_idx++) {
+    arma::colvec w2_col = result.W2.col(poi_col_idx);
+    double w = arma::accu(w2_col);
     poi_col = poi_data.col(poi_col_idx);
-    bool has_3_unique = ((arma::colvec)arma::unique(poi_col)).size() == 3;
-    if (has_3_unique) {
-      poi_3_idx.push_back(poi_col_idx);
-    } else {
-      poi_2_idx.push_back(poi_col_idx);
+    double maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
+    maf = std::min(maf, 1.0 - maf);
+    result.lls.at(poi_col_idx, 6) = maf;
+    if (maf > maf_thresh) {
+      bool has_3_unique = ((arma::colvec) arma::unique(poi_col)).size() == 3;
+      if (has_3_unique) {
+        poi_3_idx.push_back(poi_col_idx);
+      } else {
+        poi_2_idx.push_back(poi_col_idx);
+      }
     }
   }
 

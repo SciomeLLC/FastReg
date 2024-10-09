@@ -26,8 +26,23 @@ VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
   beta_rel_errs2 = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
   beta_abs_errs2 = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
 
+  beta_est.fill(arma::datum::nan);
+  beta_est2.fill(arma::datum::nan);
+  se_beta.fill(arma::datum::nan);
+  se_beta2.fill(arma::datum::nan);
+  beta_est2_sqrd.fill(arma::datum::nan);
+  se_beta2_sqrd.fill(arma::datum::nan);
+  neglog10_pvl2.fill(arma::datum::nan);
+  neglog10_pvl2_sqrd.fill(arma::datum::nan);
+  beta_rel_errs.fill(arma::datum::nan);
+  beta_rel_errs2.fill(arma::datum::nan);
+  beta_abs_errs.fill(arma::datum::nan);
+  beta_abs_errs2.fill(arma::datum::nan);
+
   iters = arma::mat(poi_matrix.n_cols, 2, arma::fill::zeros);
-  lls = arma::mat(poi_matrix.n_cols, 6, arma::fill::zeros);
+  lls = arma::mat(poi_matrix.n_cols, 7, arma::fill::zeros);
+  iters.fill(arma::datum::nan);
+  lls.fill(arma::datum::nan);
   W2 = arma::mat(poi_matrix.n_rows, poi_matrix.n_cols, arma::fill::ones);
 
   cov_no_int_names.resize(num_parms);
@@ -89,10 +104,10 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
   int n_parms2 = beta_est2.n_rows;
 
   // create dir if it doesn't exist
-  fs::create_directory(dir);
+  fs::create_directory(dir + "/" + pheno_name);
 
   std::stringstream ss;
-  ss << dir << "/" << file_name << "_" << pheno_name << ".tsv";
+  ss << dir << "/" << pheno_name << "/" << file_name << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
 
@@ -160,7 +175,8 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
 
     buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
            << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t" << lrs_pval
-           << "\t" << num_G << "\t" << rank << std::endl;
+           << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6)
+           << std::endl;
   }
   outfile << buffer.str();
   outfile.close();

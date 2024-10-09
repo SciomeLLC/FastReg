@@ -20,7 +20,7 @@ public:
   virtual ~RegressionBase() {}
 
   virtual void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-                       VLAResult &result, int max_iter, bool is_t_dist) = 0;
+                       VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh) = 0;
 };
 
 class LogisticRegression : public RegressionBase {
@@ -29,7 +29,7 @@ public:
   LogisticRegression() {}
   ~LogisticRegression() {}
   void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist);
+               VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh);
 
 };
 
@@ -39,7 +39,7 @@ public:
 
   ~LinearRegression() {}
   void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist) {
+               VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh) {
     return;
   }
 };
