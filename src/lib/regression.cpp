@@ -5,9 +5,7 @@
 
 #include <RcppEigen.h>
 
-static void chkIntFn(void *dummy) {
-  R_CheckUserInterrupt();
-}
+static void chkIntFn(void *dummy) { R_CheckUserInterrupt(); }
 
 void checkInterrupt() {
   if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
@@ -43,7 +41,7 @@ void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
                Eigen::MatrixXd &tphenoD) {
   arma::colvec (*dist_func_r)(arma::colvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
-  float ll1, ll2, lrs, lrs_pval;
+  double ll1, ll2, lrs, lrs_pval;
   int df, df2, lrs_df;
   int poi_col_size = ((arma::colvec)poi_data.col(0)).size();
   arma::colvec temp_se(poi_col_size, arma::fill::zeros);
@@ -55,7 +53,7 @@ void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
       Eigen::Map<Eigen::MatrixXd>(cov.memptr(), cov.n_rows, cov.n_cols);
   Eigen::MatrixXd int_w_mat, int_w_mat2;
   arma::uword n_parms2 = result.cov_int_names.size();
-// #pragma omp parallel for
+  // #pragma omp parallel for
   for (int poi_col_idx : poi_2_idx) {
     checkInterrupt();
     Eigen::MatrixXd A =
@@ -180,6 +178,8 @@ void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
     arma::colvec eta2_arma =
         arma::colvec(eta2.data(), eta2.size(), true, false);
 
+    p_arma.elem(arma::find_nonfinite(p_arma)).zeros();
+    p_arma.elem(arma::find(p_arma >= 1.0)).fill(1.0 - 1e-4);
     ll1 = arma::accu((log(1.0 - p_arma) + pheno.col(0) % eta_arma) %
                      result.W2.col(poi_col_idx));
 
@@ -371,8 +371,11 @@ void run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
     arma::colvec eta2_arma =
         arma::colvec(eta2.data(), eta2.size(), true, false);
 
+    p_arma.elem(arma::find_nonfinite(p_arma)).zeros();
+    p_arma.elem(arma::find(p_arma >= 1.0)).fill(1.0 - 1e-4);
     ll1 = arma::accu((log(1.0 - p_arma) + pheno.col(0) % eta_arma) %
                      result.W2.col(poi_col_idx));
+
     p2_arma.elem(arma::find_nonfinite(p2_arma)).zeros();
     p2_arma.elem(arma::find(p2_arma >= 1.0)).fill(1.0 - 1e-4);
     eta2_arma.elem(arma::find_nonfinite(eta2_arma)).zeros();

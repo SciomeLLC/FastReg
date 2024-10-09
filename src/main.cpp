@@ -90,7 +90,7 @@ arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   return out;
 }
 // [[Rcpp::export]]
-int FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
+void FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
                          const arma::ivec &v_index, const arma::ivec &i_index,
                          const arma::mat &X, const int &chunk_size,
                          const std::string &dir,
@@ -104,12 +104,30 @@ int FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
   if (total_variants % chunk_size != 0) {
     num_chunks += 1;
   }
-
+  arma::ivec _index = i_index;
   arma::mat pheno = Y.col(0);
   arma::mat cov = X;
-  arma::mat no_interactions = arma::mat(X.n_rows, 1, arma::fill::ones);
-  arma::mat interactions = arma::join_rows(no_interactions, X);
-  arma::mat interactions_sqrd = arma::join_rows(no_interactions, X);
+  // get boolean inclusion vectors
+  arma::mat xy_bools(Y.n_rows, Y.n_cols);
+  uvec badX = find_nan(arma::sum(X, 1.0));
+  // put in each column booleans
+  for (uword i = 0; i < Y.n_cols; i++) {
+    // get X NANs for removal
+    arma::vec x_bools(Y.n_rows, fill::ones);
+    x_bools.elem(badX).fill(0.0);
+    // add Y NANs for removal
+    arma::uvec badY = find_nan(Y.col(i));
+    x_bools.elem(badY).fill(0.0);
+    xy_bools.col(i) = x_bools;
+  }
+  arma::uvec nan_idx = arma::find(xy_bools.col(0) == 0.0);
+
+  _index.shed_rows(nan_idx);
+  pheno.shed_rows(nan_idx);
+  cov.shed_rows(nan_idx);
+  arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
+  arma::mat interactions = arma::join_rows(no_interactions, cov);
+  arma::mat interactions_sqrd = arma::join_rows(no_interactions, cov);
 
 #if !defined(__APPLE__) && !defined(__MACH__)
   omp_set_num_threads(1);
@@ -119,18 +137,19 @@ int FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
   for (int chunk = 0; chunk < num_chunks; ++chunk) {
     int start_idx = chunk * chunk_size;
     int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
-    
+
     arma::ivec current_variant_indices = v_index.subvec(start_idx, end_idx);
 
     // Extract corresponding variant names
     std::vector<std::string> variant_names_chunk(vnames.begin() + start_idx,
                                                  vnames.begin() + end_idx + 1);
-    arma::mat G = scanBEDMatrix(Gptr, i_index, current_variant_indices);
+    arma::mat G = scanBEDMatrix(Gptr, _index, current_variant_indices);
     Rcpp::Rcout << "G size: " << G.n_rows << "x" << G.n_cols << std::endl;
     VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd);
     // res.interactions->print();
     LogisticRegression regression;
     regression.run_vla(cov, pheno, G, res, 6, true);
-    res.write_to_file(dir, suffix + "_" + std::to_string(chunk), cnames[0], vnames);
+    res.write_to_file(dir, suffix + "_" + std::to_string(chunk), cnames[0],
+                      vnames);
   }
 }

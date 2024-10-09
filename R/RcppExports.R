@@ -14,6 +14,6 @@ scanBEDMatrix <- function(xptr, i, j) {
 }
 
 FastVLA_chunked_sota <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005) {
-    .Call(`_FastReg_FastVLA_chunked_sota`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh)
+    invisible(.Call(`_FastReg_FastVLA_chunked_sota`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh))
 }
 
