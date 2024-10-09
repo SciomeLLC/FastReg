@@ -409,7 +409,7 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
 
-#pragma omp parallel for
+// #pragma omp parallel for
   for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
        poi_col_idx++) {
     arma::colvec w2_col = result.W2.col(poi_col_idx);

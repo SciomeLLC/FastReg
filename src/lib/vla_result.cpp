@@ -104,6 +104,7 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
   int n_parms2 = beta_est2.n_rows;
 
   // create dir if it doesn't exist
+  fs::create_directory(dir);
   fs::create_directory(dir + "/" + pheno_name);
 
   std::stringstream ss;

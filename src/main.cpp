@@ -124,6 +124,7 @@ void FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
 #endif
   // cnames = prefix per pheno - make into folder for each pheno
   // vnames = 1 vname per poi - aka rownames
+
   for (int i = 0; i < Y.n_cols; i++) {
     arma::mat cov = X;
     arma::ivec _index = i_index;
@@ -150,8 +151,7 @@ void FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
 
       LogisticRegression regression;
       regression.run_vla(cov, pheno, G, res, 6, true, mafthresh);
-      res.write_to_file(dir, suffix + "_" + std::to_string(chunk), cnames[i],
-                        vnames);
+      res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
     }
   }
 }
