@@ -1,33 +1,19 @@
-RHDF5_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
-    'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
-RHDF5_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
-    'cat(system.file(package="Rhdf5lib","include"))')
+RCPP_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
+    'cat(system.file(package="Rcpp","include"))')
 ARMA_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
     'cat(system.file(package="RcppArmadillo","include"))')
-# FLOAT_CXXFLAGS=-I$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
-#     'float:::cppflags()')
-FLOAT_LIBS=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript" -e \
-    'float:::ldflags(static=TRUE)')
 
 UNAME=$(shell uname -s)
 ifeq ($(UNAME),Darwin)
-    PKG_CXXFLAGS=-I/opt/homebrew/include -I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DEIGEN_PERMANENTLY_DISABLE_STUPID_WARNINGS
-    PKG_LIBS=-L/opt/homebrew/lib $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS)  $(FLIBS) $(RHDF5_LIBS)  $(FLOAT_LIBS) -lz -lgfortran -lquadmath -lstdc++
+    PKG_CXXFLAGS=-I/opt/homebrew/include -I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DEIGEN_PERMANENTLY_DISABLE_STUPID_WARNINGS
+    PKG_LIBS=-L/opt/homebrew/lib $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS)  $(FLIBS) -lz -lgfortran -lquadmath -lstdc++
 else
     SHLIB_OPENMP_CXXFLAGS=-fopenmp
-    PKG_CXXFLAGS=-I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) $(RHDF5_CXXFLAGS)  -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0 -O3 -march=native -mfma -DEIGEN_PERMANENTLY_DISABLE_STUPID_WARNINGS
-    PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS)  $(FLIBS) $(RHDF5_LIBS) $(FLOAT_LIBS) -lstdc++fs -lz -lgfortran -lquadmath -lstdc++
+    PKG_CXXFLAGS=-I./lib  -I./include $(RCPP_CXXFLAGS) $(ARMA_CXXFLAGS) $(SHLIB_OPENMP_CXXFLAGS) -DARMA_USE_HDF5 -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0 -O3 -march=native -mfma -DEIGEN_PERMANENTLY_DISABLE_STUPID_WARNINGS
+    PKG_LIBS=$(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS)  $(FLIBS) -lstdc++fs -lz -lgfortran -lquadmath -lstdc++
 endif
 
 MAIN         = $(wildcard *.cpp) $(wildcard lib/*.cpp)
-# MAIN_CODE    = $(wildcard lib/*.cpp)
 OBJECTS      = $(MAIN:.cpp=.o)
 
-# Include all C++ files in src/ and its subdirectories
-# SOURCES=@SRC_SOURCES@ 
-
-# Obtain the object files
-# OBJECTS=$(SOURCES:.cpp=.o) 
-
-# Make the shared object
 all: $(SHLIB)

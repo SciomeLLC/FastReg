@@ -59,15 +59,6 @@ double recode_genotype2(int genotype) {
   return coding;
 }
 
-//' Function to subset a BEDMatrix pointer and return an Integer Matrix
-//' @param xptr denotes the slot(BEDMatrix, "xptr") from R
-//' @param i denotes the row indices
-//' @param j denotes the column indices
-//' @return arma::fmat of variant calls
-//' @export
-//' @useDynLib FastVLA
-//' @importFrom Rcpp sourceCpp
-// [[Rcpp::export]]
 arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   struct BEDMatrix *state =
       static_cast<struct BEDMatrix *>(R_ExternalPtrAddr(xptr));
@@ -90,7 +81,7 @@ arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   return out;
 }
 // [[Rcpp::export]]
-void FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
+void FastVLA_logistic(const arma::mat &Y, SEXP Gptr,
                           const arma::ivec &v_index, const arma::ivec &i_index,
                           const arma::mat &X, const int &chunk_size,
                           const std::string &dir,

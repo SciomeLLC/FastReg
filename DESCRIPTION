@@ -8,20 +8,7 @@ Authors@R:
     person(given = "Shail",
            family = "Choksi",
            role = c("aut", "cre"),
-           email = "shail.choksi@sciome.com"),
-    person(given = "Matt",
-           family = "Wheeler",
-           role = "aut"),
-    person(given = "Deepak",
-           family = "Mav",
-           role = "aut",
-           email = "deepak.mav@sciome.com"),
-    person(given = "John",
-           family = "House",
-            role="ctb"),
-    person(given = "Adam",
-           family = "Burkholder",
-           role = "ctb")
+           email = "shail.choksi@sciome.com")
     )
 Maintainer: Deepak Mav<software.support@sciome.com>
 License: GPL (>= 2)
@@ -30,16 +17,12 @@ Depends: R (>= 4.0)
 URL: https://github.com/SciomeLLC/FastReg
 BugReports: https://github.com/SciomeLLC/FastReg/issues
 biocViews: Software
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, float
-LinkingTo: Rcpp, RcppArmadillo, float, RcppEigen, BEDMatrix
+Imports: Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen, BEDMatrix
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 NeedsCompilation: yes
 VignetteBuilder: knitr
 RoxygenNote: 7.3.2
 Packaged: 2024-04-15 09:09:01 UTC; shail.choksi
-Author: Shail Choksi [aut, cre],
-  Matt Wheeler [aut],
-  Deepak Mav [aut],
-  John House [ctb],
-  Adam Burkholder [ctb]
+Author: Shail Choksi [aut, cre]
