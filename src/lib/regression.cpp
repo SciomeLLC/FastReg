@@ -13,7 +13,7 @@ template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
 arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * log10(R::pt(abs_z(i), df, false, false));
+    ret_val(i) = -1 * (log(2) + R::pt(abs_z(i), df, false, true))/log(10);
   }
   return ret_val;
 }
@@ -25,7 +25,7 @@ float chisq(float lrs, int df) {
 arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * R::pnorm(abs_z(i), 1.0, 1.0, false, false);
+    ret_val(i) = -1 * (log(2) +R::pnorm(abs_z(i), 0.0, 1.0, false, true))/log(10);
   }
   return ret_val;
 }
@@ -269,7 +269,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     beta_abs_errs.at(poi_col) = abs_errs;       // convergence abs err
     beta_rel_errs.at(poi_col) = rel_errs;       // convergence rel err
     iters.at(poi_col) = iter;                   // num iterations
-    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se);
+    arma::fcolvec neg_abs_z = arma::abs(pdelta * beta / temp_se);
     neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
   }
 }
