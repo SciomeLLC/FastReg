@@ -409,22 +409,36 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
 
+  double w, maf, one_counter;
+  bool ones, twos, temp;
+
 // #pragma omp parallel for
   for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
        poi_col_idx++) {
     arma::colvec w2_col = result.W2.col(poi_col_idx);
-    double w = arma::accu(w2_col);
+    w = arma::accu(w2_col);
     poi_col = poi_data.col(poi_col_idx);
-    double maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
-    maf = std::min(maf, 1.0 - maf);
+    maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
+    //Changed 10/10 to CAF from MAF
+    //maf = std::min(maf, 1.0 - maf);
     result.lls.at(poi_col_idx, 6) = maf;
-    if (maf > maf_thresh) {
-      bool has_3_unique = ((arma::colvec) arma::unique(poi_col)).size() == 3;
-      if (has_3_unique) {
+    if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh))) {
+      //bool has_3_unique = ((arma::colvec) arma::unique(poi_col)).size() == 3;
+      ones = false;
+      twos = false;
+      one_counter = 0.0;
+      for(const auto &value:poi_col){
+        temp = (value == 1.0);
+        ones = ones | temp;
+        one_counter += 1.0*(temp);
+        twos = twos | (value == 2.0);
+      }
+      if (ones & twos) {
         poi_3_idx.push_back(poi_col_idx);
       } else {
         poi_2_idx.push_back(poi_col_idx);
       }
+      result.lls.at(poi_col_idx, 7) = one_counter;
     }
   }
 

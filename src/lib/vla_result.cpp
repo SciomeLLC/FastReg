@@ -40,7 +40,7 @@ VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
   beta_abs_errs2.fill(arma::datum::nan);
 
   iters = arma::mat(poi_matrix.n_cols, 2, arma::fill::zeros);
-  lls = arma::mat(poi_matrix.n_cols, 7, arma::fill::zeros);
+  lls = arma::mat(poi_matrix.n_cols, 8, arma::fill::zeros);
   iters.fill(arma::datum::nan);
   lls.fill(arma::datum::nan);
   W2 = arma::mat(poi_matrix.n_rows, poi_matrix.n_cols, arma::fill::ones);
@@ -177,6 +177,7 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
     buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
            << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t" << lrs_pval
            << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6)
+           << "\t" << lls.at(col, 7)
            << std::endl;
   }
   outfile << buffer.str();
