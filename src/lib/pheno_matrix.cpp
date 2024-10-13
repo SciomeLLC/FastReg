@@ -54,14 +54,3 @@ FRMatrix PhenoMatrix::create_matrix() {
 
   return mat;
 }
-
-FRMatrix PhenoMatrix::get_squared() {
-  FRMatrix sqrd = mat;
-  sqrd.col_names[phenotype + "^2"] = 1;
-  sqrd.col_names_arr.push_back(phenotype + "^2");
-  sqrd.col_name_str_arr.push_back(phenotype + "^2");
-  arma::fcolvec sqr = arma::square(mat.data.col(0));
-  sqrd.data.insert_cols(1, sqr);
-
-  return sqrd;
-}
