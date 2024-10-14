@@ -460,10 +460,10 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     int name_length = 2 * strlen(par->h5file_base) + 100;
     name = (char *)malloc(name_length);
     if (par->h5file_base[strlen(par->h5file_base) - 1] == '/') {
-      snprintf(name, name_length, "%s%s.%03d.h5", par->h5file_base,
+      snprintf(name, name_length, "%s.%03d.h5",
                par->h5file_base, (int)i);
     } else {
-      snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
+      snprintf(name, name_length, "%s.%03d.h5",
                par->h5file_base, (int)i);
     }
     Rcpp::Rcout << "Creating file: " << name << std::endl;
