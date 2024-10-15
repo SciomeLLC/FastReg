@@ -80,6 +80,31 @@ arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   }
   return out;
 }
+
+/// @brief Standardize (center/scale) X and remove features with low explainability; it is essentially PCA dimension reduction
+/// @param x Matrix with zero'ed out columns for X/Y missing
+/// @param dev_to_acc Amount of explained variance (summed Eigenvalues) to keep
+/// @param N Number of non-zero rows (number of obs)
+/// @return A clean X matrix for further calculations
+arma::mat standardize_and_derank(arma::mat x,double dev_to_acc = 0.95, double N = 1.0){
+  //scale (subtract mean and divide by SD) in place
+  x.each_col([&N](arma::vec &y){
+    y -= (arma::accu(y)/N);
+    y /= sqrt(arma::accu(arma::square(y))/(N-1));
+    });
+  //get principal components
+  arma::mat coeff;
+  arma::mat score;
+  arma::vec latent;
+  arma::princomp(coeff, score, latent, x);
+  //coeff = rotation in R, latent is the eigenvalues (sdev^2)
+  // arma::uvec indices = sort_index(-1.0 * latent);
+  // arma::vec sorted = sort(latent);
+  arma::uvec ans = arma::find(cumsum(latent)/accu(latent) > dev_to_acc);
+  return x * coeff.cols(0,ans[0]);
+}
+
+
 // [[Rcpp::export]]
 void FastVLA_logistic(const arma::mat &Y, SEXP Gptr,
                           const arma::ivec &v_index, const arma::ivec &i_index,
@@ -88,7 +113,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr,
                           const std::vector<std::string> cnames,
                           const std::vector<std::string> vnames,
                           const std::string suffix, const double epss = 1e-6,
-                          const double &mafthresh = 0.005) {
+                          const double &mafthresh = 0.005,
+                          const double &pca_var_explained = 0.95) {
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -124,6 +150,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr,
     _index.shed_rows(nan_idx);
     pheno.shed_rows(nan_idx);
     cov.shed_rows(nan_idx);
+
+    cov = standardize_and_derank(cov, pca_var_explained, double(cov.n_rows));
 
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
