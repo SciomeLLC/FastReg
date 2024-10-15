@@ -1,6 +1,6 @@
-Package: FastReg
+Package: FastVLA
 Type: Package
-Title: Fast Regression
+Title: Fast VLA
 Description: This package efficiently performs large scale linear and logistic regression analysis. 
 Version: 1.0.7
 Authors@R: 
@@ -14,9 +14,6 @@ Maintainer: Deepak Mav<software.support@sciome.com>
 License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.0)
-URL: https://github.com/SciomeLLC/FastReg
-BugReports: https://github.com/SciomeLLC/FastReg/issues
-biocViews: Software
 Imports: Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen, BEDMatrix
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown

@@ -1,30 +1,30 @@
 #include <vla_result.h>
 
-VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
-                     arma::mat &no_interactions, arma::mat &interactions,
-                     arma::mat &interactions_sqrd) {
+VLAResultf::VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
+                       arma::fmat &no_interactions, arma::fmat &interactions,
+                       arma::fmat &interactions_sqrd) {
   num_parms = no_interactions.n_cols + covar_matrix.n_cols;
   num_parms2 = interactions.n_cols + covar_matrix.n_cols;
   num_parms2_sqrd = 2 * interactions.n_cols + covar_matrix.n_cols;
 
-  beta_est = arma::mat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
-  se_beta = arma::mat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
-  neglog10_pvl = arma::mat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
+  beta_est = arma::fmat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
+  se_beta = arma::fmat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
+  neglog10_pvl = arma::fmat(num_parms, poi_matrix.n_cols, arma::fill::zeros);
 
-  beta_est2 = arma::mat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
-  se_beta2 = arma::mat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
+  beta_est2 = arma::fmat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
+  se_beta2 = arma::fmat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
   beta_est2_sqrd =
-      arma::mat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
+      arma::fmat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
   se_beta2_sqrd =
-      arma::mat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
-  neglog10_pvl2 = arma::mat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
+      arma::fmat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
+  neglog10_pvl2 = arma::fmat(num_parms2, poi_matrix.n_cols, arma::fill::zeros);
   neglog10_pvl2_sqrd =
-      arma::mat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
+      arma::fmat(num_parms2_sqrd, poi_matrix.n_cols, arma::fill::zeros);
 
-  beta_rel_errs = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
-  beta_abs_errs = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
-  beta_rel_errs2 = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
-  beta_abs_errs2 = arma::colvec(poi_matrix.n_cols, arma::fill::zeros);
+  beta_rel_errs = arma::fcolvec(poi_matrix.n_cols, arma::fill::zeros);
+  beta_abs_errs = arma::fcolvec(poi_matrix.n_cols, arma::fill::zeros);
+  beta_rel_errs2 = arma::fcolvec(poi_matrix.n_cols, arma::fill::zeros);
+  beta_abs_errs2 = arma::fcolvec(poi_matrix.n_cols, arma::fill::zeros);
 
   beta_est.fill(arma::datum::nan);
   beta_est2.fill(arma::datum::nan);
@@ -39,11 +39,11 @@ VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
   beta_abs_errs.fill(arma::datum::nan);
   beta_abs_errs2.fill(arma::datum::nan);
 
-  iters = arma::mat(poi_matrix.n_cols, 2, arma::fill::zeros);
-  lls = arma::mat(poi_matrix.n_cols, 8, arma::fill::zeros);
+  iters = arma::fmat(poi_matrix.n_cols, 2, arma::fill::zeros);
+  lls = arma::fmat(poi_matrix.n_cols, 8, arma::fill::zeros);
   iters.fill(arma::datum::nan);
   lls.fill(arma::datum::nan);
-  W2 = arma::mat(poi_matrix.n_rows, poi_matrix.n_cols, arma::fill::ones);
+  W2 = arma::fmat(poi_matrix.n_rows, poi_matrix.n_cols, arma::fill::ones);
 
   cov_no_int_names.resize(num_parms);
   cov_int_names.resize(num_parms2);
@@ -66,8 +66,8 @@ VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
   this->interactions_sqrd = &interactions_sqrd;
 }
 
-void VLAResult::set_lls(double ll1, double ll2, double lrs, double lrs_pval,
-                        int num_g, int idx, int rank) {
+void VLAResultf::set_lls(float ll1, float ll2, float lrs, float lrs_pval,
+                         int num_g, int idx, int rank) {
   lls.at(idx, 0) = ll1;
   lls.at(idx, 1) = ll2;
   lls.at(idx, 2) = lrs;
@@ -76,30 +76,30 @@ void VLAResult::set_lls(double ll1, double ll2, double lrs, double lrs_pval,
   lls.at(idx, 5) = rank;
 }
 
-void VLAResult::set_betas_fit1(arma::colvec &beta, arma::colvec &se,
-                               arma::colvec &pval, int idx) {
+void VLAResultf::set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se,
+                                arma::fcolvec &pval, int idx) {
   beta_est.col(idx) = beta;
   se_beta.col(idx) = se;
   neglog10_pvl.col(idx) = pval;
 }
 
-void VLAResult::set_betas_fit2(arma::colvec &beta, arma::colvec &se,
-                               arma::colvec &pval, int idx) {
+void VLAResultf::set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
+                                arma::fcolvec &pval, int idx) {
   beta_est2.col(idx) = beta;
   se_beta2.col(idx) = se;
   neglog10_pvl2.col(idx) = pval;
 }
 
-void VLAResult::set_betas_fit2_sqrd(arma::colvec &beta, arma::colvec &se,
-                                    arma::colvec &pval, int idx) {
+void VLAResultf::set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
+                                     arma::fcolvec &pval, int idx) {
   beta_est2_sqrd.col(idx) = beta;
   se_beta2_sqrd.col(idx) = se;
   neglog10_pvl2_sqrd.col(idx) = pval;
 }
 
-void VLAResult::write_to_file(std::string dir, std::string file_name,
-                              std::string pheno_name,
-                              std::vector<std::string> row_names) {
+void VLAResultf::write_to_file(std::string dir, std::string file_name,
+                               std::string pheno_name,
+                               std::vector<std::string> row_names) {
   int n_parms = beta_est.n_rows;
   int n_parms2 = beta_est2.n_rows;
 
@@ -130,18 +130,18 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
   std::stringstream buffer;
   for (int col = 0; col < (int)beta_est.n_cols; col++) {
     std::string poi_name = row_names[col];
-    double abs_err_val = beta_abs_errs.at(col);
-    double rel_err_val = beta_rel_errs.at(col);
-    double iter1 = iters.at(col, 0);
-    double iter2 = iters.at(col, 1);
-    double abs_err_val2 = beta_abs_errs2.at(col);
-    double rel_err_val2 = beta_rel_errs2.at(col);
-    double ll1 = lls.at(col, 0);
-    double ll2 = lls.at(col, 1);
-    double lrs = lls.at(col, 2);
-    double lrs_pval = lls.at(col, 3);
-    double num_G = lls.at(col, 4);
-    double rank = lls.at(col, 5);
+    float abs_err_val = beta_abs_errs.at(col);
+    float rel_err_val = beta_rel_errs.at(col);
+    float iter1 = iters.at(col, 0);
+    float iter2 = iters.at(col, 1);
+    float abs_err_val2 = beta_abs_errs2.at(col);
+    float rel_err_val2 = beta_rel_errs2.at(col);
+    float ll1 = lls.at(col, 0);
+    float ll2 = lls.at(col, 1);
+    float lrs = lls.at(col, 2);
+    float lrs_pval = lls.at(col, 3);
+    float num_G = lls.at(col, 4);
+    float rank = lls.at(col, 5);
 
     int N = arma::as_scalar(arma::sum(W2.col(col), 0));
     int df = N - n_parms;
@@ -176,10 +176,10 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
 
     buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
            << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t" << lrs_pval
-           << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6)
-           << "\t" << lls.at(col, 7)
-           << std::endl;
+           << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6) << "\t"
+           << lls.at(col, 7) << std::endl;
   }
   outfile << buffer.str();
   outfile.close();
 }
+

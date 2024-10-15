@@ -1,4 +1,4 @@
-useDynLib(FastReg, .registration=TRUE)
+useDynLib(FastVLA, .registration=TRUE)
 exportPattern("^[[:alpha:]]+")
 import(Rcpp)
 import(RcppArmadillo)

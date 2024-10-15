@@ -70,7 +70,61 @@ public:
   void set_betas_fit2_sqrd(arma::colvec &beta, arma::colvec &se,
                            arma::colvec &pval, int idx);
   void write_to_file(std::string dir, std::string file_name, std::string pheno_name, std::vector<std::string> row_names);
-  static void concatenate(std::string output_dir, std::string file_name_prefix,
-                          std::string file_concatenation_prefix);
+};  
+
+class VLAResultf {
+public:
+  arma::fmat beta_est;
+  arma::fmat beta_est2;
+  arma::fmat beta_est2_sqrd;
+  arma::fmat se_beta;
+  arma::fmat se_beta2;
+  arma::fmat se_beta2_sqrd;
+  arma::fmat neglog10_pvl;
+  arma::fmat neglog10_pvl2;
+  arma::fmat neglog10_pvl2_sqrd;
+  arma::fmat *interactions = NULL;
+  arma::fmat *no_interactions = NULL;
+  arma::fmat *interactions_sqrd = NULL;
+
+  arma::fcolvec beta_rel_errs;
+  arma::fcolvec beta_abs_errs;
+  arma::fcolvec beta_rel_errs2;
+  arma::fcolvec beta_abs_errs2;
+
+  arma::fmat iters;
+  arma::fmat lls;
+  arma::fmat poi_sqrd_mat;
+  arma::fmat W2;
+
+  std::vector<std::string> srt_cols;
+  std::vector<std::string> srt_rows;
+  std::vector<std::string> srt_rows2;
+
+  std::vector<std::string> cov_int_names;
+  std::vector<std::string> cov_int_names_sqrd;
+  std::vector<std::string> cov_no_int_names;
+
+  std::unordered_map<std::string, int> row_names;
+  std::unordered_map<std::string, int> row_names2;
+  std::unordered_map<std::string, int> col_names;
+  std::unordered_map<std::string, int> col_names2;
+
+  int num_parms, num_parms2, num_parms2_sqrd;
+
+  VLAResultf(){};
+  VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
+            arma::fmat &no_interactions, arma::fmat &interactions,
+            arma::fmat &interactions_sqrd);
+  // VLAResult
+  void set_lls(float ll1, float ll2, float lrs, float lrs_pval, int num_g,
+               int idx, int rank);
+  void set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se, arma::fcolvec &pval,
+                      int idx);
+  void set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se, arma::fcolvec &pval,
+                      int idx);
+  void set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
+                           arma::fcolvec &pval, int idx);
+  void write_to_file(std::string dir, std::string file_name, std::string pheno_name, std::vector<std::string> row_names);
 };
 #endif // VLARESULT_H

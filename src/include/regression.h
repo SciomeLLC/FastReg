@@ -11,36 +11,41 @@
 #define R_NO_REMAP
 #include <RcppEigen.h>
 #include <Rmath.h>
+#include <utils.h>
 #include <vla_result.h>
 
 using namespace arma;
-
-class RegressionBase {
-public:
-  virtual ~RegressionBase() {}
-
-  virtual void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-                       VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh) = 0;
-};
-
-class LogisticRegression : public RegressionBase {
+class LogisticRegression {
 
 public:
   LogisticRegression() {}
   ~LogisticRegression() {}
   void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh);
-
-};
-
-class LinearRegression : public RegressionBase {
-public:
-  LinearRegression() {}
-
-  ~LinearRegression() {}
-  void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist, double maf_thresh) {
-    return;
+               VLAResult &result, int max_iter, bool is_t_dist,
+               double maf_thresh);
+  void run_vla(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
+               VLAResultf &result, int max_iter, bool is_t_dist,
+               double maf_thresh);
+  void run_vla_2(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
+                 VLAResultf &result, int max_iter, bool is_t_dist,
+                 std::vector<int> &poi_2_idx, Eigen::MatrixXf &W2f,
+                 Eigen::MatrixXf &tphenoD);
+  void run_vla_3(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
+                 VLAResultf &result, int max_iter, bool is_t_dist,
+                 std::vector<int> &poi_3_idx, Eigen::MatrixXf &W2f,
+                 Eigen::MatrixXf &tphenoD);
+  void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
+                 VLAResult &result, int max_iter, bool is_t_dist,
+                 std::vector<int> &poi_2_idx, Eigen::MatrixXd &W2f,
+                 Eigen::MatrixXd &tphenoD);
+  void run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
+                 VLAResult &result, int max_iter, bool is_t_dist,
+                 std::vector<int> &poi_3_idx, Eigen::MatrixXd &W2f,
+                 Eigen::MatrixXd &tphenoD);
+  void checkInterrupt() {
+    if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
+      Rcpp::stop("Received user interrupt. Stopping FastReg...");
+    }
   }
 };
 #endif // REGRESSION_H
