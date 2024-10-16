@@ -403,7 +403,7 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
   double w, maf, one_counter;
   bool ones, twos, temp;
 
-  // #pragma omp parallel for
+//   #pragma omp parallel for
   for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
        poi_col_idx++) {
     arma::colvec w2_col = result.W2.col(poi_col_idx);
@@ -415,6 +415,7 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
     result.lls.at(poi_col_idx, 6) = maf;
     if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh))) {
       // bool has_3_unique = ((arma::colvec) arma::unique(poi_col)).size() == 3;
+      
       ones = false;
       twos = false;
       one_counter = 0.0;
