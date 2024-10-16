@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "BEDMatrix.h"
+#include <blas_library_manager.h>
 #include <regression.h>
 #include <vla_result.h>
 
@@ -143,15 +144,16 @@ arma::mat standardize_and_derank(arma::mat x, double dev_to_acc = 0.95,
 }
 
 // [[Rcpp::export]]
-void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr,
-                       const arma::ivec &v_index, const arma::ivec &i_index,
-                       const arma::mat &X, const int &chunk_size,
-                       const std::string &dir,
+void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
+                       const arma::ivec &i_index, const arma::mat &X,
+                       const int &chunk_size, const std::string &dir,
                        const std::vector<std::string> cnames,
                        const std::vector<std::string> vnames,
                        const std::string suffix, const double epss = 1e-6,
                        const double &mafthresh = 0.005,
-                       const double &pca_var_explained = 0.95, const int max_iter = 6) {
+                       const double &pca_var_explained = 0.95,
+                       const int max_iter = 6, const int max_threads = 1,
+                       const int max_blas_threads = 1) {
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -188,7 +190,8 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr,
     pheno.shed_rows(nan_idx);
     cov_d.shed_rows(nan_idx);
 
-    arma::fmat cov = arma::conv_to<arma::fmat>::from(standardize_and_derank(cov_d, pca_var_explained, double(cov_d.n_rows)));
+    arma::fmat cov = arma::conv_to<arma::fmat>::from(
+        standardize_and_derank(cov_d, pca_var_explained, double(cov_d.n_rows)));
 
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
@@ -220,7 +223,9 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const std::vector<std::string> vnames,
                       const std::string suffix, const double epss = 1e-6,
                       const double &mafthresh = 0.005,
-                      const double &pca_var_explained = 0.950, const int max_iter = 6) {
+                      const double &pca_var_explained = 0.950,
+                      const int max_iter = 6, const int max_threads = 1,
+                      const int max_blas_threads = 1) {
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -802,16 +807,15 @@ int FastVLA_cpp_internal(const arma::mat &Y, const arma::mat &G,
 // within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
 //@export
 // [[Rcpp::export]]
-int FastVLA_chunked_sota(const arma::mat &Y, SEXP Gptr,
-                         const arma::ivec &v_index, const arma::ivec &i_index,
-                         const arma::mat &X, const int &chunk_size,
-                         const std::string &dir,
-                         const std::vector<std::string> cnames,
-                         const std::vector<std::string> vnames,
-                         const std::string suffix, const double epss = 1e-6,
-                         const double &mafthresh = 0.005,
-                         const double pca_var_explained = 0.95) {
-  omp_set_num_threads(2);
+int FastVLA_chunked_sota(
+    const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
+    const arma::ivec &i_index, const arma::mat &X, const int &chunk_size,
+    const std::string &dir, const std::vector<std::string> cnames,
+    const std::vector<std::string> vnames, const std::string suffix,
+    const double epss = 1e-6, const double &mafthresh = 0.005,
+    const double pca_var_explained = 0.95, const int max_threads = 2,
+    const int max_blas_threads = 1) {
+  omp_set_num_threads(max_threads);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
   // get boolean inclusion vectors
