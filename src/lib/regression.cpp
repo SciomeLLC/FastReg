@@ -1,8 +1,4 @@
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <chrono>
-#include <iostream>
 #include <regression.h>
-#include <RcppEigen.h>
 
 arma::colvec t_dist_r(arma::colvec abs_z, int df) {
   arma::colvec ret_val(abs_z.size());
@@ -26,10 +22,12 @@ arma::colvec norm_dist_r(arma::colvec abs_z, int df) {
   return ret_val;
 }
 
-void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist,
-               std::vector<int> &poi_2_idx, Eigen::MatrixXd &W2f,
-               Eigen::MatrixXd &tphenoD) {
+void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
+                                   arma::mat &poi_data, VLAResult &result,
+                                   int max_iter, bool is_t_dist,
+                                   std::vector<int> &poi_2_idx,
+                                   Eigen::MatrixXd &W2f,
+                                   Eigen::MatrixXd &tphenoD) {
   arma::colvec (*dist_func_r)(arma::colvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   double ll1, ll2, lrs, lrs_pval;
@@ -202,10 +200,12 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &
   } // #pragma omp parallel for
 };
 
-void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
-               VLAResult &result, int max_iter, bool is_t_dist,
-               std::vector<int> &poi_3_idx, Eigen::MatrixXd &W2f,
-               Eigen::MatrixXd &tphenoD) {
+void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
+                                   arma::mat &poi_data, VLAResult &result,
+                                   int max_iter, bool is_t_dist,
+                                   std::vector<int> &poi_3_idx,
+                                   Eigen::MatrixXd &W2f,
+                                   Eigen::MatrixXd &tphenoD) {
   arma::colvec (*dist_func_r)(arma::colvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   double ll1, ll2, lrs, lrs_pval;
@@ -221,7 +221,7 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &
       Eigen::Map<Eigen::MatrixXd>(cov.memptr(), cov.n_rows, cov.n_cols);
   Eigen::MatrixXd int_w_mat, int_w_mat2, int_w_mat2_sqrd;
   arma::uword n_parms2 = result.cov_int_names_sqrd.size();
-  // #pragma omp parallel for
+  //   #pragma omp parallel for
   for (int poi_col_idx : poi_3_idx) {
     checkInterrupt();
     Eigen::MatrixXd A =

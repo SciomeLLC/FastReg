@@ -90,16 +90,16 @@ void BLASLibraryManager::set_num_threads(int num_threads) {
   }
   if (blas_type == "OpenBLAS" && openblas_set_num_threads) {
     openblas_set_num_threads(num_threads);
-    // Rcpp::Rcout << "OpenBLAS threads set to " << num_threads << "."
-    //             << std::endl;
+    Rcpp::Rcout << "OpenBLAS threads set to " << num_threads << "."
+                << std::endl;
   } else if (blas_type == "Intel MKL" && mkl_set_num_threads) {
     mkl_set_num_threads(num_threads);
-    // Rcpp::Rcout << "MKL threads set to " << num_threads << "."
-    //             << std::endl;
+    Rcpp::Rcout << "MKL threads set to " << num_threads << "."
+                << std::endl;
   } else if (blas_type == "BLIS" && blis_set_num_threads) {
     blis_set_num_threads(num_threads);
-    // Rcpp::Rcout << "BLIS threads set to" << num_threads << "."
-    //             << std::endl;
+    Rcpp::Rcout << "BLIS threads set to" << num_threads << "."
+                << std::endl;
   } else {
     Rcpp::Rcout << "Cannot set threads: BLAS library is either unknown or does "
                    "not support this operation."

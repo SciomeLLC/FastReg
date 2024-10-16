@@ -51,6 +51,17 @@ namespace fs = std::experimental::filesystem;
 #include <R_ext/Utils.h>
 #include <RcppEigen.h>
 
+void delete_dir(const std::string &path) {
+  fs::path directory(path);
+
+  if (fs::exists(directory) && fs::is_directory(directory)) {
+    fs::remove_all(directory);
+    Rcpp::Rcout << "Directory deleted: " << path << std::endl;
+  } else {
+    Rcpp::Rcout << "Directory does not exist: " << path << std::endl;
+  }
+}
+
 double recode_genotype2(int genotype) {
   double coding = arma::datum::nan; // missing
   if (genotype == 0) {
@@ -155,6 +166,13 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const int max_iter = 6, const int max_threads = 1,
                        const int max_blas_threads = 1) {
 
+  delete_dir(dir);
+  BLASLibraryManager blas_mgr;
+  blas_mgr.detect_lib();
+  int cur_blas_threads = blas_mgr.get_num_threads();
+  if (cur_blas_threads != max_blas_threads) {
+    blas_mgr.set_num_threads(max_blas_threads);
+  }
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
   if (total_variants % chunk_size != 0) {
@@ -176,7 +194,8 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
   }
 
 #if !defined(__APPLE__) && !defined(__MACH__)
-  omp_set_num_threads(1);
+  omp_set_dynamic(0);
+  omp_set_num_threads(max_threads);
 #endif
   // cnames = prefix per pheno - make into folder for each pheno
   // vnames = 1 vname per poi - aka rownames
@@ -213,6 +232,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
     }
   }
+  blas_mgr.set_num_threads(cur_blas_threads);
 }
 
 // [[Rcpp::export]]
@@ -226,6 +246,14 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const double &pca_var_explained = 0.950,
                       const int max_iter = 6, const int max_threads = 1,
                       const int max_blas_threads = 1) {
+
+  delete_dir(dir);
+  BLASLibraryManager blas_mgr;
+  blas_mgr.detect_lib();
+  int cur_blas_threads = blas_mgr.get_num_threads();
+  if (cur_blas_threads != max_blas_threads) {
+    blas_mgr.set_num_threads(max_blas_threads);
+  }
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -248,7 +276,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
   }
 
 #if !defined(__APPLE__) && !defined(__MACH__)
-  omp_set_num_threads(1);
+  omp_set_dynamic(0);
+  omp_set_num_threads(max_threads);
 #endif
   // cnames = prefix per pheno - make into folder for each pheno
   // vnames = 1 vname per poi - aka rownames
@@ -284,6 +313,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
     }
   }
+  blas_mgr.set_num_threads(cur_blas_threads);
 }
 
 arma::mat manual_svd(arma::mat x, double &rankk, double epsilonn = 0.0001) {
@@ -815,6 +845,16 @@ int FastVLA_chunked_sota(
     const double epss = 1e-6, const double &mafthresh = 0.005,
     const double pca_var_explained = 0.95, const int max_threads = 2,
     const int max_blas_threads = 1) {
+  // Clean up previous run
+  delete_dir(dir);
+  BLASLibraryManager blas_mgr;
+  blas_mgr.detect_lib();
+  int cur_blas_threads = blas_mgr.get_num_threads();
+  if (cur_blas_threads != max_blas_threads) {
+    blas_mgr.set_num_threads(max_blas_threads);
+  }
+  
+  omp_set_dynamic(0);
   omp_set_num_threads(max_threads);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
@@ -867,5 +907,6 @@ int FastVLA_chunked_sota(
                                          vnames_subset2, suffix, epss,
                                          mafthresh, true, pca_var_explained));
   }
+  blas_mgr.set_num_threads(cur_blas_threads);
   return a;
 }

@@ -1,3 +1,6 @@
+#ifndef BLASMGR_H
+#define BLASMGR_H
+#pragma once
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -77,3 +80,4 @@ private:
   //////////////////////////////////////////////////
   void *resolve_symbol(const char *symbol);
 };
+#endif // BLASMGR_H

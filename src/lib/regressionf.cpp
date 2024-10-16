@@ -22,10 +22,12 @@ arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df) {
   return ret_val;
 }
 
-void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
-               VLAResultf &result, const int max_iter, bool is_t_dist,
-               std::vector<int> &poi_2_idx, Eigen::MatrixXf &W2f,
-               Eigen::MatrixXf &tphenoD) {
+void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
+                                   arma::fmat &poi_data, VLAResultf &result,
+                                   const int max_iter, bool is_t_dist,
+                                   std::vector<int> &poi_2_idx,
+                                   Eigen::MatrixXf &W2f,
+                                   Eigen::MatrixXf &tphenoD) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   double ll1, ll2, lrs, lrs_pval;
@@ -198,10 +200,12 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno, arma::fma
   } // #pragma omp parallel for
 };
 
-void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
-               VLAResultf &result, const int max_iter, bool is_t_dist,
-               std::vector<int> &poi_3_idx, Eigen::MatrixXf &W2f,
-               Eigen::MatrixXf &tphenoD) {
+void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
+                                   arma::fmat &poi_data, VLAResultf &result,
+                                   const int max_iter, bool is_t_dist,
+                                   std::vector<int> &poi_3_idx,
+                                   Eigen::MatrixXf &W2f,
+                                   Eigen::MatrixXf &tphenoD) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   double ll1, ll2, lrs, lrs_pval;
@@ -399,7 +403,7 @@ void LogisticRegression::run_vla(arma::fmat &cov, arma::fmat &pheno,
   double w, maf, one_counter;
   bool ones, twos, temp;
 
-  // #pragma omp parallel for
+  //   #pragma omp parallel for
   for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
        poi_col_idx++) {
     arma::fcolvec w2_col = result.W2.col(poi_col_idx);
