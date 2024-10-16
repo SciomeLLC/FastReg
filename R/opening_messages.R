@@ -1,12 +1,13 @@
 .onAttach <- function(libname, pkgname) {
   msg <- "
-  _____                 _     ____
- |  ___|   __ _   ___  | |_  |  _ \\    ___    __ _
- | |_     / _` | / __| | __| | |_) |  / _ \\  / _` |
- |  _|   | (_| | \\__ \\ | |_  |  _ <  |  __/ | (_| |
- |_|      \\__,_| |___/  \\__| |_| \\_\\  \\___|  \\__, |
-                                             |___/
-
+ _____   ____  _____ ______  __ __  _       ____ 
+|     | /    |/ ___/|      ||  |  || |     /    |
+|   __||  o  (   \_ |      ||  |  || |    |  o  |
+|  |_  |     |\__  ||_|  |_||  |  || |___ |     |
+|   _] |  _  |/  \ |  |  |  |  :  ||     ||  _  |
+|  |   |  |  |\    |  |  |   \   / |     ||  |  |
+|__|   |__|__| \___|  |__|    \_/  |_____||__|__|
+                                                 
 THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
 PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
