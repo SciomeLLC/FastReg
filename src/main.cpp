@@ -151,7 +151,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr,
                        const std::vector<std::string> vnames,
                        const std::string suffix, const double epss = 1e-6,
                        const double &mafthresh = 0.005,
-                       const double &pca_var_explained = 0.95) {
+                       const double &pca_var_explained = 0.95, const int max_iter = 6) {
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -206,7 +206,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr,
       VLAResultf res(cov, G, no_interactions, interactions, interactions_sqrd);
 
       LogisticRegression regression;
-      regression.run_vla(cov, pheno, G, res, 6, true, mafthresh);
+      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
     }
   }
@@ -220,7 +220,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const std::vector<std::string> vnames,
                       const std::string suffix, const double epss = 1e-6,
                       const double &mafthresh = 0.005,
-                      const double &pca_var_explained = 0.95) {
+                      const double &pca_var_explained = 0.950, const int max_iter = 6) {
 
   int total_variants = v_index.n_elem;
   int num_chunks = total_variants / chunk_size;
@@ -275,7 +275,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd);
 
       LogisticRegression regression;
-      regression.run_vla(cov, pheno, G, res, 6, true, mafthresh);
+      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
     }
   }

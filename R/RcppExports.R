@@ -4,12 +4,12 @@
 #' This function is the exported wrapper that can be called from R. It has the
 NULL
 
-FastVLA_logisticf <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95) {
-    invisible(.Call(`_FastVLA_FastVLA_logisticf`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained))
+FastVLA_logisticf <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, max_iter = 6L) {
+    invisible(.Call(`_FastVLA_FastVLA_logisticf`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter))
 }
 
-FastVLA_logistic <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95) {
-    invisible(.Call(`_FastVLA_FastVLA_logistic`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained))
+FastVLA_logistic <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.950, max_iter = 6L) {
+    invisible(.Call(`_FastVLA_FastVLA_logistic`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter))
 }
 
 FastVLA_chunked_sota <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95) {

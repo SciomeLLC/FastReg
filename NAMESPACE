@@ -1,5 +1,8 @@
 useDynLib(FastVLA, .registration=TRUE)
 exportPattern("^[[:alpha:]]+")
+export(FastVLA_logistic)
+export(FastVLA_logisticf)
+export(FastVLA_chunked_sota)
 import(Rcpp)
 import(RcppArmadillo)
 importFrom(BEDMatrix,BEDMatrix)
