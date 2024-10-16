@@ -400,37 +400,48 @@ void LogisticRegression::run_vla(arma::fmat &cov, arma::fmat &pheno,
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
 
+  // Initialize necessary variables
   double w, maf, one_counter;
   bool ones, twos, temp;
 
-//   #pragma omp parallel for
-  for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
-       poi_col_idx++) {
-    arma::fcolvec w2_col = result.W2.col(poi_col_idx);
-    w = arma::accu(w2_col);
-    poi_col = poi_data.col(poi_col_idx);
-    maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
-    // Changed 10/10 to CAF from MAF
-    // maf = std::min(maf, 1.0 - maf);
-    result.lls.at(poi_col_idx, 6) = maf;
-    if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh))) {
-      // bool has_3_unique = ((arma::fcolvec) arma::unique(poi_col)).size() ==
-      // 3;
-      ones = false;
-      twos = false;
-      one_counter = 0.0;
-      for (const auto &value : poi_col) {
-        temp = (value == 1.0);
-        ones = ones | temp;
-        one_counter += 1.0 * (temp);
-        twos = twos | (value == 2.0);
+// Parallel region for classifying poi_data into poi_2_idx and poi_3_idx
+#pragma omp parallel
+  {
+    // Thread-local buffers to avoid data races
+    std::vector<int> local_poi_2_idx;
+    std::vector<int> local_poi_3_idx;
+
+#pragma omp for nowait
+    for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
+         poi_col_idx++) {
+      arma::fcolvec w2_col = result.W2.col(poi_col_idx);
+      w = arma::accu(w2_col);
+      poi_col = poi_data.col(poi_col_idx);
+      maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
+      result.lls.at(poi_col_idx, 6) = maf;
+
+      if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh))) {
+        ones = arma::any(poi_col == 1.0);
+        twos = arma::any(poi_col == 2.0);
+        one_counter = arma::accu(poi_col == 1.0); // Count occurrences of 1.0
+
+        if (ones && twos) {
+          local_poi_3_idx.push_back(poi_col_idx);
+        } else {
+          local_poi_2_idx.push_back(poi_col_idx);
+        }
+
+        result.lls.at(poi_col_idx, 7) = one_counter;
       }
-      if (ones & twos) {
-        poi_3_idx.push_back(poi_col_idx);
-      } else {
-        poi_2_idx.push_back(poi_col_idx);
-      }
-      result.lls.at(poi_col_idx, 7) = one_counter;
+    }
+
+// Combine thread-local buffers into the shared vectors
+#pragma omp critical
+    {
+      poi_2_idx.insert(poi_2_idx.end(), local_poi_2_idx.begin(),
+                       local_poi_2_idx.end());
+      poi_3_idx.insert(poi_3_idx.end(), local_poi_3_idx.begin(),
+                       local_poi_3_idx.end());
     }
   }
 
@@ -440,6 +451,7 @@ void LogisticRegression::run_vla(arma::fmat &cov, arma::fmat &pheno,
       result.W2.memptr(), result.W2.n_rows, result.W2.n_cols);
 
   // run regression on G with 2 values
+
   run_vla_2(cov, pheno, poi_data, result, max_iter, is_t_dist, poi_2_idx, W2f,
             tphenoD);
   run_vla_3(cov, pheno, poi_data, result, max_iter, is_t_dist, poi_3_idx, W2f,

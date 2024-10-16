@@ -63,27 +63,31 @@ void delete_dir(const std::string &path) {
 }
 
 double recode_genotype2(int genotype) {
-  double coding = arma::datum::nan; // missing
-  if (genotype == 0) {
-    coding = 2.0; // two copies of A1
-  } else if (genotype == 3) {
-    coding = 0.0; // zero copies of A1
-  } else if (genotype == 2) {
-    coding = 1.0; // one copy of A1
+  switch (genotype) {
+  case 0:
+    return 2.0; // two copies of A1
+  case 3:
+    return 0.0; // zero copies of A1
+  case 2:
+    return 1.0; // one copy of A1
+  default:
+    return arma::datum::nan; // invalid/missing
   }
-  return coding;
+  return arma::datum::nan; // invalid/missing
 }
 
 float recode_genotype2f(int genotype) {
-  float coding = arma::datum::nan; // missing
-  if (genotype == 0) {
-    coding = 2.0; // two copies of A1
-  } else if (genotype == 3) {
-    coding = 0.0; // zero copies of A1
-  } else if (genotype == 2) {
-    coding = 1.0; // one copy of A1
+  switch (genotype) {
+  case 0:
+    return 2.0; // two copies of A1
+  case 3:
+    return 0.0; // zero copies of A1
+  case 2:
+    return 1.0; // one copy of A1
+  default:
+    return arma::datum::nan; // invalid/missing
   }
-  return coding;
+  return arma::datum::nan; // invalid/missing
 }
 
 arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
@@ -96,7 +100,7 @@ arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   int ni = i.n_rows;
   int nj = j.n_rows;
   arma::mat out(ni, nj);
-
+#pragma omp parallel for
   for (int cj = 0; cj < nj; cj++) {
     int jj = j[cj];
     for (int ci = 0; ci < ni; ci++) {
@@ -163,22 +167,24 @@ arma::mat standardize_and_derank(arma::mat x, double dev_to_acc = 0.95,
 /// @param dev_to_acc Amount of explained variance (summed Eigenvalues) to keep
 /// @param N Number of non-zero rows (number of obs)
 /// @return A clean X matrix for further calculations
-arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir, const std::string &namee, 
-                                 const std::string &suffix, double dev_to_acc = 0.95,
-                                 double N = 1.0) {
-  //scale (subtract mean and divide by SD) in place
+arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
+                                       const std::string &namee,
+                                       const std::string &suffix,
+                                       double dev_to_acc = 0.95,
+                                       double N = 1.0) {
+  // scale (subtract mean and divide by SD) in place
   arma::mat ans(2, x.n_cols);
-  ans.row(0) = (arma::sum(x, 0.0)/N);
+  ans.row(0) = (arma::sum(x, 0.0) / N);
   x.each_row() -= ans.row(0);
-  ans.row(1) = sqrt(arma::sum(arma::square(x), 0.0)/(N-1));
+  ans.row(1) = sqrt(arma::sum(arma::square(x), 0.0) / (N - 1));
   x.each_row() /= ans.row(1);
-  //get principal components
+  // get principal components
   arma::mat coeff;
   arma::mat score;
   arma::vec latent;
   arma::princomp(coeff, score, latent, x);
-  arma::uvec temp = arma::find(cumsum(latent)/accu(latent) > dev_to_acc);
-  //create output directory and file
+  arma::uvec temp = arma::find(cumsum(latent) / accu(latent) > dev_to_acc);
+  // create output directory and file
   fs::create_directory(dir);
   std::stringstream ss;
   ss << dir << "/" << namee << "_" << suffix << "_metadata.tsv";
@@ -187,24 +193,24 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir, cons
   outfile.open(result_file);
   outfile << std::fixed << std::setprecision(8);
   std::stringstream buffer;
-  //if not all PCs, use only subset
-  if(temp.n_elem > 0){
-    arma::mat output = arma::join_rows(ans.t(), coeff.cols(0,temp[0]));
-    for(uword j = 0; j < output.n_rows; j++){
-      for(uword k = 0; k < (output.n_cols - 1); k++){
-        buffer<< output(j,k) << "\t";
+  // if not all PCs, use only subset
+  if (temp.n_elem > 0) {
+    arma::mat output = arma::join_rows(ans.t(), coeff.cols(0, temp[0]));
+    for (uword j = 0; j < output.n_rows; j++) {
+      for (uword k = 0; k < (output.n_cols - 1); k++) {
+        buffer << output(j, k) << "\t";
       }
       buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
     }
     outfile << buffer.str();
     outfile.close();
-    return x * coeff.cols(0,temp[0]);
-  }else{ //needed to prevent crashes
+    return x * coeff.cols(0, temp[0]);
+  } else { // needed to prevent crashes
     arma::mat output = arma::join_rows(ans.t(), coeff);
-    for(uword j = 0; j < output.n_rows; j++){
-      for(uword k = 0; k < (output.n_cols - 1); k++){
-        buffer<< output(j,k) << "\t";
+    for (uword j = 0; j < output.n_rows; j++) {
+      for (uword k = 0; k < (output.n_cols - 1); k++) {
+        buffer << output(j, k) << "\t";
       }
       buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
@@ -271,9 +277,11 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     cov_d.shed_rows(nan_idx);
 
     // arma::fmat cov = arma::conv_to<arma::fmat>::from(
-    //     standardize_and_derank(cov_d, pca_var_explained, double(cov_d.n_rows)));
+    //     standardize_and_derank(cov_d, pca_var_explained,
+    //     double(cov_d.n_rows)));
     arma::fmat cov = arma::conv_to<arma::fmat>::from(
-        standardize_and_derank_print(cov_d, dir, cnames[i], suffix, pca_var_explained, double(cov_d.n_rows)));
+        standardize_and_derank_print(cov_d, dir, cnames[i], suffix,
+                                     pca_var_explained, double(cov_d.n_rows)));
 
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
@@ -355,8 +363,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     cov.shed_rows(nan_idx);
 
     // cov = standardize_and_derank(cov, pca_var_explained, double(cov.n_rows));
-    cov = standardize_and_derank_print(cov, dir, cnames[i], suffix, pca_var_explained, double(cov.n_rows));
-
+    cov = standardize_and_derank_print(cov, dir, cnames[i], suffix,
+                                       pca_var_explained, double(cov.n_rows));
 
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
@@ -648,8 +656,9 @@ int FastVLA_cpp_internal(const arma::mat &Y, const arma::mat &G,
     // then center/standardize/drop cols
     // X = standardize_and_derank(X, pca_var_explained,
     //                            double(X.n_rows - nansxy.n_elem));
-    X = standardize_and_derank_print(X, dir, cnames[i], suffix, pca_var_explained,
-                               double(X.n_rows - nansxy.n_elem));
+    X = standardize_and_derank_print(X, dir, cnames[i], suffix,
+                                     pca_var_explained,
+                                     double(X.n_rows - nansxy.n_elem));
 
     // loop over POIs/genes and check if good gene, bad gene, or minimal gene
     // (only 2 unique values)
@@ -920,7 +929,7 @@ int FastVLA_chunked_sota(
   if (cur_blas_threads != max_blas_threads) {
     blas_mgr.set_num_threads(max_blas_threads);
   }
-  
+
   omp_set_dynamic(0);
   omp_set_num_threads(max_threads);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
