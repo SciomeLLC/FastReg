@@ -10,23 +10,23 @@ NULL
 #' This function is the exported wrapper that can be called from R. It has the
 NULL
 
-FastVLA_logisticf <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, max_iter = 6L, max_threads = 1L, max_blas_threads = 1L, do_pca = TRUE) {
-    invisible(.Call(`_FastVLA_FastVLA_logisticf`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca))
+FastVLA_logisticf <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, max_iter = 6L, max_threads = 1L, max_blas_threads = 1L, do_pca = TRUE, add_intercept = TRUE) {
+    invisible(.Call(`_FastVLA_FastVLA_logisticf`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca, add_intercept))
 }
 
-FastVLA_logistic <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.950, max_iter = 6L, max_threads = 1L, max_blas_threads = 1L, do_pca = TRUE) {
-    invisible(.Call(`_FastVLA_FastVLA_logistic`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca))
+FastVLA_logistic <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.950, max_iter = 6L, max_threads = 1L, max_blas_threads = 1L, do_pca = TRUE, add_intercept = TRUE) {
+    invisible(.Call(`_FastVLA_FastVLA_logistic`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca, add_intercept))
 }
 
 FastVLA_chunked_sota <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, max_threads = 2L, max_blas_threads = 1L) {
     .Call(`_FastVLA_FastVLA_chunked_sota`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_threads, max_blas_threads)
 }
 
-FastVLA_single_Y <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, do_pca = TRUE) {
-    .Call(`_FastVLA_FastVLA_single_Y`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca)
+FastVLA_single_Y <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, do_pca = TRUE, add_intercept = TRUE) {
+    .Call(`_FastVLA_FastVLA_single_Y`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca, add_intercept)
 }
 
-FastVLA_single_Y_fast <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, do_pca = TRUE) {
-    .Call(`_FastVLA_FastVLA_single_Y_fast`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca)
+FastVLA_single_Y_fast <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, do_pca = TRUE, add_intercept = TRUE) {
+    .Call(`_FastVLA_FastVLA_single_Y_fast`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca, add_intercept)
 }
 

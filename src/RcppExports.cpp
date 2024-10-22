@@ -13,8 +13,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // FastVLA_logisticf
-void FastVLA_logisticf(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca);
-RcppExport SEXP _FastVLA_FastVLA_logisticf(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP) {
+void FastVLA_logisticf(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca, const bool add_intercept);
+RcppExport SEXP _FastVLA_FastVLA_logisticf(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
@@ -34,13 +34,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type max_threads(max_threadsSEXP);
     Rcpp::traits::input_parameter< const int >::type max_blas_threads(max_blas_threadsSEXP);
     Rcpp::traits::input_parameter< const bool >::type do_pca(do_pcaSEXP);
-    FastVLA_logisticf(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca);
+    Rcpp::traits::input_parameter< const bool >::type add_intercept(add_interceptSEXP);
+    FastVLA_logisticf(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca, add_intercept);
     return R_NilValue;
 END_RCPP
 }
 // FastVLA_logistic
-void FastVLA_logistic(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca);
-RcppExport SEXP _FastVLA_FastVLA_logistic(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP) {
+void FastVLA_logistic(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca, const bool add_intercept);
+RcppExport SEXP _FastVLA_FastVLA_logistic(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
@@ -60,7 +61,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type max_threads(max_threadsSEXP);
     Rcpp::traits::input_parameter< const int >::type max_blas_threads(max_blas_threadsSEXP);
     Rcpp::traits::input_parameter< const bool >::type do_pca(do_pcaSEXP);
-    FastVLA_logistic(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca);
+    Rcpp::traits::input_parameter< const bool >::type add_intercept(add_interceptSEXP);
+    FastVLA_logistic(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca, add_intercept);
     return R_NilValue;
 END_RCPP
 }
@@ -90,8 +92,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // FastVLA_single_Y
-int FastVLA_single_Y(const arma::vec& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double pca_var_explained, const bool do_pca);
-RcppExport SEXP _FastVLA_FastVLA_single_Y(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP do_pcaSEXP) {
+int FastVLA_single_Y(const arma::vec& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double pca_var_explained, const bool do_pca, const bool add_intercept);
+RcppExport SEXP _FastVLA_FastVLA_single_Y(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -109,13 +111,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type mafthresh(mafthreshSEXP);
     Rcpp::traits::input_parameter< const double >::type pca_var_explained(pca_var_explainedSEXP);
     Rcpp::traits::input_parameter< const bool >::type do_pca(do_pcaSEXP);
-    rcpp_result_gen = Rcpp::wrap(FastVLA_single_Y(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca));
+    Rcpp::traits::input_parameter< const bool >::type add_intercept(add_interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(FastVLA_single_Y(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca, add_intercept));
     return rcpp_result_gen;
 END_RCPP
 }
 // FastVLA_single_Y_fast
-int FastVLA_single_Y_fast(const arma::vec& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double pca_var_explained, const bool do_pca);
-RcppExport SEXP _FastVLA_FastVLA_single_Y_fast(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP do_pcaSEXP) {
+int FastVLA_single_Y_fast(const arma::vec& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double pca_var_explained, const bool do_pca, const bool add_intercept);
+RcppExport SEXP _FastVLA_FastVLA_single_Y_fast(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -133,17 +136,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type mafthresh(mafthreshSEXP);
     Rcpp::traits::input_parameter< const double >::type pca_var_explained(pca_var_explainedSEXP);
     Rcpp::traits::input_parameter< const bool >::type do_pca(do_pcaSEXP);
-    rcpp_result_gen = Rcpp::wrap(FastVLA_single_Y_fast(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca));
+    Rcpp::traits::input_parameter< const bool >::type add_intercept(add_interceptSEXP);
+    rcpp_result_gen = Rcpp::wrap(FastVLA_single_Y_fast(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, do_pca, add_intercept));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_FastVLA_FastVLA_logisticf", (DL_FUNC) &_FastVLA_FastVLA_logisticf, 17},
-    {"_FastVLA_FastVLA_logistic", (DL_FUNC) &_FastVLA_FastVLA_logistic, 17},
+    {"_FastVLA_FastVLA_logisticf", (DL_FUNC) &_FastVLA_FastVLA_logisticf, 18},
+    {"_FastVLA_FastVLA_logistic", (DL_FUNC) &_FastVLA_FastVLA_logistic, 18},
     {"_FastVLA_FastVLA_chunked_sota", (DL_FUNC) &_FastVLA_FastVLA_chunked_sota, 15},
-    {"_FastVLA_FastVLA_single_Y", (DL_FUNC) &_FastVLA_FastVLA_single_Y, 14},
-    {"_FastVLA_FastVLA_single_Y_fast", (DL_FUNC) &_FastVLA_FastVLA_single_Y_fast, 14},
+    {"_FastVLA_FastVLA_single_Y", (DL_FUNC) &_FastVLA_FastVLA_single_Y, 15},
+    {"_FastVLA_FastVLA_single_Y_fast", (DL_FUNC) &_FastVLA_FastVLA_single_Y_fast, 15},
     {NULL, NULL, 0}
 };
 

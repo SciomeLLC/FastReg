@@ -177,6 +177,8 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
   ans.row(0) = (arma::sum(x, 0.0) / N);
   x.each_row() -= ans.row(0);
   ans.row(1) = sqrt(arma::sum(arma::square(x), 0.0) / (N - 1));
+  //ensure it doesn't go zero and divide by zero which introduces NAs
+  ans.row(1).clamp(1e-8, 1e99);
   x.each_row() /= ans.row(1);
   // get principal components
   arma::mat coeff;
@@ -232,7 +234,8 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const double &pca_var_explained = 0.95,
                        const int max_iter = 6, const int max_threads = 1,
                        const int max_blas_threads = 1,
-                       const bool do_pca = true) {
+                       const bool do_pca = true,
+                       const bool add_intercept = true) {
 
   delete_dir(dir);
   BLASLibraryManager blas_mgr;
@@ -293,6 +296,10 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
     arma::fmat interactions_sqrd = arma::join_rows(no_interactions, cov);
+    //add column of ones if required (same as interactions matrix now)
+    if(add_intercept){
+      cov = interactions;
+    }
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
       int start_idx = chunk * chunk_size;
       int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
@@ -324,7 +331,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const double &pca_var_explained = 0.950,
                       const int max_iter = 6, const int max_threads = 1,
                       const int max_blas_threads = 1,
-                      const bool do_pca = true) {
+                      const bool do_pca = true,
+                      const bool add_intercept = true) {
 
   delete_dir(dir);
   BLASLibraryManager blas_mgr;
@@ -380,6 +388,10 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
     arma::mat interactions_sqrd = arma::join_rows(no_interactions, cov);
+    //add column of ones if required (same as interactions matrix now)
+    if(add_intercept){
+      cov = interactions;
+    }
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
       int start_idx = chunk * chunk_size;
       int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
@@ -1704,6 +1716,7 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
 // inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
 // within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
 //@param do_pca: Do PCA dimension reduction?
+//@param add_intercept: Add an intercept to front of X?
 //@export
 // [[Rcpp::export]]
 int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
@@ -1715,7 +1728,8 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
                          const std::string suffix, const double epss = 1e-6,
                          const double &mafthresh = 0.005,
                          const double pca_var_explained = 0.95,
-                         const bool do_pca = true) {
+                         const bool do_pca = true,
+                         const bool add_intercept = true) {
   omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
@@ -1743,7 +1757,10 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
                                       pca_var_explained, double(cov.n_rows));
   }
 
-
+  if(add_intercept){
+    arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
+    cov = arma::join_rows(no_interactions, cov);
+  }
 
   // std::vector<std::string>::const_iterator first = vnames.begin();
   // std::vector<std::string>::const_iterator last = vnames.begin() +
@@ -1803,7 +1820,8 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
                          const std::string suffix, const double epss = 1e-6,
                          const double &mafthresh = 0.005,
                          const double pca_var_explained = 0.95,
-                         const bool do_pca = true) {
+                         const bool do_pca = true,
+                         const bool add_intercept = true) {
   omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
@@ -1831,7 +1849,10 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
                                       pca_var_explained, double(cov.n_rows));
   }
 
-
+  if(add_intercept){
+    arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
+    cov = arma::join_rows(no_interactions, cov);
+  }
 
   // std::vector<std::string>::const_iterator first = vnames.begin();
   // std::vector<std::string>::const_iterator last = vnames.begin() +
