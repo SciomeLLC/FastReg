@@ -54,12 +54,13 @@ public:
   std::unordered_map<std::string, int> col_names;
   std::unordered_map<std::string, int> col_names2;
 
+  std::string local_time;
   int num_parms, num_parms2, num_parms2_sqrd;
 
   VLAResult(){};
   VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
             arma::mat &no_interactions, arma::mat &interactions,
-            arma::mat &interactions_sqrd);
+            arma::mat &interactions_sqrd, std::string lt);
   // VLAResult
   void set_lls(double ll1, double ll2, double lrs, double lrs_pval, int num_g,
                int idx, int rank);
@@ -69,8 +70,16 @@ public:
                       int idx);
   void set_betas_fit2_sqrd(arma::colvec &beta, arma::colvec &se,
                            arma::colvec &pval, int idx);
-  void write_to_file(std::string dir, std::string file_name, std::string pheno_name, std::vector<std::string> row_names);
-};  
+  void write_to_file(std::string dir, std::string file_name,
+                     std::string pheno_name,
+                     std::vector<std::string> row_names);
+  void write_headers(std::string dir, std::string file_name,
+                     std::string pheno_name,
+                     std::vector<std::string> row_names);
+  std::string getLocalTime() const {
+    return local_time; // Always return the stored time
+  }
+};
 
 class VLAResultf {
 public:
@@ -110,21 +119,30 @@ public:
   std::unordered_map<std::string, int> col_names;
   std::unordered_map<std::string, int> col_names2;
 
+  std::string local_time;
   int num_parms, num_parms2, num_parms2_sqrd;
 
   VLAResultf(){};
   VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
-            arma::fmat &no_interactions, arma::fmat &interactions,
-            arma::fmat &interactions_sqrd);
+             arma::fmat &no_interactions, arma::fmat &interactions,
+             arma::fmat &interactions_sqrd, std::string lt);
   // VLAResult
   void set_lls(float ll1, float ll2, float lrs, float lrs_pval, int num_g,
                int idx, int rank);
-  void set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se, arma::fcolvec &pval,
-                      int idx);
-  void set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se, arma::fcolvec &pval,
-                      int idx);
+  void set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se,
+                      arma::fcolvec &pval, int idx);
+  void set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
+                      arma::fcolvec &pval, int idx);
   void set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
                            arma::fcolvec &pval, int idx);
-  void write_to_file(std::string dir, std::string file_name, std::string pheno_name, std::vector<std::string> row_names);
+  void write_to_file(std::string dir, std::string file_name,
+                     std::string pheno_name,
+                     std::vector<std::string> row_names);
+  void write_headers(std::string dir, std::string file_name,
+                     std::string pheno_name,
+                     std::vector<std::string> row_names);
+  std::string getLocalTime() const {
+    return local_time; // Always return the stored time
+  }
 };
 #endif // VLARESULT_H

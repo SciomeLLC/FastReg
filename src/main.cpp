@@ -7,6 +7,7 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -173,7 +174,7 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
                                        double dev_to_acc = 0.95,
                                        double N = 1.0) {
   // scale (subtract mean and divide by SD) in place
-  
+
   // BLASLibraryManager blas_mgr;
   // blas_mgr.detect_lib();
   // int threads = blas_mgr.get_num_threads();
@@ -190,19 +191,34 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
   arma::mat score;
   arma::vec latent;
   arma::princomp(coeff, score, latent, x);
-  arma::uvec temp = arma::find(cumsum(latent) / accu(latent) > dev_to_acc);
+  arma::vec cumulative_var = cumsum(latent) / accu(latent);
+  arma::uvec temp = arma::find(cumulative_var > dev_to_acc);
   // create output directory and file
-  fs::create_directory(dir);
+  // fs::create_directory(dir);
+  // fs::create_directory(namee);
   std::stringstream ss;
-  ss << dir << "/" << namee << "_" << suffix << "_metadata.tsv";
+  // ss << dir << "/" << namee << "_" << suffix << "_metadata.tsv";
+  fs::create_directory(dir);
+  fs::create_directory(dir + "/" + namee);
+  ss << dir << "/" << namee;
+  ss << "/PCA_metadata.tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
   outfile.open(result_file);
   outfile << std::fixed << std::setprecision(8);
   std::stringstream buffer;
+  // add column headers
+  buffer << "Means"
+         << "\t"
+         << "SDs";
   // if not all PCs, use only subset
   if (temp.n_elem > 0) {
     arma::mat output = arma::join_rows(ans.t(), coeff.cols(0, temp[0]));
+    for (uword ii = 0; ii < (temp[0] + 1); ii++) {
+      buffer << "\t"
+             << "Loading" << (ii + 1);
+    }
+    buffer << std::endl;
     for (uword j = 0; j < output.n_rows; j++) {
       for (uword k = 0; k < (output.n_cols - 1); k++) {
         buffer << output(j, k) << "\t";
@@ -210,11 +226,21 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
       buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
     }
+    buffer << 0 << "\t" << 0;
+    for (uword ii = 0; ii < (temp[0] + 1); ii++) {
+      buffer << "\t" << cumulative_var[ii];
+    }
+    buffer << std::endl;
     outfile << buffer.str();
     outfile.close();
     return x * coeff.cols(0, temp[0]);
   } else { // needed to prevent crashes
     arma::mat output = arma::join_rows(ans.t(), coeff);
+    for (uword ii = 0; ii < coeff.n_cols; ii++) {
+      buffer << "\t"
+             << "Loading" << int(ii);
+    }
+    buffer << std::endl;
     for (uword j = 0; j < output.n_rows; j++) {
       for (uword k = 0; k < (output.n_cols - 1); k++) {
         buffer << output(j, k) << "\t";
@@ -222,11 +248,16 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
       buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
     }
+    buffer << 0 << "\t" << 0;
+    for (uword ii = 0; ii < coeff.n_cols; ii++) {
+      buffer << "\t" << cumulative_var[ii];
+    }
+    buffer << std::endl;
     outfile << buffer.str();
     outfile.close();
     return x * coeff;
   }
-  
+
   // blas_mgr.set_num_threads(threads);
 }
 
@@ -243,7 +274,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const int max_blas_threads = 1, const bool do_pca = true,
                        const bool add_intercept = true) {
 
-  delete_dir(dir);
+  // delete_dir(dir);
   BLASLibraryManager blas_mgr;
   blas_mgr.detect_lib();
   int cur_blas_threads = blas_mgr.get_num_threads();
@@ -313,6 +344,12 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     if (add_intercept) {
       cov = interactions;
     }
+
+    std::time_t t = std::time(nullptr);
+    std::tm* lt = std::localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(lt, "%d-%m-%Y %H-%M-%S");
+    std::string local_time = oss.str();
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
       int start_idx = chunk * chunk_size;
       int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
@@ -323,11 +360,14 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       std::vector<std::string> variant_names_chunk(
           vnames.begin() + start_idx, vnames.begin() + end_idx + 1);
       arma::fmat G = scanBEDMatrixf(Gptr, _index, current_variant_indices);
-      VLAResultf res(cov, G, no_interactions, interactions, interactions_sqrd);
+      VLAResultf res(cov, G, no_interactions, interactions, interactions_sqrd, local_time);
 
       LogisticRegression regression;
       regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
+      if (chunk == 0) {
+        res.write_headers(dir, suffix, cnames[i], variant_names_chunk);
+      }
     }
   }
   blas_mgr.set_num_threads(cur_blas_threads);
@@ -346,7 +386,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const int max_blas_threads = 1, const bool do_pca = true,
                       const bool add_intercept = true) {
 
-  delete_dir(dir);
+  // delete_dir(dir);
   BLASLibraryManager blas_mgr;
   blas_mgr.detect_lib();
   int cur_blas_threads = blas_mgr.get_num_threads();
@@ -410,6 +450,12 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     if (add_intercept) {
       cov = interactions;
     }
+
+    std::time_t t = std::time(nullptr);
+    std::tm* lt = std::localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(lt, "%d-%m-%Y %H-%M-%S");
+    std::string local_time = oss.str();
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
       int start_idx = chunk * chunk_size;
       int end_idx = std::min(start_idx + chunk_size - 1, total_variants - 1);
@@ -420,11 +466,13 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       std::vector<std::string> variant_names_chunk(
           vnames.begin() + start_idx, vnames.begin() + end_idx + 1);
       arma::mat G = scanBEDMatrix(Gptr, _index, current_variant_indices);
-      VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd);
-
+      VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd, local_time);
       LogisticRegression regression;
       regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
+      if (chunk == 0) {
+        res.write_headers(dir, suffix, cnames[i], variant_names_chunk);
+      }
     }
   }
   blas_mgr.set_num_threads(cur_blas_threads);
@@ -966,7 +1014,7 @@ int FastVLA_chunked_sota(
     const double pca_var_explained = 0.95, const int max_threads = 2,
     const int max_blas_threads = 1) {
   // Clean up previous run
-  delete_dir(dir);
+  // delete_dir(dir);
   BLASLibraryManager blas_mgr;
   blas_mgr.detect_lib();
   int cur_blas_threads = blas_mgr.get_num_threads();
@@ -1742,9 +1790,10 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
                      const double pca_var_explained = 0.95,
                      const bool do_pca = true,
                      const bool add_intercept = true) {
-  omp_set_num_threads(2);
+  // omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
+  Rcpp::Rcout << "set omp " << std::endl;
   // get boolean inclusion vector
   uvec badX = find_nan(arma::sum(X, 1.0));
   // put in each column booleans
@@ -1755,6 +1804,7 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
   arma::uvec badY = find_nan(Y);
   x_bools.elem(badY).fill(0.0);
 
+  Rcpp::Rcout << "set xbools " << std::endl;
   arma::mat cov = X;
   arma::ivec _index = i_index;
   arma::mat pheno(Y.n_rows, 1);
@@ -1764,22 +1814,25 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
   pheno.shed_rows(nan_idx);
   cov.shed_rows(nan_idx);
 
+  Rcpp::Rcout << "shed rows " << std::endl;
   auto start = std::chrono::high_resolution_clock::now();
   if (do_pca) {
+    Rcpp::Rcout << "in pca " << std::endl;
     cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
                                        pca_var_explained, double(cov.n_rows));
   }
-  auto end = std::chrono::high_resolution_clock::now();
+  auto end_t = std::chrono::high_resolution_clock::now();
 
-  double timing =
-      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-          .count();
+  double timing = (double)std::chrono::duration_cast<std::chrono::milliseconds>(
+                      end_t - start)
+                      .count();
 
   Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
   if (add_intercept) {
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     cov = arma::join_rows(no_interactions, cov);
   }
+  Rcpp::Rcout << "intercept " << std::endl;
 
   // std::vector<std::string>::const_iterator first = vnames.begin();
   // std::vector<std::string>::const_iterator last = vnames.begin() +

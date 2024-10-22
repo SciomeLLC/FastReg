@@ -2,7 +2,8 @@
 
 VLAResult::VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
                      arma::mat &no_interactions, arma::mat &interactions,
-                     arma::mat &interactions_sqrd) {
+                     arma::mat &interactions_sqrd, std::string lt) {
+  local_time = lt;
   num_parms = no_interactions.n_cols + covar_matrix.n_cols;
   num_parms2 = interactions.n_cols + covar_matrix.n_cols;
   num_parms2_sqrd = 2 * interactions.n_cols + covar_matrix.n_cols;
@@ -108,7 +109,8 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
   fs::create_directory(dir + "/" + pheno_name);
 
   std::stringstream ss;
-  ss << dir << "/" << pheno_name << "/" << file_name << ".tsv";
+  ss << dir << "/" << pheno_name << "/" << file_name << "_results_"
+     << getLocalTime() << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
 
@@ -176,10 +178,88 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
 
     buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
            << "\t" << ll1 << "\t" << ll2 << "\t" << lrs << "\t" << lrs_pval
-           << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6)
-           << "\t" << lls.at(col, 7)
-           << std::endl;
+           << "\t" << num_G << "\t" << rank << "\t" << lls.at(col, 6) << "\t"
+           << lls.at(col, 7) << std::endl;
   }
+  outfile << buffer.str();
+  outfile.close();
+}
+
+void VLAResult::write_headers(std::string dir, std::string file_name,
+                              std::string pheno_name,
+                              std::vector<std::string> row_names) {
+  fs::create_directory(dir);
+  fs::create_directory(dir + "/" + pheno_name);
+
+  std::stringstream ss;
+  ss << dir << "/" << pheno_name << "/" << file_name << "_headers_"
+     << getLocalTime() << ".tsv";
+  std::string result_file = ss.str();
+  std::ofstream outfile;
+
+  outfile.open(result_file);
+  if (!outfile.is_open()) {
+    Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
+  }
+
+  int idx = beta_est.n_rows + 1;
+  int idx_2 = (int)beta_est2.n_rows;
+  int num_cov = beta_est2.n_rows - idx;
+  int num_cov_sqrd = (int)beta_est2_sqrd.n_rows - (int)beta_est2.n_rows;
+
+  std::stringstream buffer;
+  buffer << "vid"
+         << "\t"
+         << "N"
+         << "\t"
+         << "DF_fit1"
+         << "\t"
+         << "Est_fit1"
+         << "\t"
+         << "StdErr_fit1"
+         << "\t"
+         << "mlog10_Pval_fit1"
+         << "\t"
+         << "AbsErr_fit1"
+         << "\t"
+         << "RelErr_fit1"
+         << "\t"
+         << "iter_fit1"
+         << "\t"
+         << "DF_fit2";
+  for (int i = 0; i < num_cov; i++) {
+    buffer << "\tEstG*X" << i << "_fit2"
+           << "\tStdErrG*X" << i << "_fit2"
+           << "\tmlog10_PvalG*X" << i << "_fit2";
+  }
+
+  for (int i = 0; i < num_cov; i++) {
+    buffer << "\tEstGsq*X" << i << "_fit2"
+           << "\tStdErrGsq*X" << i << "_fit2"
+           << "\tmlog10_PvalGsq*X" << i << "_fit2";
+  }
+  buffer << "\t"
+         << "AbsErr_fit2"
+         << "\t"
+         << "RelErr_fit2"
+         << "\t"
+         << "iter_fit2"
+         << "\t"
+         << "LogLikelihood_fit1"
+         << "\t"
+         << "LogLikelihood_fit2"
+         << "\t"
+         << "LRS"
+         << "\t"
+         << "LRS_Pval"
+         << "\t"
+         << "num_G"
+         << "\t"
+         << "rank"
+         << "\t"
+         << "caf"
+         << "\t"
+         << "het_count" << std::endl;
   outfile << buffer.str();
   outfile.close();
 }

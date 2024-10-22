@@ -2,7 +2,8 @@
 
 VLAResultf::VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
                        arma::fmat &no_interactions, arma::fmat &interactions,
-                       arma::fmat &interactions_sqrd) {
+                       arma::fmat &interactions_sqrd, std::string lt) {
+  local_time = lt;
   num_parms = no_interactions.n_cols + covar_matrix.n_cols;
   num_parms2 = interactions.n_cols + covar_matrix.n_cols;
   num_parms2_sqrd = 2 * interactions.n_cols + covar_matrix.n_cols;
@@ -108,10 +109,10 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   fs::create_directory(dir + "/" + pheno_name);
 
   std::stringstream ss;
-  ss << dir << "/" << pheno_name << "/" << file_name << ".tsv";
+  ss << dir << "/" << pheno_name << "/" << file_name << "_results_"
+     << getLocalTime() << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
-
   int idx = beta_est.n_rows + 1;
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
@@ -128,47 +129,49 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   outfile << std::fixed << std::setprecision(17);
 
   std::stringstream buffer;
+  float abs_err_val, rel_err_val, iter1, iter2, abs_err_val2, rel_err_val2, ll1,
+      ll2, lrs, lrs_pval, num_G, rank;
+  int N, df, df2, row2, row3;
   for (int col = 0; col < (int)beta_est.n_cols; col++) {
     std::string poi_name = row_names[col];
-    float abs_err_val = beta_abs_errs.at(col);
-    float rel_err_val = beta_rel_errs.at(col);
-    float iter1 = iters.at(col, 0);
-    float iter2 = iters.at(col, 1);
-    float abs_err_val2 = beta_abs_errs2.at(col);
-    float rel_err_val2 = beta_rel_errs2.at(col);
-    float ll1 = lls.at(col, 0);
-    float ll2 = lls.at(col, 1);
-    float lrs = lls.at(col, 2);
-    float lrs_pval = lls.at(col, 3);
-    float num_G = lls.at(col, 4);
-    float rank = lls.at(col, 5);
+    abs_err_val = beta_abs_errs.at(col);
+    rel_err_val = beta_rel_errs.at(col);
+    iter1 = iters.at(col, 0);
+    iter2 = iters.at(col, 1);
+    abs_err_val2 = beta_abs_errs2.at(col);
+    rel_err_val2 = beta_rel_errs2.at(col);
+    ll1 = lls.at(col, 0);
+    ll2 = lls.at(col, 1);
+    lrs = lls.at(col, 2);
+    lrs_pval = lls.at(col, 3);
+    num_G = lls.at(col, 4);
+    rank = lls.at(col, 5);
 
-    int N = arma::as_scalar(arma::sum(W2.col(col), 0));
-    int df = N - n_parms;
+    N = arma::as_scalar(arma::sum(W2.col(col), 0));
+    df = N - n_parms;
     n_parms2 = (num_G == 3) ? beta_est2_sqrd.n_rows : beta_est2.n_rows;
-    int df2 = N - n_parms2;
-    int adder2 = 1;
+    df2 = N - n_parms2;
     buffer << poi_name << "\t" << N << "\t" << df << "\t"
            << beta_est.at(idx, col) << "\t" << se_beta.at(idx, col) << "\t"
            << neglog10_pvl.at(idx, col) << "\t" << abs_err_val << "\t"
            << rel_err_val << "\t" << iter1 << "\t" << df2;
 
-    int row2 = idx;
-    int row3 = (int)beta_est2.n_rows;
+    row2 = idx;
+    row3 = (int)beta_est2.n_rows;
     if (num_G == 2) {
-      for (; row2 < (int)beta_est2.n_rows; row2 += adder2) {
+      for (; row2 < (int)beta_est2.n_rows; row2++) {
         buffer << "\t" << beta_est2.at(row2, col) << "\t"
                << se_beta2.at(row2, col) << "\t" << neglog10_pvl2.at(row2, col);
       }
     } else {
-      for (; row2 < (int)beta_est2.n_rows; row2 += adder2) {
+      for (; row2 < (int)beta_est2.n_rows; row2++) {
         buffer << "\t" << beta_est2_sqrd.at(row2, col) << "\t"
                << se_beta2_sqrd.at(row2, col) << "\t"
                << neglog10_pvl2_sqrd.at(row2, col);
       }
     }
 
-    for (; row3 < (int)beta_est2_sqrd.n_rows; row3 += adder2) {
+    for (; row3 < (int)beta_est2_sqrd.n_rows; row3++) {
       buffer << "\t" << beta_est2_sqrd.at(row3, col) << "\t"
              << se_beta2_sqrd.at(row3, col) << "\t"
              << neglog10_pvl2_sqrd.at(row3, col);
@@ -183,3 +186,81 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   outfile.close();
 }
 
+void VLAResultf::write_headers(std::string dir, std::string file_name,
+                               std::string pheno_name,
+                               std::vector<std::string> row_names) {
+  fs::create_directory(dir);
+  fs::create_directory(dir + "/" + pheno_name);
+
+  std::stringstream ss;
+  ss << dir << "/" << pheno_name << "/" << file_name << "_headers_"
+     << getLocalTime() << ".tsv";
+  std::string result_file = ss.str();
+  std::ofstream outfile;
+
+  outfile.open(result_file);
+  if (!outfile.is_open()) {
+    Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
+  }
+
+  int idx = beta_est.n_rows + 1;
+  int idx_2 = (int)beta_est2.n_rows;
+  int num_cov = beta_est2.n_rows - idx;
+  int num_cov_sqrd = (int)beta_est2_sqrd.n_rows - (int)beta_est2.n_rows;
+
+  std::stringstream buffer;
+  buffer << "vid"
+         << "\t"
+         << "N"
+         << "\t"
+         << "DF_fit1"
+         << "\t"
+         << "Est_fit1"
+         << "\t"
+         << "StdErr_fit1"
+         << "\t"
+         << "mlog10_Pval_fit1"
+         << "\t"
+         << "AbsErr_fit1"
+         << "\t"
+         << "RelErr_fit1"
+         << "\t"
+         << "iter_fit1"
+         << "\t"
+         << "DF_fit2";
+  for (int i = 0; i < num_cov; i++) {
+    buffer << "\tEstG*X" << i << "_fit2"
+           << "\tStdErrG*X" << i << "_fit2"
+           << "\tmlog10_PvalG*X" << i << "_fit2";
+  }
+
+  for (int i = 0; i < num_cov; i++) {
+    buffer << "\tEstGsq*X" << i << "_fit2"
+           << "\tStdErrGsq*X" << i << "_fit2"
+           << "\tmlog10_PvalGsq*X" << i << "_fit2";
+  }
+  buffer << "\t"
+         << "AbsErr_fit2"
+         << "\t"
+         << "RelErr_fit2"
+         << "\t"
+         << "iter_fit2"
+         << "\t"
+         << "LogLikelihood_fit1"
+         << "\t"
+         << "LogLikelihood_fit2"
+         << "\t"
+         << "LRS"
+         << "\t"
+         << "LRS_Pval"
+         << "\t"
+         << "num_G"
+         << "\t"
+         << "rank"
+         << "\t"
+         << "caf"
+         << "\t"
+         << "het_count" << std::endl;
+  outfile << buffer.str();
+  outfile.close();
+}
