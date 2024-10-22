@@ -2,7 +2,7 @@ Package: FastVLA
 Type: Package
 Title: Fast VLA
 Description: This package efficiently performs large scale linear and logistic regression analysis. 
-Version: 2.0.1
+Version: 2.0.2
 Authors@R: 
     c(
     person(given = "Shail",

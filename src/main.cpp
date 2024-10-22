@@ -231,7 +231,8 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const double &mafthresh = 0.005,
                        const double &pca_var_explained = 0.95,
                        const int max_iter = 6, const int max_threads = 1,
-                       const int max_blas_threads = 1) {
+                       const int max_blas_threads = 1,
+                       const bool do_pca = true) {
 
   delete_dir(dir);
   BLASLibraryManager blas_mgr;
@@ -279,9 +280,15 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     // arma::fmat cov = arma::conv_to<arma::fmat>::from(
     //     standardize_and_derank(cov_d, pca_var_explained,
     //     double(cov_d.n_rows)));
-    arma::fmat cov = arma::conv_to<arma::fmat>::from(
-        standardize_and_derank_print(cov_d, dir, cnames[i], suffix,
-                                     pca_var_explained, double(cov_d.n_rows)));
+    arma::fmat cov;
+    if(do_pca){
+      cov = arma::conv_to<arma::fmat>::from(
+          standardize_and_derank_print(cov_d, dir, cnames[i], suffix,
+                                      pca_var_explained, double(cov_d.n_rows)));
+    }else{
+      cov = arma::conv_to<arma::fmat>::from(cov_d);
+    }
+
 
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
@@ -316,7 +323,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const double &mafthresh = 0.005,
                       const double &pca_var_explained = 0.950,
                       const int max_iter = 6, const int max_threads = 1,
-                      const int max_blas_threads = 1) {
+                      const int max_blas_threads = 1,
+                      const bool do_pca = true) {
 
   delete_dir(dir);
   BLASLibraryManager blas_mgr;
@@ -363,8 +371,11 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     cov.shed_rows(nan_idx);
 
     // cov = standardize_and_derank(cov, pca_var_explained, double(cov.n_rows));
-    cov = standardize_and_derank_print(cov, dir, cnames[i], suffix,
-                                       pca_var_explained, double(cov.n_rows));
+    if(do_pca){
+      cov = standardize_and_derank_print(cov, dir, cnames[i], suffix,
+                                        pca_var_explained, double(cov.n_rows));
+    }
+
 
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
@@ -1024,6 +1035,340 @@ void get_ygxw2(const uword &value, vec &y, vec &g, mat &x, vec &w,
 }
 
 
+/// @brief Workhorse function of VLA regressions with a Single Y with no added SVD
+/// @param Y Phenotypes/outcomes matrix
+/// @param G Matrix of POIs (subset by the calling function)
+/// @param X Matrix of covariates
+/// @param dir Directory for output
+/// @param cnames Subfolder names of Y columns
+/// @param vnames Rownames for output (POIs)
+/// @param suffix Name to append for output in correspond dir/cnames folder
+/// @param epss Epsilon threshold for SVD/inversion
+/// @param mafthresh Threshold for Mean allele frequency
+/// @param append Boolean -- create a new file or append to old?
+/// @return 1 if successful
+int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
+                         const arma::mat &X, const std::string &dir,
+                         const std::vector<std::string> cnames,
+                         const std::vector<std::string> vnames,
+                         const std::string suffix, const double epss = 1e-6,
+                         const double &mafthresh = 0.01,
+                         const bool &append = false) {
+
+  // precreate objects
+  double F;
+  mat x = X;       // copy of X
+
+  vec w(Y.n_rows);
+
+  // to store necessary additional vectors
+  vec g_unscaled(Y.n_rows);
+  vec yadj(Y.n_rows);
+  vec xadj(Y.n_rows);
+  vec gadj(Y.n_rows);
+  vec hadj(Y.n_rows);
+  mat Xadj(X.n_cols, Y.n_rows);
+  vec yvQTL(Y.n_rows);
+
+  mat temp_matmul(Y.n_rows, 3);
+  mat Xg(Y.n_rows, 2);
+  mat Vg(2, 2);
+
+  vec est(2);
+
+  vec z(Y.n_rows);
+
+  double p, gmean, df, SST, SSE, MSE;
+
+  double rankk;
+
+  // for 1d
+  double ans, estt;
+
+  // constants for conversion from log pval to -log10 pval
+  const double logg10 = -1.0 * log(10.0);
+  const double logg2 = log(2.0);
+
+  // output holder
+  mat output(G.n_cols, 33);
+  // condition checks placeholders
+  double condition, caf;
+  bool ones, twos;
+  bool temp;
+  double one_counter;
+  vec ps(G.n_cols);
+  vec whichcondition(G.n_cols);
+
+  // create output directory
+  fs::create_directory(dir);
+
+
+  // X = X_orig;
+
+  // fill output with NANs
+  output.fill(datum::nan);
+
+  // create file name for this Y
+  std::stringstream ss;
+  ss << dir << "/" << cnames[0];
+  std::string result_file = ss.str();
+
+  // make sure result directory is there then add the file inside it
+  fs::create_directory(result_file);
+
+  ss << "/" << suffix << ".tsv";
+  result_file = ss.str();
+
+  // loop over POIs/genes and check if good gene, bad gene, or minimal gene
+  // (only 2 unique values)
+  for (uword j = 0; j < G.n_cols; j++) {
+    gadj = G.col(j);
+    // condition = 10.0;
+    w.fill(1.0);
+    w(find_nan(gadj)).fill(0.0);
+
+    uvec bad_inds = find(w == 0);
+    gadj.elem(bad_inds).fill(0.0);
+
+    // put it into w storage
+    //  ws.col(j) = w;
+    p = arma::accu(w);
+    gmean = dot(gadj.t(), w) / p;
+    output(j, 0) = p;
+    caf = gmean / 2.0;
+    // changed as of 10/10 to be CAF instead of MAF
+    //    output(j,1) = std::min(caf, 1.0 - caf);
+    output(j, 1) = caf;
+    //   whichcondition[j] = check_condition(gadj, caf, mafthresh);
+    condition = -1.0 * ((caf < mafthresh) |
+                        (caf > (1.0 - mafthresh))); // 1 is all NANs
+    ps[j] = p;
+    if ((caf < mafthresh) | (caf > (1.0 - mafthresh))) {
+      whichcondition[j] = 2.0;
+    } else {
+      // check if ones and twos
+      ones = false;
+      twos = false;
+      one_counter = 0.0;
+      // 10/10 add a counter for number of ones;
+      for (const auto &value : gadj) {
+        temp = (value == 1.0);
+        ones = ones | temp;
+        one_counter += 1.0 * (temp);
+        twos = twos | (value == 2.0);
+      }
+      whichcondition[j] = 2.0 - ones - twos;
+      output(j, 2) = one_counter;
+    }
+  }
+
+  // find conditions that need further calculations
+  arma::uvec oneg = find(whichcondition == 1.0);
+  arma::uvec good = find(whichcondition == 0.0);
+
+    // do 1D G
+#pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
+                                 gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
+                                 est, ans, estt)
+  for (const auto &value : oneg) {
+
+    get_ygxw2(value, yadj, gadj, x, w, Y, G, X);
+    try {
+      Xadj = x;
+      // rankk = arma::conv_to<double>::from(Xadj.n_cols);
+      rankk = (double)Xadj.n_cols;
+      //Xadj = manual_svd2(x, rankk, epss);
+      output(value, 3) = rankk;
+      output(value, 4) = 1.0;
+
+      // create un-adjusted copy for vQTL
+      g_unscaled = gadj;
+
+      hadj = arma::square(gadj) % w;
+
+      Xadj = Xadj * x.t();
+
+      // sGWAS regress out X
+      regress_out_X(yadj, gadj, hadj, temp_matmul, x, Xadj, w);
+
+      // common between sGWAS, fGWAS
+      df = ps[value] - rankk - 1.0;
+      SST = arma::accu(arma::square(yadj));
+
+      // sGWAS: regress out G
+      ans = dot(gadj.t(), gadj);
+      estt = dot(gadj.t(), yadj) / ans;
+      z = arma::square((yadj - gadj * estt) % w);
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+
+      output_1d(value, 5, df, estt, MSE, ans, output, logg10, logg2);
+
+      // vQTL: regression on squared residuals (z) from sGWAS
+      Xg = arma::join_rows(w, g_unscaled);
+      Vg = arma::inv_sympd(Xg.t() * Xg, inv_opts::allow_approx);
+      // decrease by 2 more for vQTL to account for vQTL betas [intercept + G]
+      df -= 2.0;
+      est = Vg * (Xg.t() * z);
+      MSE = arma::accu(arma::square((z - Xg * est) % w)) / df;
+      // se = sqrt(MSE * Vg(1,1));
+      output_1d(value, 9, df, est[1], MSE, 1.0 / Vg(1, 1), output, logg10,
+                logg2);
+
+      // add back the 2 DF removed for vQTL
+      df += 2.0;
+
+      // Regression 1 of VLA
+      // No g^2 so no need for matrix
+      // estimate betas and subtract out for SSE
+      g_unscaled = gadj;
+      ans = dot(gadj.t(), gadj);
+      estt = dot(gadj.t(), yadj) / ans;
+      gadj *= estt;
+      z = arma::square((yadj - gadj) % w);
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+
+      output_1d(value, 13, df, estt, MSE, ans, output, logg10, logg2);
+
+      // add in F statistic (importance of adding G to the regression)
+      F = ((SST - SSE) / 1.0) / MSE;
+      output(value, 20) = F;
+      output(value, 21) = (R::pf(F, 1, df, 0, 1)) / logg10;
+
+      // STEP 2: Regress squared residuals from above on X + G
+      // regress out X in VLA
+      hadj = (z - x * (Xadj * z)) % w;
+      SST = arma::accu(arma::square(hadj));
+
+      // update DF! Remove added X + POI estimate dfs
+      df -= (rankk + 1.0);
+
+      // regress on G and get betas
+      estt = dot(g_unscaled.t(), hadj) / ans;
+      g_unscaled *= estt;
+      z = arma::square((hadj - g_unscaled) % w);
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+
+      output_1d(value, 22, df, estt, MSE, ans, output, logg10, logg2);
+
+      // add in F-stat (importance of G in VLA variance regression) and
+      // SST,SSE
+      F = ((SST - SSE) / 1.0) / MSE;
+      output(value, 29) = SST;
+      output(value, 30) = SSE;
+      output(value, 31) = F;
+      output(value, 32) = (R::pf(F, 1, df, 0, 1)) / logg10;
+
+    } catch (...) { // catch-all for issues
+      output(value, 2) = 100;
+    }
+  }
+
+    // do 2D G (has 0, 1, and 2 values)
+#pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
+                                 gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
+                                 est, ans, estt)
+  for (const auto &value : good) {
+    get_ygxw2(value, yadj, gadj, x, w, Y, G, X);
+    // try to compute everything with a catch-all for failure
+    try {
+      Xadj = x;
+      // rankk = arma::conv_to<double>::from(Xadj.n_cols);
+      rankk = (double)Xadj.n_cols;
+      // Xadj = manual_svd2(x, rankk, epss);
+      output(value, 3) = rankk;
+      output(value, 4) = 2.0;
+
+      // create a copy pre-regressing out X
+      g_unscaled = gadj;
+
+      // as of 10/3 no more scaling of G
+      //  g -= gmeans[value];
+      hadj = arma::square(gadj) % w;
+
+      Xadj = Xadj * x.t();
+
+      regress_out_X(yadj, gadj, hadj, temp_matmul, x, Xadj, w);
+
+      df = ps[value] - rankk - 1.0;
+      SST = arma::accu(arma::square(yadj));
+
+      // sGWAS (standard)
+      ans = dot(gadj.t(), gadj);
+      estt = dot(gadj.t(), yadj) / ans;
+      z = arma::square((yadj - gadj * estt) % w);
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+
+      // output relevant requested statistics of the regression
+      output_1d(value, 5, df, estt, MSE, ans, output, logg10, logg2);
+
+      // vQTL is 8-11 (standard for comparison)
+      Xg = arma::join_rows(w, g_unscaled);
+      Vg = arma::inv_sympd(Xg.t() * Xg, inv_opts::allow_approx);
+      // decrease by 2 more for vQTL to account for vQTL betas
+      df -= 2.0;
+      est = Vg * (Xg.t() * z);
+      MSE = arma::accu(arma::square((z - Xg * est) % w)) / df;
+
+      output_1d(value, 9, df, est[1], MSE, 1.0 / Vg(1, 1), output, logg10,
+                logg2);
+
+      // NEW VLA STEP 1: regress on G and G^2
+
+      Xg = join_rows(gadj, hadj);
+      Vg = arma::inv_sympd(Xg.t() * Xg, inv_opts::allow_approx);
+
+      // add back 1 df from vQTL original
+      df += 1.0;
+      // get beta estimates
+      est = Vg * (Xg.t() * yadj);
+      z = arma::square((yadj - Xg * est) % w);
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+      // print output
+      output_2d(value, 13, df, est, MSE, Vg, output, logg10, logg2);
+      // add in STEP 1 F value
+      F = ((SST - SSE) / 2.0) / MSE;
+      output(value, 20) = F;
+      output(value, 21) = (R::pf(F, 2, df, 0, 1)) / logg10;
+
+      // STEP 2: Regress X out of residuals^2 for VLA
+      hadj = (z - x * (Xadj * z)) % w;
+
+      // update DF NEW TO REMOVE X AND G AND G^2 AGAIN
+      df -= (rankk + 2.0);
+
+      // get SST with only X regressed
+      SST = arma::accu(arma::square(hadj));
+      est = Vg * (Xg.t() * hadj);
+      z = arma::square((hadj - Xg * est) % w);
+
+      // get SSE with G and G^2 regressed as well
+      SSE = arma::accu(z);
+      MSE = SSE / df;
+
+      // output relevant statistics for G and G^2
+      output_2d(value, 22, df, est, MSE, Vg, output, logg10, logg2);
+
+      // add in F for Level 2 VLA regression (and SST,SSE)
+      F = ((SST - SSE) / 2.0) / MSE;
+      output(value, 29) = SST;
+      output(value, 30) = SSE;
+      output(value, 31) = F;
+      output(value, 32) = (R::pf(F, 2, df, 0, 1)) / logg10;
+    } catch (...) { // catch-all for issues
+      output(value, 3) = 100;
+    }
+  }
+  // output the necessary results to file from the matrix
+  printer(result_file, output, append, vnames);
+
+  return 1; // success!
+}
+
 /// @brief Workhorse function of VLA regressions with a Single Y
 /// @param Y Phenotypes/outcomes matrix
 /// @param G Matrix of POIs (subset by the calling function)
@@ -1352,13 +1697,13 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
   return 1; // success!
 }
 
-
 //needed to change logic for single Y
 //This is the preferred function to match with Shail's logic for logistic regression.
 //Note: Larger chunk_size is better if RAM permits.
 //' This function is the exported wrapper that can be called from R. It has the
 // inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
 // within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
+//@param do_pca: Do PCA dimension reduction?
 //@export
 // [[Rcpp::export]]
 int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
@@ -1369,7 +1714,8 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
                          const std::vector<std::string> vnames,
                          const std::string suffix, const double epss = 1e-6,
                          const double &mafthresh = 0.005,
-                         const double pca_var_explained = 0.95) {
+                         const double pca_var_explained = 0.95,
+                         const bool do_pca = true) {
   omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
@@ -1392,8 +1738,11 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
   pheno.shed_rows(nan_idx);
   cov.shed_rows(nan_idx);
 
-  cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
-                                    pca_var_explained, double(cov.n_rows));
+  if(do_pca){
+    cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
+                                      pca_var_explained, double(cov.n_rows));
+  }
+
 
 
   // std::vector<std::string>::const_iterator first = vnames.begin();
@@ -1435,3 +1784,90 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
   return a;
 }
 
+
+//needed to change logic for single Y
+//This is the preferred function to match with Shail's logic for logistic regression.
+//Note: Larger chunk_size is better if RAM permits.
+//' This function is the exported wrapper that can be called from R. It has the
+// inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
+// within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
+//@param do_pca: Do PCA dimension reduction?
+//@export
+// [[Rcpp::export]]
+int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
+                         const arma::ivec &v_index, const arma::ivec &i_index,
+                         const arma::mat &X, const int &chunk_size,
+                         const std::string &dir,
+                         const std::vector<std::string> cnames,
+                         const std::vector<std::string> vnames,
+                         const std::string suffix, const double epss = 1e-6,
+                         const double &mafthresh = 0.005,
+                         const double pca_var_explained = 0.95,
+                         const bool do_pca = true) {
+  omp_set_num_threads(2);
+  int num_chunks = std::floor(v_index.n_elem / chunk_size);
+
+  // get boolean inclusion vector
+  uvec badX = find_nan(arma::sum(X, 1.0));
+  // put in each column booleans
+    // get X NANs for removal
+  arma::vec x_bools(Y.n_rows, fill::ones);
+  x_bools.elem(badX).fill(0.0);
+  // add Y NANs for removal
+  arma::uvec badY = find_nan(Y);
+  x_bools.elem(badY).fill(0.0);
+
+  arma::mat cov = X;
+  arma::ivec _index = i_index;
+  arma::mat pheno(Y.n_rows, 1);
+  pheno.col(0) = Y;
+  arma::uvec nan_idx = arma::find(x_bools == 0.0);
+  _index.shed_rows(nan_idx);
+  pheno.shed_rows(nan_idx);
+  cov.shed_rows(nan_idx);
+
+  if(do_pca){
+    cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
+                                      pca_var_explained, double(cov.n_rows));
+  }
+
+
+
+  // std::vector<std::string>::const_iterator first = vnames.begin();
+  // std::vector<std::string>::const_iterator last = vnames.begin() +
+  // chunk_size;
+  std::vector<std::string> vnames_subset(vnames.begin(),
+                                         vnames.begin() + chunk_size);
+  // do first chunk
+  arma::mat G = scanBEDMatrix(Gptr, _index, v_index.rows(0, chunk_size - 1));
+  int a =
+      FastVLA_cpp_internal3(pheno, G, cov, dir, cnames, vnames_subset,
+                           suffix, epss, mafthresh, false);
+  // do rest of chunks, appending output
+  // #pragma omp parallel for
+  for (int i = 1; i < num_chunks; i++) {
+    G = scanBEDMatrix(Gptr, _index,
+                      v_index.rows(chunk_size * i, chunk_size * (i + 1) - 1));
+    // first = vnames.begin() + i*chunk_size;
+    // last = vnames.begin() + (i+1)*chunk_size - 1;
+    vnames_subset.assign(vnames.begin() + i * chunk_size,
+                         vnames.begin() + (i + 1) * chunk_size);
+    a = std::min(a, FastVLA_cpp_internal3(pheno, G, cov, dir, cnames,
+                                         vnames_subset, suffix, epss, mafthresh,
+                                         true));
+  }
+  // do last chunk if needed, appending output
+  if ((int)v_index.n_elem > chunk_size * num_chunks) {
+    arma::mat G = scanBEDMatrix(
+        Gptr, _index,
+        v_index.rows(chunk_size * num_chunks, v_index.n_elem - 1));
+    // first = vnames.begin() + num_chunks*chunk_size;
+    // last = vnames.end();
+    std::vector<std::string> vnames_subset2(
+        vnames.begin() + num_chunks * chunk_size, vnames.end());
+    a = std::min(a, FastVLA_cpp_internal3(pheno, G, cov, dir, cnames,
+                                         vnames_subset2, suffix, epss,
+                                         mafthresh, true));
+  }
+  return a;
+}
