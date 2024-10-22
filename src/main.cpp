@@ -173,11 +173,16 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
                                        double dev_to_acc = 0.95,
                                        double N = 1.0) {
   // scale (subtract mean and divide by SD) in place
+  
+  // BLASLibraryManager blas_mgr;
+  // blas_mgr.detect_lib();
+  // int threads = blas_mgr.get_num_threads();
+  // blas_mgr.set_num_threads(4);
   arma::mat ans(2, x.n_cols);
   ans.row(0) = (arma::sum(x, 0.0) / N);
   x.each_row() -= ans.row(0);
   ans.row(1) = sqrt(arma::sum(arma::square(x), 0.0) / (N - 1));
-  //ensure it doesn't go zero and divide by zero which introduces NAs
+  // ensure it doesn't go zero and divide by zero which introduces NAs
   ans.row(1).clamp(1e-8, 1e99);
   x.each_row() /= ans.row(1);
   // get principal components
@@ -221,6 +226,8 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
     outfile.close();
     return x * coeff;
   }
+  
+  // blas_mgr.set_num_threads(threads);
 }
 
 // [[Rcpp::export]]
@@ -233,8 +240,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const double &mafthresh = 0.005,
                        const double &pca_var_explained = 0.95,
                        const int max_iter = 6, const int max_threads = 1,
-                       const int max_blas_threads = 1,
-                       const bool do_pca = true,
+                       const int max_blas_threads = 1, const bool do_pca = true,
                        const bool add_intercept = true) {
 
   delete_dir(dir);
@@ -283,21 +289,28 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     // arma::fmat cov = arma::conv_to<arma::fmat>::from(
     //     standardize_and_derank(cov_d, pca_var_explained,
     //     double(cov_d.n_rows)));
+
+    auto start = std::chrono::high_resolution_clock::now();
     arma::fmat cov;
-    if(do_pca){
-      cov = arma::conv_to<arma::fmat>::from(
-          standardize_and_derank_print(cov_d, dir, cnames[i], suffix,
-                                      pca_var_explained, double(cov_d.n_rows)));
-    }else{
+    if (do_pca) {
+      cov = arma::conv_to<arma::fmat>::from(standardize_and_derank_print(
+          cov_d, dir, cnames[i], suffix, pca_var_explained,
+          double(cov_d.n_rows)));
+    } else {
       cov = arma::conv_to<arma::fmat>::from(cov_d);
     }
 
-
+    auto end = std::chrono::high_resolution_clock::now();
+    double timing =
+        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                      start)
+            .count();
+    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
     arma::fmat interactions_sqrd = arma::join_rows(no_interactions, cov);
-    //add column of ones if required (same as interactions matrix now)
-    if(add_intercept){
+    // add column of ones if required (same as interactions matrix now)
+    if (add_intercept) {
       cov = interactions;
     }
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
@@ -330,8 +343,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const double &mafthresh = 0.005,
                       const double &pca_var_explained = 0.950,
                       const int max_iter = 6, const int max_threads = 1,
-                      const int max_blas_threads = 1,
-                      const bool do_pca = true,
+                      const int max_blas_threads = 1, const bool do_pca = true,
                       const bool add_intercept = true) {
 
   delete_dir(dir);
@@ -378,18 +390,24 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     pheno.shed_rows(nan_idx);
     cov.shed_rows(nan_idx);
 
+    auto start = std::chrono::high_resolution_clock::now();
     // cov = standardize_and_derank(cov, pca_var_explained, double(cov.n_rows));
-    if(do_pca){
+    if (do_pca) {
       cov = standardize_and_derank_print(cov, dir, cnames[i], suffix,
-                                        pca_var_explained, double(cov.n_rows));
+                                         pca_var_explained, double(cov.n_rows));
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    double timing =
+        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                      start)
+            .count();
 
-
+    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
     arma::mat interactions_sqrd = arma::join_rows(no_interactions, cov);
-    //add column of ones if required (same as interactions matrix now)
-    if(add_intercept){
+    // add column of ones if required (same as interactions matrix now)
+    if (add_intercept) {
       cov = interactions;
     }
     for (int chunk = 0; chunk < num_chunks; ++chunk) {
@@ -463,8 +481,8 @@ void output_1d(const uword &value, uword offset, double &df, double &estimat,
   output(value, offset + 1) = estimat;
   double se = sqrt(MSE / inv_var);
   output(value, offset + 2) = se;
-  output(value, offset + 3) = std::max(0.0,((R::pt(abs(estimat/se), df, 0, 1)
-  + logg2)/logg10));
+  output(value, offset + 3) =
+      std::max(0.0, ((R::pt(abs(estimat / se), df, 0, 1) + logg2) / logg10));
   // output(value, offset + 3) =
   //     (R::pt(abs(estimat / se), df, 0, 1) + logg2) / logg10;
   return;
@@ -723,7 +741,7 @@ int FastVLA_cpp_internal(const arma::mat &Y, const arma::mat &G,
         // }
         ones = arma::any(gadj == 1.0);
         twos = arma::any(gadj == 2.0);
-        one_counter = arma::accu(gadj == 1.0); 
+        one_counter = arma::accu(gadj == 1.0);
         whichcondition[j] = 2.0 - ones - twos;
         output(j, 2) = one_counter;
       }
@@ -1013,9 +1031,6 @@ int FastVLA_chunked_sota(
   return a;
 }
 
-
-
-
 /// @brief Gets the correct column of Y, X, G, and w (the mask)
 /// @param i Y column
 /// @param value G column
@@ -1027,8 +1042,8 @@ int FastVLA_chunked_sota(
 /// @param G G matrix
 /// @param X X matrix
 /// @param mask Mask of Y/X
-void get_ygxw2(const uword &value, vec &y, vec &g, mat &x, vec &w,
-              const mat &Y, const mat &G, const mat &X) {
+void get_ygxw2(const uword &value, vec &y, vec &g, mat &x, vec &w, const mat &Y,
+               const mat &G, const mat &X) {
   y = Y.col(0);
   x = X;
   g = G.col(value);
@@ -1046,8 +1061,8 @@ void get_ygxw2(const uword &value, vec &y, vec &g, mat &x, vec &w,
   return;
 }
 
-
-/// @brief Workhorse function of VLA regressions with a Single Y with no added SVD
+/// @brief Workhorse function of VLA regressions with a Single Y with no added
+/// SVD
 /// @param Y Phenotypes/outcomes matrix
 /// @param G Matrix of POIs (subset by the calling function)
 /// @param X Matrix of covariates
@@ -1060,16 +1075,16 @@ void get_ygxw2(const uword &value, vec &y, vec &g, mat &x, vec &w,
 /// @param append Boolean -- create a new file or append to old?
 /// @return 1 if successful
 int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
-                         const arma::mat &X, const std::string &dir,
-                         const std::vector<std::string> cnames,
-                         const std::vector<std::string> vnames,
-                         const std::string suffix, const double epss = 1e-6,
-                         const double &mafthresh = 0.01,
-                         const bool &append = false) {
+                          const arma::mat &X, const std::string &dir,
+                          const std::vector<std::string> cnames,
+                          const std::vector<std::string> vnames,
+                          const std::string suffix, const double epss = 1e-6,
+                          const double &mafthresh = 0.01,
+                          const bool &append = false) {
 
   // precreate objects
   double F;
-  mat x = X;       // copy of X
+  mat x = X; // copy of X
 
   vec w(Y.n_rows);
 
@@ -1114,7 +1129,6 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
   // create output directory
   fs::create_directory(dir);
 
-
   // X = X_orig;
 
   // fill output with NANs
@@ -1152,8 +1166,8 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
     //    output(j,1) = std::min(caf, 1.0 - caf);
     output(j, 1) = caf;
     //   whichcondition[j] = check_condition(gadj, caf, mafthresh);
-    condition = -1.0 * ((caf < mafthresh) |
-                        (caf > (1.0 - mafthresh))); // 1 is all NANs
+    condition =
+        -1.0 * ((caf < mafthresh) | (caf > (1.0 - mafthresh))); // 1 is all NANs
     ps[j] = p;
     if ((caf < mafthresh) | (caf > (1.0 - mafthresh))) {
       whichcondition[j] = 2.0;
@@ -1178,7 +1192,7 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
   arma::uvec oneg = find(whichcondition == 1.0);
   arma::uvec good = find(whichcondition == 0.0);
 
-    // do 1D G
+  // do 1D G
 #pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
                                  gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
                                  est, ans, estt)
@@ -1189,7 +1203,7 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
       Xadj = x;
       // rankk = arma::conv_to<double>::from(Xadj.n_cols);
       rankk = (double)Xadj.n_cols;
-      //Xadj = manual_svd2(x, rankk, epss);
+      // Xadj = manual_svd2(x, rankk, epss);
       output(value, 3) = rankk;
       output(value, 4) = 1.0;
 
@@ -1278,7 +1292,7 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
     }
   }
 
-    // do 2D G (has 0, 1, and 2 values)
+  // do 2D G (has 0, 1, and 2 values)
 #pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
                                  gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
                                  est, ans, estt)
@@ -1394,16 +1408,16 @@ int FastVLA_cpp_internal3(const arma::mat &Y, const arma::mat &G,
 /// @param append Boolean -- create a new file or append to old?
 /// @return 1 if successful
 int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
-                         const arma::mat &X, const std::string &dir,
-                         const std::vector<std::string> cnames,
-                         const std::vector<std::string> vnames,
-                         const std::string suffix, const double epss = 1e-6,
-                         const double &mafthresh = 0.01,
-                         const bool &append = false) {
+                          const arma::mat &X, const std::string &dir,
+                          const std::vector<std::string> cnames,
+                          const std::vector<std::string> vnames,
+                          const std::string suffix, const double epss = 1e-6,
+                          const double &mafthresh = 0.01,
+                          const bool &append = false) {
 
   // precreate objects
   double F;
-  mat x = X;       // copy of X
+  mat x = X; // copy of X
 
   vec w(Y.n_rows);
 
@@ -1448,7 +1462,6 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
   // create output directory
   fs::create_directory(dir);
 
-
   // X = X_orig;
 
   // fill output with NANs
@@ -1486,8 +1499,8 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
     //    output(j,1) = std::min(caf, 1.0 - caf);
     output(j, 1) = caf;
     //   whichcondition[j] = check_condition(gadj, caf, mafthresh);
-    condition = -1.0 * ((caf < mafthresh) |
-                        (caf > (1.0 - mafthresh))); // 1 is all NANs
+    condition =
+        -1.0 * ((caf < mafthresh) | (caf > (1.0 - mafthresh))); // 1 is all NANs
     ps[j] = p;
     if ((caf < mafthresh) | (caf > (1.0 - mafthresh))) {
       whichcondition[j] = 2.0;
@@ -1512,7 +1525,7 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
   arma::uvec oneg = find(whichcondition == 1.0);
   arma::uvec good = find(whichcondition == 0.0);
 
-    // do 1D G
+  // do 1D G
 #pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
                                  gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
                                  est, ans, estt)
@@ -1609,7 +1622,7 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
     }
   }
 
-    // do 2D G (has 0, 1, and 2 values)
+  // do 2D G (has 0, 1, and 2 values)
 #pragma omp parallel for private(x, w, g_unscaled, Xadj, temp_matmul, yadj,    \
                                  gadj, hadj, Xg, Vg, SST, SSE, MSE, df, z, F,  \
                                  est, ans, estt)
@@ -1709,34 +1722,33 @@ int FastVLA_cpp_internal2(const arma::mat &Y, const arma::mat &G,
   return 1; // success!
 }
 
-//needed to change logic for single Y
-//This is the preferred function to match with Shail's logic for logistic regression.
-//Note: Larger chunk_size is better if RAM permits.
-//' This function is the exported wrapper that can be called from R. It has the
-// inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
-// within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
+// needed to change logic for single Y
+// This is the preferred function to match with Shail's logic for logistic
+// regression. Note: Larger chunk_size is better if RAM permits. ' This function
+// is the exported wrapper that can be called from R. It has the
+//  inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
+//  within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
 //@param do_pca: Do PCA dimension reduction?
 //@param add_intercept: Add an intercept to front of X?
 //@export
-// [[Rcpp::export]]
-int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
-                         const arma::ivec &v_index, const arma::ivec &i_index,
-                         const arma::mat &X, const int &chunk_size,
-                         const std::string &dir,
-                         const std::vector<std::string> cnames,
-                         const std::vector<std::string> vnames,
-                         const std::string suffix, const double epss = 1e-6,
-                         const double &mafthresh = 0.005,
-                         const double pca_var_explained = 0.95,
-                         const bool do_pca = true,
-                         const bool add_intercept = true) {
+//  [[Rcpp::export]]
+int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
+                     const arma::ivec &i_index, const arma::mat &X,
+                     const int &chunk_size, const std::string &dir,
+                     const std::vector<std::string> cnames,
+                     const std::vector<std::string> vnames,
+                     const std::string suffix, const double epss = 1e-6,
+                     const double &mafthresh = 0.005,
+                     const double pca_var_explained = 0.95,
+                     const bool do_pca = true,
+                     const bool add_intercept = true) {
   omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
   // get boolean inclusion vector
   uvec badX = find_nan(arma::sum(X, 1.0));
   // put in each column booleans
-    // get X NANs for removal
+  // get X NANs for removal
   arma::vec x_bools(Y.n_rows, fill::ones);
   x_bools.elem(badX).fill(0.0);
   // add Y NANs for removal
@@ -1752,12 +1764,19 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
   pheno.shed_rows(nan_idx);
   cov.shed_rows(nan_idx);
 
-  if(do_pca){
+  auto start = std::chrono::high_resolution_clock::now();
+  if (do_pca) {
     cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
-                                      pca_var_explained, double(cov.n_rows));
+                                       pca_var_explained, double(cov.n_rows));
   }
+  auto end = std::chrono::high_resolution_clock::now();
 
-  if(add_intercept){
+  double timing =
+      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+
+  Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+  if (add_intercept) {
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     cov = arma::join_rows(no_interactions, cov);
   }
@@ -1769,9 +1788,8 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
                                          vnames.begin() + chunk_size);
   // do first chunk
   arma::mat G = scanBEDMatrix(Gptr, _index, v_index.rows(0, chunk_size - 1));
-  int a =
-      FastVLA_cpp_internal2(pheno, G, cov, dir, cnames, vnames_subset,
-                           suffix, epss, mafthresh, false);
+  int a = FastVLA_cpp_internal2(pheno, G, cov, dir, cnames, vnames_subset,
+                                suffix, epss, mafthresh, false);
   // do rest of chunks, appending output
   // #pragma omp parallel for
   for (int i = 1; i < num_chunks; i++) {
@@ -1782,8 +1800,8 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
     vnames_subset.assign(vnames.begin() + i * chunk_size,
                          vnames.begin() + (i + 1) * chunk_size);
     a = std::min(a, FastVLA_cpp_internal2(pheno, G, cov, dir, cnames,
-                                         vnames_subset, suffix, epss, mafthresh,
-                                         true));
+                                          vnames_subset, suffix, epss,
+                                          mafthresh, true));
   }
   // do last chunk if needed, appending output
   if ((int)v_index.n_elem > chunk_size * num_chunks) {
@@ -1795,40 +1813,36 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr,
     std::vector<std::string> vnames_subset2(
         vnames.begin() + num_chunks * chunk_size, vnames.end());
     a = std::min(a, FastVLA_cpp_internal2(pheno, G, cov, dir, cnames,
-                                         vnames_subset2, suffix, epss,
-                                         mafthresh, true));
+                                          vnames_subset2, suffix, epss,
+                                          mafthresh, true));
   }
   return a;
 }
 
-
-//needed to change logic for single Y
-//This is the preferred function to match with Shail's logic for logistic regression.
-//Note: Larger chunk_size is better if RAM permits.
-//' This function is the exported wrapper that can be called from R. It has the
-// inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
-// within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
+// needed to change logic for single Y
+// This is the preferred function to match with Shail's logic for logistic
+// regression. Note: Larger chunk_size is better if RAM permits. ' This function
+// is the exported wrapper that can be called from R. It has the
+//  inputs, ' and chunks G (the POIs) based on chunk_size to be able to stay
+//  within RAM requirements. ' @useDynLib FastVLA ' @importFrom Rcpp sourceCpp '
 //@param do_pca: Do PCA dimension reduction?
 //@export
-// [[Rcpp::export]]
-int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
-                         const arma::ivec &v_index, const arma::ivec &i_index,
-                         const arma::mat &X, const int &chunk_size,
-                         const std::string &dir,
-                         const std::vector<std::string> cnames,
-                         const std::vector<std::string> vnames,
-                         const std::string suffix, const double epss = 1e-6,
-                         const double &mafthresh = 0.005,
-                         const double pca_var_explained = 0.95,
-                         const bool do_pca = true,
-                         const bool add_intercept = true) {
+//  [[Rcpp::export]]
+int FastVLA_single_Y_fast(
+    const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
+    const arma::ivec &i_index, const arma::mat &X, const int &chunk_size,
+    const std::string &dir, const std::vector<std::string> cnames,
+    const std::vector<std::string> vnames, const std::string suffix,
+    const double epss = 1e-6, const double &mafthresh = 0.005,
+    const double pca_var_explained = 0.95, const bool do_pca = true,
+    const bool add_intercept = true) {
   omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
   // get boolean inclusion vector
   uvec badX = find_nan(arma::sum(X, 1.0));
   // put in each column booleans
-    // get X NANs for removal
+  // get X NANs for removal
   arma::vec x_bools(Y.n_rows, fill::ones);
   x_bools.elem(badX).fill(0.0);
   // add Y NANs for removal
@@ -1844,12 +1858,18 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
   pheno.shed_rows(nan_idx);
   cov.shed_rows(nan_idx);
 
-  if(do_pca){
+  auto start = std::chrono::high_resolution_clock::now();
+  if (do_pca) {
     cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
-                                      pca_var_explained, double(cov.n_rows));
+                                       pca_var_explained, double(cov.n_rows));
   }
 
-  if(add_intercept){
+  auto end = std::chrono::high_resolution_clock::now();
+  double timing =
+      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+  Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+  if (add_intercept) {
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     cov = arma::join_rows(no_interactions, cov);
   }
@@ -1861,9 +1881,8 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
                                          vnames.begin() + chunk_size);
   // do first chunk
   arma::mat G = scanBEDMatrix(Gptr, _index, v_index.rows(0, chunk_size - 1));
-  int a =
-      FastVLA_cpp_internal3(pheno, G, cov, dir, cnames, vnames_subset,
-                           suffix, epss, mafthresh, false);
+  int a = FastVLA_cpp_internal3(pheno, G, cov, dir, cnames, vnames_subset,
+                                suffix, epss, mafthresh, false);
   // do rest of chunks, appending output
   // #pragma omp parallel for
   for (int i = 1; i < num_chunks; i++) {
@@ -1874,8 +1893,8 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
     vnames_subset.assign(vnames.begin() + i * chunk_size,
                          vnames.begin() + (i + 1) * chunk_size);
     a = std::min(a, FastVLA_cpp_internal3(pheno, G, cov, dir, cnames,
-                                         vnames_subset, suffix, epss, mafthresh,
-                                         true));
+                                          vnames_subset, suffix, epss,
+                                          mafthresh, true));
   }
   // do last chunk if needed, appending output
   if ((int)v_index.n_elem > chunk_size * num_chunks) {
@@ -1887,8 +1906,8 @@ int FastVLA_single_Y_fast(const arma::vec &Y, SEXP Gptr,
     std::vector<std::string> vnames_subset2(
         vnames.begin() + num_chunks * chunk_size, vnames.end());
     a = std::min(a, FastVLA_cpp_internal3(pheno, G, cov, dir, cnames,
-                                         vnames_subset2, suffix, epss,
-                                         mafthresh, true));
+                                          vnames_subset2, suffix, epss,
+                                          mafthresh, true));
   }
   return a;
 }
