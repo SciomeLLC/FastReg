@@ -235,7 +235,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     float abs_errs = 1.0;
     arma::fcolvec beta_diff = beta;
     int iter;
-    for (iter = 0; iter < (max_iter) && rel_errs > 1e-5; iter++) {
+    for (iter = 0; iter < (max_iter) && rel_errs > 1e-4; iter++) {
       beta_old = beta;
       arma::fmat eta = X * beta;
       arma::fmat p = 1 / (1 + arma::exp(-eta));
