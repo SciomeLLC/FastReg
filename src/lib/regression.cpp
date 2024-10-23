@@ -368,10 +368,10 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
     arma::colvec temp_b2 =
         arma::colvec(beta2.data(), beta2.size(), true, false);
     temp_se = arma::colvec(diag.data(), diag.size(), true, false);
-    neg_abs_z = arma::abs(temp_b) * -1;
+    neg_abs_z = arma::abs(temp_b / temp_se) * -1;
     arma::colvec temp_se2 =
         arma::colvec(diag2.data(), diag2.size(), true, false);
-    neg_abs_z2 = arma::abs(temp_b2) * -1;
+    neg_abs_z2 = arma::abs(temp_b2 / temp_se2) * -1;
 
     result.set_lls(ll1, ll2, lrs, lrs_pval, 3, poi_col_idx, rank);
     pval = (*dist_func_r)(neg_abs_z, df);

@@ -12,3 +12,4 @@
 ^\.github$
 ^\.dccache
 ^\.lintr
+.*\.zip
