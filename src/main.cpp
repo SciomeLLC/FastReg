@@ -175,10 +175,6 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
                                        double N = 1.0) {
   // scale (subtract mean and divide by SD) in place
 
-  // BLASLibraryManager blas_mgr;
-  // blas_mgr.detect_lib();
-  // int threads = blas_mgr.get_num_threads();
-  // blas_mgr.set_num_threads(4);
   arma::mat ans(2, x.n_cols);
   ans.row(0) = (arma::sum(x, 0.0) / N);
   x.each_row() -= ans.row(0);
@@ -187,15 +183,14 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
   ans.row(1).clamp(1e-8, 1e99);
   x.each_row() /= ans.row(1);
   // get principal components
-  arma::mat coeff;
-  arma::mat score;
-  arma::vec latent;
+  arma::mat coeff;  // x.n_cols, x.n_cols
+  arma::mat score;  // x.n_rows, x.n_cols
+  arma::vec latent; // x.n_cols
   arma::princomp(coeff, score, latent, x);
+
   arma::vec cumulative_var = cumsum(latent) / accu(latent);
   arma::uvec temp = arma::find(cumulative_var > dev_to_acc);
-  // create output directory and file
-  // fs::create_directory(dir);
-  // fs::create_directory(namee);
+
   std::stringstream ss;
   // ss << dir << "/" << namee << "_" << suffix << "_metadata.tsv";
   fs::create_directory(dir);
@@ -257,8 +252,6 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
     outfile.close();
     return x * coeff;
   }
-
-  // blas_mgr.set_num_threads(threads);
 }
 
 // [[Rcpp::export]]
@@ -321,22 +314,22 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     //     standardize_and_derank(cov_d, pca_var_explained,
     //     double(cov_d.n_rows)));
 
-    auto start = std::chrono::high_resolution_clock::now();
     arma::fmat cov;
     if (do_pca) {
+      auto start = std::chrono::high_resolution_clock::now();
       cov = arma::conv_to<arma::fmat>::from(standardize_and_derank_print(
           cov_d, dir, cnames[i], suffix, pca_var_explained,
           double(cov_d.n_rows)));
+
+      auto end = std::chrono::high_resolution_clock::now();
+      double timing =
+          (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                        start)
+              .count();
+      Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
     } else {
       cov = arma::conv_to<arma::fmat>::from(cov_d);
     }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    double timing =
-        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                      start)
-            .count();
-    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
     arma::fmat no_interactions = arma::fmat(cov.n_rows, 1, arma::fill::ones);
     arma::fmat interactions = arma::join_rows(no_interactions, cov);
     arma::fmat interactions_sqrd = arma::join_rows(no_interactions, cov);
@@ -346,7 +339,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     }
 
     std::time_t t = std::time(nullptr);
-    std::tm* lt = std::localtime(&t);
+    std::tm *lt = std::localtime(&t);
     std::ostringstream oss;
     oss << std::put_time(lt, "%d-%m-%Y %H-%M-%S");
     std::string local_time = oss.str();
@@ -360,7 +353,8 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       std::vector<std::string> variant_names_chunk(
           vnames.begin() + start_idx, vnames.begin() + end_idx + 1);
       arma::fmat G = scanBEDMatrixf(Gptr, _index, current_variant_indices);
-      VLAResultf res(cov, G, no_interactions, interactions, interactions_sqrd, local_time);
+      VLAResultf res(cov, G, no_interactions, interactions, interactions_sqrd,
+                     local_time);
 
       LogisticRegression regression;
       regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
@@ -430,19 +424,19 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     pheno.shed_rows(nan_idx);
     cov.shed_rows(nan_idx);
 
-    auto start = std::chrono::high_resolution_clock::now();
     // cov = standardize_and_derank(cov, pca_var_explained, double(cov.n_rows));
     if (do_pca) {
+      auto start = std::chrono::high_resolution_clock::now();
       cov = standardize_and_derank_print(cov, dir, cnames[i], suffix,
                                          pca_var_explained, double(cov.n_rows));
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    double timing =
-        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                      start)
-            .count();
 
-    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+      auto end = std::chrono::high_resolution_clock::now();
+      double timing =
+          (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                        start)
+              .count();
+      Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+    }
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     arma::mat interactions = arma::join_rows(no_interactions, cov);
     arma::mat interactions_sqrd = arma::join_rows(no_interactions, cov);
@@ -452,7 +446,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
     }
 
     std::time_t t = std::time(nullptr);
-    std::tm* lt = std::localtime(&t);
+    std::tm *lt = std::localtime(&t);
     std::ostringstream oss;
     oss << std::put_time(lt, "%d-%m-%Y %H-%M-%S");
     std::string local_time = oss.str();
@@ -466,7 +460,8 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       std::vector<std::string> variant_names_chunk(
           vnames.begin() + start_idx, vnames.begin() + end_idx + 1);
       arma::mat G = scanBEDMatrix(Gptr, _index, current_variant_indices);
-      VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd, local_time);
+      VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd,
+                    local_time);
       LogisticRegression regression;
       regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
@@ -1793,7 +1788,6 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
   // omp_set_num_threads(2);
   int num_chunks = std::floor(v_index.n_elem / chunk_size);
 
-  Rcpp::Rcout << "set omp " << std::endl;
   // get boolean inclusion vector
   uvec badX = find_nan(arma::sum(X, 1.0));
   // put in each column booleans
@@ -1804,7 +1798,6 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
   arma::uvec badY = find_nan(Y);
   x_bools.elem(badY).fill(0.0);
 
-  Rcpp::Rcout << "set xbools " << std::endl;
   arma::mat cov = X;
   arma::ivec _index = i_index;
   arma::mat pheno(Y.n_rows, 1);
@@ -1814,12 +1807,18 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
   pheno.shed_rows(nan_idx);
   cov.shed_rows(nan_idx);
 
-  Rcpp::Rcout << "shed rows " << std::endl;
   auto start = std::chrono::high_resolution_clock::now();
   if (do_pca) {
-    Rcpp::Rcout << "in pca " << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
     cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
                                        pca_var_explained, double(cov.n_rows));
+
+    auto end = std::chrono::high_resolution_clock::now();
+    double timing =
+        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                      start)
+            .count();
+    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
   }
   auto end_t = std::chrono::high_resolution_clock::now();
 
@@ -1832,7 +1831,6 @@ int FastVLA_single_Y(const arma::vec &Y, SEXP Gptr, const arma::ivec &v_index,
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     cov = arma::join_rows(no_interactions, cov);
   }
-  Rcpp::Rcout << "intercept " << std::endl;
 
   // std::vector<std::string>::const_iterator first = vnames.begin();
   // std::vector<std::string>::const_iterator last = vnames.begin() +
@@ -1913,15 +1911,17 @@ int FastVLA_single_Y_fast(
 
   auto start = std::chrono::high_resolution_clock::now();
   if (do_pca) {
+    auto start = std::chrono::high_resolution_clock::now();
     cov = standardize_and_derank_print(cov, dir, cnames[0], suffix,
                                        pca_var_explained, double(cov.n_rows));
-  }
 
-  auto end = std::chrono::high_resolution_clock::now();
-  double timing =
-      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-          .count();
-  Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    double timing =
+        (double)std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                      start)
+            .count();
+    Rcpp::Rcout << "PCA ananlysis timing: " << timing << "ms" << std::endl;
+  }
   if (add_intercept) {
     arma::mat no_interactions = arma::mat(cov.n_rows, 1, arma::fill::ones);
     cov = arma::join_rows(no_interactions, cov);
