@@ -2,9 +2,9 @@
 #include <regression.h>
 
 arma::colvec t_dist_r(arma::colvec abs_z, int df) {
+    arma::colvec ret_val(abs_z.size());
 #pragma omp critical
   {
-    arma::colvec ret_val(abs_z.size());
     for (size_t i = 0; i < abs_z.size(); i++) {
       ret_val[i] = -1 * (R::pt(abs_z[i], df, true, true) + log(2)) / log(10);
     }
@@ -18,10 +18,10 @@ double chisq(double lrs, int df) {
 }
 
 arma::colvec norm_dist_r(arma::colvec abs_z, int df) {
+    arma::colvec ret_val(abs_z.size());
 #pragma omp critical
   {
 
-    arma::colvec ret_val(abs_z.size());
     for (size_t i = 0; i < abs_z.size(); i++) {
       ret_val[i] =
           -1 * (R::pnorm(abs_z[i], 1.0, 1.0, true, true) + log(2)) / log(10);
@@ -274,7 +274,7 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
       eta.noalias() = X * beta;
       p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
       Eigen::MatrixXd W1 = p.array() * (1 - p.array()) * w2_col.array();
-      temp1.noalias() = X.array().colwise() * W1.col(0).array();
+      temp1.noalias() = (X.array().colwise() * W1.col(0).array()).matrix();
       A.noalias() = temp1.transpose() * X;
       z = w2_col.array() * (tphenoD.array() - p.array()).array();
       Eigen::MatrixXd B = X.transpose() * z;
@@ -327,7 +327,7 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
       p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix(); // same
       Eigen::MatrixXd W1_2 =
           p2.array() * (1 - p2.array()) * w2_col2.array(); // L1 cache
-      temp1_2.noalias() = X2.array().colwise() * W1_2.col(0).array();
+      temp1_2.noalias() = (X2.array().colwise() * W1_2.col(0).array()).matrix();
       A2.noalias() = temp1_2.transpose() * X2;
       z2 = w2_col2.array() * (tphenoD.array() - p2.array()).array();
       Eigen::MatrixXd B2 = X2.transpose() * z2;
