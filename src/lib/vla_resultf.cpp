@@ -218,7 +218,7 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   outfile.close();
 }
 
-void VLAResult::write_headers(std::string dir, std::string file_name,
+void VLAResultf::write_headers(std::string dir, std::string file_name,
                               std::string pheno_name,
                               std::vector<std::string> row_names)
 {
