@@ -188,7 +188,7 @@ void VLAResult::write_to_file(std::string dir, std::string file_name,
     else
     {
       buffer << "\t" << beta_est2_sqrd.at(row2 - 1, col) << "\t"
-             << se_beta2_sqrd.at(row2 - 1) << "\t" << neglog10_pvl2_sqrd.at(row2 - 1, col);
+             << se_beta2_sqrd.at(row2 - 1, col) << "\t" << neglog10_pvl2_sqrd.at(row2 - 1, col);
       while (row2 < (int)beta_est2.n_rows)
       {
         buffer << "\t" << beta_est2_sqrd.at(row2, col) << "\t"
