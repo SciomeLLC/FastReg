@@ -55,7 +55,7 @@ public:
   std::unordered_map<std::string, int> col_names2;
 
   std::string local_time;
-  int num_parms, num_parms2, num_parms2_sqrd;
+  int num_parms, num_parms2, num_parms2_sqrd, cov_n_cols;
 
   VLAResult(){};
   VLAResult(arma::mat &covar_matrix, arma::mat &poi_matrix,
@@ -120,7 +120,7 @@ public:
   std::unordered_map<std::string, int> col_names2;
 
   std::string local_time;
-  int num_parms, num_parms2, num_parms2_sqrd;
+  int num_parms, num_parms2, num_parms2_sqrd, cov_n_cols;
 
   VLAResultf(){};
   VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,

@@ -1,31 +1,28 @@
 #include <chrono>
 #include <regression.h>
 
-arma::colvec t_dist_r(arma::colvec abs_z, int df) {
-    arma::colvec ret_val(abs_z.size());
-#pragma omp critical
+arma::colvec t_dist_r(arma::colvec abs_z, int df)
+{
+  arma::colvec ret_val(abs_z.size());
+  for (size_t i = 0; i < abs_z.size(); i++)
   {
-    for (size_t i = 0; i < abs_z.size(); i++) {
-      ret_val[i] = -1 * (R::pt(abs_z[i], df, true, true) + log(2)) / log(10);
-    }
+    ret_val[i] = -1 * (R::pt(abs_z[i], df, true, true) + log(2)) / log(10);
   }
-
   return ret_val;
 }
 
-double chisq(double lrs, int df) {
+double chisq(double lrs, int df)
+{
   return R::pchisq(lrs, df, 0, 1) / (-1.0 * log(10));
 }
 
-arma::colvec norm_dist_r(arma::colvec abs_z, int df) {
-    arma::colvec ret_val(abs_z.size());
-#pragma omp critical
+arma::colvec norm_dist_r(arma::colvec abs_z, int df)
+{
+  arma::colvec ret_val(abs_z.size());
+  for (size_t i = 0; i < abs_z.size(); i++)
   {
-
-    for (size_t i = 0; i < abs_z.size(); i++) {
-      ret_val[i] =
-          -1 * (R::pnorm(abs_z[i], 1.0, 1.0, true, true) + log(2)) / log(10);
-    }
+    ret_val[i] =
+        -1 * (R::pnorm(abs_z[i], 1.0, 1.0, true, true) + log(2)) / log(10);
   }
   return ret_val;
 }
@@ -35,7 +32,8 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
                                    int max_iter, bool is_t_dist,
                                    std::vector<int> &poi_2_idx,
                                    Eigen::MatrixXd &W2f,
-                                   Eigen::MatrixXd &tphenoD) {
+                                   Eigen::MatrixXd &tphenoD)
+{
   arma::colvec (*dist_func_r)(arma::colvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   double ll1, ll2, lrs, lrs_pval;
@@ -51,7 +49,8 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
   Eigen::MatrixXd int_w_mat, int_w_mat2;
   arma::uword n_parms2 = result.cov_int_names.size();
   // #pragma omp parallel for
-  for (int poi_col_idx : poi_2_idx) {
+  for (int poi_col_idx : poi_2_idx)
+  {
     checkInterrupt();
     Eigen::MatrixXd A =
         Eigen::MatrixXd::Zero(result.num_parms, result.num_parms);
@@ -103,7 +102,8 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
     Eigen::MatrixXd eta, eta2, p, p2;
     for (int iter = 0;
          iter < max_iter && result.beta_rel_errs.at(poi_col_idx) > 1e-4;
-         iter++) {
+         iter++)
+    {
       // Fit 1
       eta = Eigen::MatrixXd::Zero(cov.n_rows, 1);
       eta = X * beta;
@@ -129,7 +129,8 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
     // Fit 2
     for (int iter = 0;
          iter < max_iter && result.beta_rel_errs2.at(poi_col_idx) > 1e-10;
-         iter++) {
+         iter++)
+    {
       eta2 = Eigen::MatrixXd::Zero(cov.n_rows, 1);
       eta2 = X2 * beta2;
       p2 = -eta2.array();
@@ -210,7 +211,8 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
                                    int max_iter, bool is_t_dist,
                                    std::vector<int> &poi_3_idx,
                                    Eigen::MatrixXd &W2f,
-                                   Eigen::MatrixXd &tphenoD) {
+                                   Eigen::MatrixXd &tphenoD)
+{
 
   arma::colvec (*dist_func_r)(arma::colvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
@@ -242,7 +244,8 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
 //     beta2, beta_old2, beta_diff, beta_diff2, w2_col, w2_col2, diag, diag2,     \
 //     temp_se, neg_abs_z, temp_se2, neg_abs_z2, poi_col, poi_col_sqrd, pval,     \
 //     pval2)
-  for (int poi_col_idx : poi_3_idx) {
+  for (int poi_col_idx : poi_3_idx)
+  {
     checkInterrupt();
     A = Eigen::MatrixXd::Zero(result.num_parms, result.num_parms);
     A(0, 0) = 1;
@@ -270,7 +273,8 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
 
     for (int iter = 0;
          iter < max_iter && result.beta_rel_errs.at(poi_col_idx) > 1e-4;
-         iter++) {
+         iter++)
+    {
       eta.noalias() = X * beta;
       p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
       Eigen::MatrixXd W1 = p.array() * (1 - p.array()) * w2_col.array();
@@ -322,8 +326,9 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
 
     for (int iter = 0;
          iter < max_iter && result.beta_rel_errs2.at(poi_col_idx) > 1e-10;
-         iter++) {
-      eta2.noalias() = X2 * beta2; // cant optimize for L cache
+         iter++)
+    {
+      eta2.noalias() = X2 * beta2;                         // cant optimize for L cache
       p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix(); // same
       Eigen::MatrixXd W1_2 =
           p2.array() * (1 - p2.array()) * w2_col2.array(); // L1 cache
@@ -396,7 +401,8 @@ void LogisticRegression::run_vla_3(arma::mat &cov, arma::mat &pheno,
 void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
                                  arma::mat &poi_data, VLAResult &result,
                                  int max_iter, bool is_t_dist,
-                                 double maf_thresh) {
+                                 double maf_thresh)
+{
   arma::colvec poi_col;
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
@@ -414,21 +420,26 @@ void LogisticRegression::run_vla(arma::mat &cov, arma::mat &pheno,
 
 #pragma omp for nowait
     for (arma::uword poi_col_idx = 0; poi_col_idx < poi_data.n_cols;
-         poi_col_idx++) {
+         poi_col_idx++)
+    {
       arma::colvec w2_col = result.W2.col(poi_col_idx);
       w = arma::accu(w2_col);
       poi_col = poi_data.col(poi_col_idx);
       maf = arma::dot(poi_col.t(), w2_col) / (2.0 * w);
       result.lls.at(poi_col_idx, 6) = maf;
 
-      if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh))) {
+      if ((maf > maf_thresh) & (maf < (1.0 - maf_thresh)))
+      {
         ones = arma::any(poi_col == 1.0);
         twos = arma::any(poi_col == 2.0);
         one_counter = arma::accu(poi_col == 1.0); // Count occurrences of 1.0
 
-        if (ones && twos) {
+        if (ones && twos)
+        {
           local_poi_3_idx.push_back(poi_col_idx);
-        } else {
+        }
+        else
+        {
           local_poi_2_idx.push_back(poi_col_idx);
         }
 

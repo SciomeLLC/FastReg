@@ -2,7 +2,8 @@
 
 VLAResultf::VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
                        arma::fmat &no_interactions, arma::fmat &interactions,
-                       arma::fmat &interactions_sqrd, std::string lt) {
+                       arma::fmat &interactions_sqrd, std::string lt)
+{
   local_time = lt;
   num_parms = no_interactions.n_cols + covar_matrix.n_cols;
   num_parms2 = interactions.n_cols + covar_matrix.n_cols;
@@ -53,9 +54,11 @@ VLAResultf::VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
   // TODO: Create and set column names and row names for results
   //  write_to_file() will require the col/row names to output to file correctly
 
-  for (arma::uword v = 0; v < poi_matrix.n_cols; v++) {
+  for (arma::uword v = 0; v < poi_matrix.n_cols; v++)
+  {
     arma::uvec G_na = arma::find_nonfinite(poi_matrix.col(v));
-    for (arma::uword i = 0; i < G_na.n_elem; i++) {
+    for (arma::uword i = 0; i < G_na.n_elem; i++)
+    {
       W2(G_na(i), v) = 0.0;
       poi_matrix(G_na(i), v) = 0.0;
     }
@@ -68,7 +71,8 @@ VLAResultf::VLAResultf(arma::fmat &covar_matrix, arma::fmat &poi_matrix,
 }
 
 void VLAResultf::set_lls(float ll1, float ll2, float lrs, float lrs_pval,
-                         int num_g, int idx, int rank) {
+                         int num_g, int idx, int rank)
+{
   lls.at(idx, 0) = ll1;
   lls.at(idx, 1) = ll2;
   lls.at(idx, 2) = lrs;
@@ -78,21 +82,24 @@ void VLAResultf::set_lls(float ll1, float ll2, float lrs, float lrs_pval,
 }
 
 void VLAResultf::set_betas_fit1(arma::fcolvec &beta, arma::fcolvec &se,
-                                arma::fcolvec &pval, int idx) {
+                                arma::fcolvec &pval, int idx)
+{
   beta_est.col(idx) = beta;
   se_beta.col(idx) = se;
   neglog10_pvl.col(idx) = pval;
 }
 
 void VLAResultf::set_betas_fit2(arma::fcolvec &beta, arma::fcolvec &se,
-                                arma::fcolvec &pval, int idx) {
+                                arma::fcolvec &pval, int idx)
+{
   beta_est2.col(idx) = beta;
   se_beta2.col(idx) = se;
   neglog10_pvl2.col(idx) = pval;
 }
 
 void VLAResultf::set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
-                                     arma::fcolvec &pval, int idx) {
+                                     arma::fcolvec &pval, int idx)
+{
   beta_est2_sqrd.col(idx) = beta;
   se_beta2_sqrd.col(idx) = se;
   neglog10_pvl2_sqrd.col(idx) = pval;
@@ -100,7 +107,8 @@ void VLAResultf::set_betas_fit2_sqrd(arma::fcolvec &beta, arma::fcolvec &se,
 
 void VLAResultf::write_to_file(std::string dir, std::string file_name,
                                std::string pheno_name,
-                               std::vector<std::string> row_names) {
+                               std::vector<std::string> row_names)
+{
   int n_parms = beta_est.n_rows;
   int n_parms2 = beta_est2.n_rows;
 
@@ -113,15 +121,24 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
      << getLocalTime() << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
-  int idx = beta_est.n_rows + 1;
-  if (fs::exists(result_file)) {
+
+  int idx = cov_n_cols + 1;
+  int G_idx = cov_n_cols;
+  int Gsq_idx = beta_est2.n_rows;
+  int poi_idx = beta_est.n_rows - 1;
+  if (fs::exists(result_file))
+  {
     outfile.open(result_file, std::ios::app);
-    if (!outfile.is_open()) {
+    if (!outfile.is_open())
+    {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
-  } else {
+  }
+  else
+  {
     outfile.open(result_file);
-    if (!outfile.is_open()) {
+    if (!outfile.is_open())
+    {
       Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
     }
   }
@@ -132,7 +149,8 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   float abs_err_val, rel_err_val, iter1, iter2, abs_err_val2, rel_err_val2, ll1,
       ll2, lrs, lrs_pval, num_G, rank;
   int N, df, df2, row2, row3;
-  for (int col = 0; col < (int)beta_est.n_cols; col++) {
+  for (int col = 0; col < (int)beta_est.n_cols; col++)
+  {
     std::string poi_name = row_names[col];
     abs_err_val = beta_abs_errs.at(col);
     rel_err_val = beta_rel_errs.at(col);
@@ -158,23 +176,37 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
 
     row2 = idx;
     row3 = (int)beta_est2.n_rows;
-    if (num_G == 2) {
-      for (; row2 < (int)beta_est2.n_rows; row2++) {
+    if (num_G == 2)
+    {
+      while (row2 < (int)beta_est2.n_rows)
+      {
         buffer << "\t" << beta_est2.at(row2, col) << "\t"
-               << se_beta2.at(row2, col) << "\t" << neglog10_pvl2.at(row2, col);
+               << se_beta2.at(row2, col) << "\t"
+               << neglog10_pvl2.at(row2, col);
+        row2++;
       }
-    } else {
-      for (; row2 < (int)beta_est2.n_rows; row2++) {
+    }
+    else
+    {
+      buffer << "\t" << beta_est2.at(row2 - 1, col) << "\t"
+             << se_beta2.at(row2 - 1, col) << "\t" << neglog10_pvl2.at(row2 - 1, col);
+      while (row2 < (int)beta_est2.n_rows)
+      {
         buffer << "\t" << beta_est2_sqrd.at(row2, col) << "\t"
                << se_beta2_sqrd.at(row2, col) << "\t"
                << neglog10_pvl2_sqrd.at(row2, col);
+        row2++;
       }
     }
 
-    for (; row3 < (int)beta_est2_sqrd.n_rows; row3++) {
-      buffer << "\t" << beta_est2_sqrd.at(row3, col) << "\t"
-             << se_beta2_sqrd.at(row3, col) << "\t"
-             << neglog10_pvl2_sqrd.at(row3, col);
+    while (row2 < (int)beta_est2_sqrd.n_rows)
+    {
+      buffer << "\t" << beta_est2_sqrd.at(row2 - 1, col) << "\t"
+             << se_beta2_sqrd.at(row2 - 1) << "\t" << neglog10_pvl2_sqrd.at(row2 - 1, col);
+      buffer << "\t" << beta_est2_sqrd.at(row2, col) << "\t"
+             << se_beta2_sqrd.at(row2, col) << "\t"
+             << neglog10_pvl2_sqrd.at(row2, col);
+      row2++;
     }
 
     buffer << "\t" << abs_err_val2 << "\t" << rel_err_val2 << "\t" << iter2
@@ -186,9 +218,10 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   outfile.close();
 }
 
-void VLAResultf::write_headers(std::string dir, std::string file_name,
-                               std::string pheno_name,
-                               std::vector<std::string> row_names) {
+void VLAResult::write_headers(std::string dir, std::string file_name,
+                              std::string pheno_name,
+                              std::vector<std::string> row_names)
+{
   fs::create_directory(dir);
   fs::create_directory(dir + "/" + pheno_name);
 
@@ -199,14 +232,13 @@ void VLAResultf::write_headers(std::string dir, std::string file_name,
   std::ofstream outfile;
 
   outfile.open(result_file);
-  if (!outfile.is_open()) {
+  if (!outfile.is_open())
+  {
     Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
   }
 
-  int idx = beta_est.n_rows + 1;
-  int idx_2 = (int)beta_est2.n_rows;
-  int num_cov = beta_est2.n_rows - idx;
-  int num_cov_sqrd = (int)beta_est2_sqrd.n_rows - (int)beta_est2.n_rows;
+  int idx = cov_n_cols + 1;
+  int row2 = idx;
 
   std::stringstream buffer;
   buffer << "vid"
@@ -227,17 +259,34 @@ void VLAResultf::write_headers(std::string dir, std::string file_name,
          << "\t"
          << "iter_fit1"
          << "\t"
-         << "DF_fit2";
-  for (int i = 0; i < num_cov; i++) {
-    buffer << "\tEstG*X" << i << "_fit2"
-           << "\tStdErrG*X" << i << "_fit2"
-           << "\tmlog10_PvalG*X" << i << "_fit2";
+         << "DF_fit2"
+         << "\t"
+         << "EstG_fit2"
+         << "\t"
+         << "StdErrG_fit2"
+         << "\t"
+         << "mlog10_PvalG_fit2";
+  while (row2 < (int)beta_est2.n_rows)
+  {
+    buffer << "\tEstG*X" << row2 - idx << "_fit2"
+           << "\tStdErrG*X" << row2 - idx << "_fit2"
+           << "\tmlog10_PvalG*X" << row2 - idx << "_fit2";
+    row2++;
   }
-
-  for (int i = 0; i < num_cov; i++) {
-    buffer << "\tEstGsq*X" << i << "_fit2"
-           << "\tStdErrGsq*X" << i << "_fit2"
-           << "\tmlog10_PvalGsq*X" << i << "_fit2";
+  buffer << "\t"
+         << "EstGsq_fit2"
+         << "\t"
+         << "StdErrGsq_fit2"
+         << "\t"
+         << "mlog10_PvalGsq_fit2";
+  row2++;
+  int sqrd_idx = row2;
+  while (row2 < (int)beta_est2_sqrd.n_rows)
+  {
+    buffer << "\tEstGsq*X" << (row2 - sqrd_idx) << "_fit2"
+           << "\tStdErrGsq*X" << (row2 - sqrd_idx) << "_fit2"
+           << "\tmlog10_PvalGsq*X" << (row2 - sqrd_idx) << "_fit2";
+    row2++;
   }
   buffer << "\t"
          << "AbsErr_fit2"
