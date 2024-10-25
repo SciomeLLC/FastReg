@@ -168,6 +168,8 @@ arma::mat standardize_and_derank(arma::mat x, double dev_to_acc = 0.95,
 /// @param dev_to_acc Amount of explained variance (summed Eigenvalues) to keep
 /// @param N Number of non-zero rows (number of obs)
 /// @return A clean X matrix for further calculations
+//@export
+// [[Rcpp::export]]
 arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
                                        const std::string &namee,
                                        const std::string &suffix,
@@ -199,57 +201,66 @@ arma::mat standardize_and_derank_print(arma::mat x, const std::string &dir,
   ss << "/PCA_metadata.tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
-  outfile.open(result_file);
-  outfile << std::fixed << std::setprecision(8);
+  bool need_writing = !(fs::exists(result_file));
+  //if we need to write it, do it
   std::stringstream buffer;
-  // add column headers
-  buffer << "Means"
-         << "\t"
-         << "SDs";
+  if(need_writing){
+    outfile.open(result_file);
+    outfile << std::fixed << std::setprecision(8);
+    // std::stringstream buffer;
+    // add column headers
+    buffer << "Means"
+          << "\t"
+          << "SDs";
+  }
   // if not all PCs, use only subset
   if (temp.n_elem > 0) {
-    arma::mat output = arma::join_rows(ans.t(), coeff.cols(0, temp[0]));
-    for (uword ii = 0; ii < (temp[0] + 1); ii++) {
-      buffer << "\t"
-             << "Loading" << (ii + 1);
-    }
-    buffer << std::endl;
-    for (uword j = 0; j < output.n_rows; j++) {
-      for (uword k = 0; k < (output.n_cols - 1); k++) {
-        buffer << output(j, k) << "\t";
+    if(need_writing){
+      arma::mat output = arma::join_rows(ans.t(), coeff.cols(0, temp[0]));
+      for (uword ii = 0; ii < (temp[0] + 1); ii++) {
+        buffer << "\t"
+              << "Loading" << (ii + 1);
       }
-      buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
+      for (uword j = 0; j < output.n_rows; j++) {
+        for (uword k = 0; k < (output.n_cols - 1); k++) {
+          buffer << output(j, k) << "\t";
+        }
+        buffer << output(j, output.n_cols - 1);
+        buffer << std::endl;
+      }
+      buffer << 0 << "\t" << 0;
+      for (uword ii = 0; ii < (temp[0] + 1); ii++) {
+        buffer << "\t" << cumulative_var[ii];
+      }
+      buffer << std::endl;
+      outfile << buffer.str();
+      outfile.close();
     }
-    buffer << 0 << "\t" << 0;
-    for (uword ii = 0; ii < (temp[0] + 1); ii++) {
-      buffer << "\t" << cumulative_var[ii];
-    }
-    buffer << std::endl;
-    outfile << buffer.str();
-    outfile.close();
     return x * coeff.cols(0, temp[0]);
   } else { // needed to prevent crashes
-    arma::mat output = arma::join_rows(ans.t(), coeff);
-    for (uword ii = 0; ii < coeff.n_cols; ii++) {
-      buffer << "\t"
-             << "Loading" << int(ii);
-    }
-    buffer << std::endl;
-    for (uword j = 0; j < output.n_rows; j++) {
-      for (uword k = 0; k < (output.n_cols - 1); k++) {
-        buffer << output(j, k) << "\t";
+    if(need_writing){
+      arma::mat output = arma::join_rows(ans.t(), coeff);
+      for (uword ii = 0; ii < coeff.n_cols; ii++) {
+        buffer << "\t"
+              << "Loading" << int(ii);
       }
-      buffer << output(j, output.n_cols - 1);
       buffer << std::endl;
+      for (uword j = 0; j < output.n_rows; j++) {
+        for (uword k = 0; k < (output.n_cols - 1); k++) {
+          buffer << output(j, k) << "\t";
+        }
+        buffer << output(j, output.n_cols - 1);
+        buffer << std::endl;
+      }
+      buffer << 0 << "\t" << 0;
+      for (uword ii = 0; ii < coeff.n_cols; ii++) {
+        buffer << "\t" << cumulative_var[ii];
+      }
+      buffer << std::endl;
+      outfile << buffer.str();
+      outfile.close();
     }
-    buffer << 0 << "\t" << 0;
-    for (uword ii = 0; ii < coeff.n_cols; ii++) {
-      buffer << "\t" << cumulative_var[ii];
-    }
-    buffer << std::endl;
-    outfile << buffer.str();
-    outfile.close();
     return x * coeff;
   }
 }
