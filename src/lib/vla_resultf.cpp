@@ -116,8 +116,8 @@ void VLAResultf::write_to_file(std::string dir, std::string file_name,
   std::ofstream outfile;
 
   int idx = cov_n_cols + 1;
-  int G_idx = cov_n_cols;
-  int Gsq_idx = beta_est2.n_rows;
+  // int G_idx = cov_n_cols;
+  // int Gsq_idx = beta_est2.n_rows;
   int poi_idx = beta_est.n_rows - 1;
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
@@ -205,87 +205,90 @@ void VLAResultf::write_headers(std::string dir, std::string file_name,
   fs::create_directory(dir + "/" + pheno_name);
 
   std::stringstream ss;
-  ss << dir << "/" << pheno_name << "/" << file_name << "_headers_"
-     << getLocalTime() << ".tsv";
+  ss << dir << "/" << pheno_name << "/" << file_name << "_headers" << ".tsv";
   std::string result_file = ss.str();
   std::ofstream outfile;
 
-  outfile.open(result_file);
-  if (!outfile.is_open()) {
-    Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
-  }
+  bool need_writing = !(fs::exists(result_file));
+  //only write if file does not exist yet! 
+  if(need_writing){
+    outfile.open(result_file);
+    if (!outfile.is_open()) {
+      Rcpp::stop("Error: Unable to open file for writing: %s", result_file);
+    }
 
-  int idx = cov_n_cols + 1;
-  int row = idx;
+    int idx = cov_n_cols + 1;
+    int row = idx;
 
-  std::stringstream buffer;
-  buffer << "vid"
-         << "\t"
-         << "N"
-         << "\t"
-         << "DF_fit1"
-         << "\t"
-         << "Est_fit1"
-         << "\t"
-         << "StdErr_fit1"
-         << "\t"
-         << "mlog10_Pval_fit1"
-         << "\t"
-         << "AbsErr_fit1"
-         << "\t"
-         << "RelErr_fit1"
-         << "\t"
-         << "iter_fit1"
-         << "\t"
-         << "DF_fit2"
-         << "\t"
-         << "EstG_fit2"
-         << "\t"
-         << "StdErrG_fit2"
-         << "\t"
-         << "mlog10_PvalG_fit2";
-  while (row < (int)beta_est2.n_rows) {
-    buffer << "\tEstG*X" << row - idx << "_fit2"
-           << "\tStdErrG*X" << row - idx << "_fit2"
-           << "\tmlog10_PvalG*X" << row - idx << "_fit2";
+    std::stringstream buffer;
+    buffer << "vid"
+          << "\t"
+          << "N"
+          << "\t"
+          << "DF_fit1"
+          << "\t"
+          << "Est_fit1"
+          << "\t"
+          << "StdErr_fit1"
+          << "\t"
+          << "mlog10_Pval_fit1"
+          << "\t"
+          << "AbsErr_fit1"
+          << "\t"
+          << "RelErr_fit1"
+          << "\t"
+          << "iter_fit1"
+          << "\t"
+          << "DF_fit2"
+          << "\t"
+          << "EstG_fit2"
+          << "\t"
+          << "StdErrG_fit2"
+          << "\t"
+          << "mlog10_PvalG_fit2";
+    while (row < (int)beta_est2.n_rows) {
+      buffer << "\tEstG*X" << row - idx << "_fit2"
+            << "\tStdErrG*X" << row - idx << "_fit2"
+            << "\tmlog10_PvalG*X" << row - idx << "_fit2";
+      row++;
+    }
+    buffer << "\t"
+          << "EstGsq_fit2"
+          << "\t"
+          << "StdErrGsq_fit2"
+          << "\t"
+          << "mlog10_PvalGsq_fit2";
     row++;
+    int sqrd_idx = row;
+    while (row < (int)beta_est2_sqrd.n_rows) {
+      buffer << "\tEstGsq*X" << (row - sqrd_idx) << "_fit2"
+            << "\tStdErrGsq*X" << (row - sqrd_idx) << "_fit2"
+            << "\tmlog10_PvalGsq*X" << (row - sqrd_idx) << "_fit2";
+      row++;
+    }
+    buffer << "\t"
+          << "AbsErr_fit2"
+          << "\t"
+          << "RelErr_fit2"
+          << "\t"
+          << "iter_fit2"
+          << "\t"
+          << "LogLikelihood_fit1"
+          << "\t"
+          << "LogLikelihood_fit2"
+          << "\t"
+          << "LRS"
+          << "\t"
+          << "LRS_Pval"
+          << "\t"
+          << "num_G"
+          << "\t"
+          << "rank"
+          << "\t"
+          << "caf"
+          << "\t"
+          << "het_count" << std::endl;
+    outfile << buffer.str();
+    outfile.close();
   }
-  buffer << "\t"
-         << "EstGsq_fit2"
-         << "\t"
-         << "StdErrGsq_fit2"
-         << "\t"
-         << "mlog10_PvalGsq_fit2";
-  row++;
-  int sqrd_idx = row;
-  while (row < (int)beta_est2_sqrd.n_rows) {
-    buffer << "\tEstGsq*X" << (row - sqrd_idx) << "_fit2"
-           << "\tStdErrGsq*X" << (row - sqrd_idx) << "_fit2"
-           << "\tmlog10_PvalGsq*X" << (row - sqrd_idx) << "_fit2";
-    row++;
-  }
-  buffer << "\t"
-         << "AbsErr_fit2"
-         << "\t"
-         << "RelErr_fit2"
-         << "\t"
-         << "iter_fit2"
-         << "\t"
-         << "LogLikelihood_fit1"
-         << "\t"
-         << "LogLikelihood_fit2"
-         << "\t"
-         << "LRS"
-         << "\t"
-         << "LRS_Pval"
-         << "\t"
-         << "num_G"
-         << "\t"
-         << "rank"
-         << "\t"
-         << "caf"
-         << "\t"
-         << "het_count" << std::endl;
-  outfile << buffer.str();
-  outfile.close();
 }
