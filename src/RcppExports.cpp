@@ -12,6 +12,22 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// standardize_and_derank_print
+arma::mat standardize_and_derank_print(arma::mat x, const std::string& dir, const std::string& namee, const std::string& suffix, double dev_to_acc, double N);
+RcppExport SEXP _FastVLA_standardize_and_derank_print(SEXP xSEXP, SEXP dirSEXP, SEXP nameeSEXP, SEXP suffixSEXP, SEXP dev_to_accSEXP, SEXP NSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type dir(dirSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type namee(nameeSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type suffix(suffixSEXP);
+    Rcpp::traits::input_parameter< double >::type dev_to_acc(dev_to_accSEXP);
+    Rcpp::traits::input_parameter< double >::type N(NSEXP);
+    rcpp_result_gen = Rcpp::wrap(standardize_and_derank_print(x, dir, namee, suffix, dev_to_acc, N));
+    return rcpp_result_gen;
+END_RCPP
+}
 // FastVLA_logisticf
 void FastVLA_logisticf(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca, const bool add_intercept);
 RcppExport SEXP _FastVLA_FastVLA_logisticf(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
@@ -143,6 +159,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_FastVLA_standardize_and_derank_print", (DL_FUNC) &_FastVLA_standardize_and_derank_print, 6},
     {"_FastVLA_FastVLA_logisticf", (DL_FUNC) &_FastVLA_FastVLA_logisticf, 18},
     {"_FastVLA_FastVLA_logistic", (DL_FUNC) &_FastVLA_FastVLA_logistic, 18},
     {"_FastVLA_FastVLA_chunked_sota", (DL_FUNC) &_FastVLA_FastVLA_chunked_sota, 15},

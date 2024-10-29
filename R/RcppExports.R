@@ -4,11 +4,9 @@
 #' This function is the exported wrapper that can be called from R. It has the
 NULL
 
-#' This function is the exported wrapper that can be called from R. It has the
-NULL
-
-#' This function is the exported wrapper that can be called from R. It has the
-NULL
+standardize_and_derank_print <- function(x, dir, namee, suffix, dev_to_acc = 0.95, N = 1.0) {
+    .Call(`_FastVLA_standardize_and_derank_print`, x, dir, namee, suffix, dev_to_acc, N)
+}
 
 FastVLA_logisticf <- function(Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss = 1e-6, mafthresh = 0.005, pca_var_explained = 0.95, max_iter = 6L, max_threads = 1L, max_blas_threads = 1L, do_pca = TRUE, add_intercept = TRUE) {
     invisible(.Call(`_FastVLA_FastVLA_logisticf`, Y, Gptr, v_index, i_index, X, chunk_size, dir, cnames, vnames, suffix, epss, mafthresh, pca_var_explained, max_iter, max_threads, max_blas_threads, do_pca, add_intercept))
