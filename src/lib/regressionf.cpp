@@ -31,11 +31,14 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
                                    Eigen::MatrixXf &tphenoD) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
-  Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, eta, eta2, p, p2;
+  Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, temp_eta, temp_eta2,
+      temp_p, temp_p2, eta, eta2, p, p2;
   Eigen::VectorXf beta, beta_old, beta2, beta_old2, beta_diff, beta_diff2,
       w2_col, w2_col2, diag, diag2;
   arma::fcolvec pval, pval2;
-  double ll1, ll2, lrs, lrs_pval;
+  double ll1, ll1_old, ll2, ll2_old, lrs, lrs_pval, ll1_diff, ll2_diff,
+      ll1_rel_err, ll2_rel_err;
+  ll1 = ll2 = ll1_old = ll2_old = 1.0;
   int df, df2, lrs_df;
   int poi_col_size = ((arma::fcolvec)poi_data.col(0)).size();
   arma::fcolvec temp_se(poi_col_size, arma::fill::zeros);
@@ -100,12 +103,12 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
 
     // initialize eta and p for fit 1/2
     Eigen::MatrixXf eta, eta2, p, p2;
-    for (int iter = 0;
-         iter < max_iter && result.beta_rel_errs.at(poi_col_idx) > 1e-4;
-         iter++) {
+
+    eta.noalias() = X * beta;
+    p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
+    ll1_rel_err = 1.0;
+    for (int iter = 0; iter < max_iter && ll1_rel_err > 1e-3; iter++) {
       // Fit 1
-      eta.noalias() = X * beta;
-      p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
       Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
       temp1.noalias() = (X.array().colwise() * W1.col(0).array()).matrix();
       A.noalias() = temp1.transpose() * X;
@@ -119,14 +122,26 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
       result.beta_rel_errs.at(poi_col_idx) =
           (beta_diff.array() / beta_old.array()).maxCoeff();
       beta_old = beta;
+      eta.noalias() = X * beta;
+      p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
+      ll1_old = ll1;
+      temp_p = (p.array().isFinite()).select(p.array(), 0.0);
+      temp_p = temp_p.cwiseMin(1.0 - 1e-7);
+      temp_eta = (eta.array().isFinite()).select(eta.array(), 0.0);
+      ll1 = (((1.0 - temp_p.array()).array().log() +
+              tphenoD.col(0).array() * temp_eta.array())
+                 .array() *
+             w2_col.array())
+                .sum();
+      ll1_diff = std::abs(ll1 - ll1_old);
+      ll1_rel_err = std::abs(ll1_diff / ll1_old);
     }
 
+    eta2.noalias() = X2 * beta2;
+    p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
     // Fit 2
-    for (int iter = 0;
-         iter < max_iter && result.beta_rel_errs2.at(poi_col_idx) > 1e-10;
-         iter++) {
-      eta2.noalias() = X2 * beta2;
-      p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
+    ll2_rel_err = 1.0;
+    for (int iter = 0; iter < max_iter && ll2_rel_err > 1e-3; iter++) {
       Eigen::MatrixXf W1_2 = p2.array() * (1 - p2.array()) * w2_col2.array();
       temp1_2.noalias() = (X2.array().colwise() * W1_2.col(0).array()).matrix();
       A2.noalias() = temp1_2.transpose() * X2;
@@ -140,7 +155,25 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
       result.beta_rel_errs2.at(poi_col_idx) =
           (beta_diff2.array() / beta_old2.array()).maxCoeff();
       beta_old2 = beta2;
+      eta2.noalias() = X2 * beta2;
+      p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
+      ll2_old = ll2;
+      temp_p2 = (p2.array().isFinite()).select(p2.array(), 0.0);
+      temp_p2 = temp_p2.cwiseMin(1.0 - 1e-7);
+      temp_eta2 = (eta2.array().isFinite()).select(eta2.array(), 0.0);
+      ll2 = (((1.0 - temp_p2.array()).array().log() +
+              tphenoD.col(0).array() * temp_eta2.array())
+                 .array() *
+             w2_col2.array())
+                .sum();
+      ll2_diff = std::abs(ll2_old - ll2);
+      ll2_rel_err = std::abs(ll2_diff / ll2_old);
     }
+
+    result.lls.at(poi_col_idx, 8) = ll1_diff;
+    result.lls.at(poi_col_idx, 9) = ll1_rel_err;
+    result.lls.at(poi_col_idx, 10) = ll2_diff;
+    result.lls.at(poi_col_idx, 11) = ll2_rel_err;
 
     int df = w2_col.array().sum() - result.num_parms;
     diag = A.inverse().diagonal().array().sqrt();
@@ -148,31 +181,9 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
     int df2 = w2_col.array().sum() - n_parms2;
     diag2 = A2.inverse().diagonal().array().sqrt();
 
-    // calculate LLs
-    eta.noalias() = X * beta;
-    p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
-    eta2.noalias() = X2 * beta2;
-    p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
-
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
     auto rank = lu_decomp.rank();
 
-    arma::fcolvec p_arma = arma::fcolvec(p.data(), p.size(), true, false);
-    arma::fcolvec p2_arma = arma::fcolvec(p2.data(), p2.size(), true, false);
-    arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true, false);
-    arma::fcolvec eta2_arma =
-        arma::fcolvec(eta2.data(), eta2.size(), true, false);
-
-    p_arma.elem(arma::find_nonfinite(p_arma)).zeros();
-    p_arma.elem(arma::find(p_arma >= 1.0)).fill(1.0 - 1e-4);
-    ll1 = arma::accu((log(1.0 - p_arma) + pheno.col(0) % eta_arma) %
-                     result.W2.col(poi_col_idx));
-
-    p2_arma.elem(arma::find_nonfinite(p2_arma)).zeros();
-    p2_arma.elem(arma::find(p2_arma >= 1.0)).fill(1.0 - 1e-4);
-    eta2_arma.elem(arma::find_nonfinite(eta2_arma)).zeros();
-    ll2 = arma::accu((log(1.0 - p2_arma) + pheno.col(0) % eta2_arma) %
-                     result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
     lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
 
@@ -202,11 +213,14 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
                                    Eigen::MatrixXf &tphenoD) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
-  Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, eta, eta2, p, p2;
+  Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, temp_eta, temp_eta2,
+      temp_p, temp_p2, eta, eta2, p, p2;
   Eigen::VectorXf beta, beta_old, beta2, beta_old2, beta_diff, beta_diff2,
       w2_col, w2_col2, diag, diag2;
   arma::fcolvec pval, pval2;
-  double ll1, ll2, lrs, lrs_pval;
+  double ll1, ll1_old, ll2, ll2_old, lrs, lrs_pval, ll1_diff, ll2_diff,
+      ll1_rel_err, ll2_rel_err;
+  ll1 = ll2 = ll1_old = ll2_old = 1.0;
   int df, df2, lrs_df;
   int poi_col_size = ((arma::fcolvec)poi_data.col(0)).size();
   arma::fcolvec temp_se(poi_col_size, arma::fill::zeros);
@@ -254,11 +268,10 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
     // initialize eta and p for fit 1/2
     Eigen::MatrixXf eta, eta2, p, p2;
 
-    for (int iter = 0;
-         iter < max_iter && result.beta_rel_errs.at(poi_col_idx) > 1e-4;
-         iter++) {
-      eta.noalias() = X * beta;
-      p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
+    eta.noalias() = X * beta;
+    p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
+    ll1_rel_err = 1.0;
+    for (int iter = 0; iter < max_iter && ll1_rel_err > 1e-3; iter++) {
       Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
       temp1.noalias() = (X.array().colwise() * W1.col(0).array()).matrix();
       A.noalias() = temp1.transpose() * X;
@@ -273,6 +286,19 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
       result.beta_rel_errs.at(poi_col_idx) =
           (beta_diff.array() / beta_old.array()).maxCoeff();
       beta_old = beta;
+      eta.noalias() = X * beta;
+      p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
+      ll1_old = ll1;
+      temp_p = (p.array().isFinite()).select(p.array(), 0.0);
+      temp_p = temp_p.cwiseMin(1.0 - 1e-7);
+      temp_eta = (eta.array().isFinite()).select(eta.array(), 0.0);
+      ll1 = (((1.0 - temp_p.array()).array().log() +
+              tphenoD.col(0).array() * temp_eta.array())
+                 .array() *
+             w2_col.array())
+                .sum();
+      ll1_diff = std::abs(ll1_old - ll1);
+      ll1_rel_err = std::abs(ll1_diff / ll1_old);
     }
 
     // Fit 2
@@ -305,12 +331,11 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
 
     result.beta_rel_errs2.at(poi_col_idx) = 1e8;
 
+    eta2.noalias() = X2 * beta2;
+    p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
+    ll2_rel_err = 1.0;
     // Fit 2
-    for (int iter = 0;
-         iter < max_iter && result.beta_rel_errs2.at(poi_col_idx) > 1e-10;
-         iter++) {
-      eta2.noalias() = X2 * beta2;
-      p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
+    for (int iter = 0; iter < max_iter && ll2_rel_err > 1e-3; iter++) {
       // L1 cache
       Eigen::MatrixXf W1_2 = p2.array() * (1 - p2.array()) * w2_col2.array();
       temp1_2.noalias() = (X2.array().colwise() * W1_2.col(0).array()).matrix();
@@ -326,7 +351,29 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
       result.beta_rel_errs2.at(poi_col_idx) =
           (beta_diff2.array() / beta_old2.array()).maxCoeff();
       beta_old2 = beta2;
+      beta_old2 = beta2;
+      eta2.noalias() = X2 * beta2;
+      p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
+
+      // WARNING: Re-using p/eta variables as temporary to avoid memory
+      // reallocations
+      ll2_old = ll2;
+      temp_p2 = (p2.array().isFinite()).select(p2.array(), 0.0);
+      temp_p2 = temp_p2.cwiseMin(1.0 - 1e-7);
+      temp_eta2 = (eta2.array().isFinite()).select(eta2.array(), 0.0);
+      ll2 = (((1.0 - temp_p2.array()).array().log() +
+              tphenoD.col(0).array() * temp_eta2.array())
+                 .array() *
+             w2_col2.array())
+                .sum();
+      ll2_diff = std::abs(ll2_old - ll2);
+      ll2_rel_err = std::abs(ll2_diff / ll2_old);
     }
+
+    result.lls.at(poi_col_idx, 8) = ll1_diff;
+    result.lls.at(poi_col_idx, 9) = ll1_rel_err;
+    result.lls.at(poi_col_idx, 10) = ll2_diff;
+    result.lls.at(poi_col_idx, 11) = ll2_rel_err;
 
     int df = w2_col.array().sum() - result.num_parms;
     diag = A.inverse().diagonal().array().sqrt();
@@ -334,31 +381,9 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
     int df2 = w2_col.array().sum() - n_parms2;
     diag2 = A2.inverse().diagonal().array().sqrt();
 
-    // calculate LLs
-    eta.noalias() = X * beta;
-    p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
-    eta2.noalias() = X2 * beta2;
-    p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
-
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
     auto rank = lu_decomp.rank();
 
-    arma::fcolvec p_arma = arma::fcolvec(p.data(), p.size(), true, false);
-    arma::fcolvec p2_arma = arma::fcolvec(p2.data(), p2.size(), true, false);
-    arma::fcolvec eta_arma = arma::fcolvec(eta.data(), eta.size(), true, false);
-    arma::fcolvec eta2_arma =
-        arma::fcolvec(eta2.data(), eta2.size(), true, false);
-
-    p_arma.elem(arma::find_nonfinite(p_arma)).zeros();
-    p_arma.elem(arma::find(p_arma >= 1.0)).fill(1.0 - 1e-4);
-    ll1 = arma::accu((log(1.0 - p_arma) + pheno.col(0) % eta_arma) %
-                     result.W2.col(poi_col_idx));
-
-    p2_arma.elem(arma::find_nonfinite(p2_arma)).zeros();
-    p2_arma.elem(arma::find(p2_arma >= 1.0)).fill(1.0 - 1e-4);
-    eta2_arma.elem(arma::find_nonfinite(eta2_arma)).zeros();
-    ll2 = arma::accu((log(1.0 - p2_arma) + pheno.col(0) % eta2_arma) %
-                     result.W2.col(poi_col_idx));
     lrs = 2.0 * (ll2 - ll1);
     lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
     // calc and set betas
