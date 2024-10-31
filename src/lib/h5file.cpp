@@ -220,7 +220,6 @@ FRMatrix POI::read_chunk(const std::vector<std::string> &rows,
   H5Sget_simple_extent_dims(values_dataspace_id, dims.data(), NULL);
   if (individuals.size() != dims[0] && individuals.size() == dims[1]) {
     transpose = true;
-    Rcpp::Rcout << "is transposed " << std::endl;
   }
 
   if (individuals.size() != dims[0] && individuals.size() != dims[1]) {
@@ -234,9 +233,8 @@ FRMatrix POI::read_chunk(const std::vector<std::string> &rows,
   // Define the hyperslab for the entire range of columns needed
   hsize_t src_offset[2] = {0, col_indices[0]};
   if (transpose) {
-    // Swap hyperslab dimensions
+    // Swap hyperslab dimensions and src offsets
     std::swap(hyperslab_dims[0], hyperslab_dims[1]);
-    // Swap src_offset
     std::swap(src_offset[0], src_offset[1]);
   }
 #if defined(_DEBUG)
@@ -292,7 +290,7 @@ void POI::load_float_data_chunk(FRMatrix &G, hsize_t *hyperslab_dims,
     Rcpp::stop("Error reading float data from values dataset.");
   }
 
-  if (transpose) {
+  if (!transpose) {
     arma::inplace_trans(G.data);
   }
 #if defined(_DEBUG)

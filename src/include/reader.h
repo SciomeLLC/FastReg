@@ -1,7 +1,6 @@
 #ifndef READER_H
 #define READER_H
 #pragma once
-// #include "BEDMatrix.h"
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 #include <algorithm>
@@ -11,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <hdf5.h>
 #ifndef __has_include
 static_assert(false, "__has_include not supported");
 #else
