@@ -1,10 +1,5 @@
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <chrono>
-#include <iostream>
 #include <regression.h>
 #include <utils.h>
-
-#include <RcppEigen.h>
 
 template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
   return Rcpp::NumericVector(x.begin(), x.end());
@@ -13,7 +8,7 @@ template <typename T> Rcpp::NumericVector arma2vec(const T &x) {
 arma::fcolvec t_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * (log(2) + R::pt(abs_z(i), df, false, true))/log(10);
+    ret_val(i) = -1 * (log(2) + R::pt(abs_z(i), df, false, true)) / log(10);
   }
   return ret_val;
 }
@@ -25,7 +20,8 @@ float chisq(float lrs, int df) {
 arma::fcolvec norm_dist_r(arma::fcolvec abs_z, int df) {
   arma::fcolvec ret_val(abs_z.size());
   for (size_t i = 0; i < abs_z.size(); i++) {
-    ret_val(i) = -1 * (log(2) +R::pnorm(abs_z(i), 0.0, 1.0, false, true))/log(10);
+    ret_val(i) =
+        -1 * (log(2) + R::pnorm(abs_z(i), 0.0, 1.0, false, true)) / log(10);
   }
   return ret_val;
 }
@@ -178,6 +174,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
   arma::fmat Y = pheno.data;
   arma::fmat X_I = interactions.data;
   arma::fmat POI = poi_data.data;
+
   // set up delta-method change
   arma::fmat delta = build_covariate_delta(X_C, X_I, x_mean, x_sd);
   arma::umat int_loc = map_is_interaction(X_C, X_I);
@@ -185,6 +182,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
   arma::fmat I(n_parms, n_parms);
   I = I.eye();
   arma::fmat delta2 = I;
+
   for (arma::uword poi_col = 0; poi_col < POI.n_cols; poi_col++) {
     checkInterrupt();
     arma::fmat A(n_parms, n_parms, arma::fill::zeros);
@@ -216,7 +214,7 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
           unsigned int idx_X = int_loc(1, X_C.n_cols + i_idx);
           //
           float sd_both = 1 / (xi_sd(i_idx, 0) * sdPOI);
-          float mean_X = x_mean(j_idx, 0);
+          // float mean_X = x_mean(j_idx, 0);
           float mean_XI = xi_mean(i_idx, 0);
           // Covariance Estimate
           pdelta(idx_X, idx) = -meanPOI * sd_both;
@@ -230,29 +228,33 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
       }
     }
     arma::fmat X = arma::join_rows(cov_w_mat, int_w_mat);
+#if defined(_DEBUG)
+    Rcpp::Rcout << "X size after join: " << X.n_rows << " x " << X.n_cols
+                << std::endl;
+#endif
     // arma::span col_1 = arma::span(0,0);
     float rel_errs = 1.0;
     float abs_errs = 1.0;
     arma::fcolvec beta_diff = beta;
     int iter;
+
+    arma::fmat p, W1, temp1, z, B;
     for (iter = 0; iter < (max_iter) && rel_errs > 1e-4; iter++) {
       beta_old = beta;
       arma::fmat eta = X * beta;
-      arma::fmat p = 1 / (1 + arma::exp(-eta));
-      arma::fmat W1 = p % (1 - p) % w2_col;
-      arma::fmat temp1 = X.each_col() % W1;
-
+      p = 1 / (1 + arma::exp(-eta));
+      W1 = p % (1 - p) % w2_col;
+      temp1 = X.each_col() % W1;
       A = temp1.t() * X;
       arma::fmat z = w2_col % (Y - p);
       arma::fmat B = X.t() * z;
-
       beta = beta + arma::solve(A, B, arma::solve_opts::fast);
+
       beta_diff = arma::abs(beta - beta_old);
       abs_errs = beta_diff.max();
       // iters.at(poi_col) = iter + 1;
       rel_errs = (beta_diff / arma::abs(beta_old)).max();
     }
-
     abs_errs = beta_diff.max();
     rel_errs = (beta_diff / arma::abs(beta)).max();
     int df = arma::as_scalar(arma::sum(w2_col, 0)) - n_parms;

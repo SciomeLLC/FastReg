@@ -1,11 +1,5 @@
 
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
-#include <fr_matrix.h>
 #include <strata.h>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 void Strata::stratify(const std::vector<std::string> &split_by,
                       FRMatrix &covar_df,

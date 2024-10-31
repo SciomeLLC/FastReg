@@ -77,10 +77,12 @@ Let's look at an example GWAS dataset of 500 individuals x 5000 POIs stored as t
 
 <details>
   <summary>Click to see contents (large output)</summary>
+
     ```{r eval=TRUE, include=TRUE}
     # POI data
     read.csv("../inst/extdata/testdata_500_by_1k.poi.txt", sep = "\t", nrows = 2)
     ```
+
 </details>
 
 ### Converting to HDF5
@@ -94,6 +96,13 @@ TextToH5("testdata", "./FastRegData", delimiter="\t")
 ```
 
 This will create n (where n is optimized according to your machine configuration) HDF5 datasets in the "FastRegData" directory.
+If you want to control the number of files created - you can set the parameter `poi.per.file` where the function will divide the POI text data into `n` files with `poi.per.file` POIs each.
+
+```{r include=TRUE, eval=FALSE}
+library(FastReg)
+TextToH5("testdata", "./FastRegData", delimiter="\t", poi.per.file=10000)
+```
+
 
 ## Regression
 

@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-
+#include <iostream>
 #include <RcppArmadillo.h>
 #ifdef WIN32
 #include <windows.h>
@@ -78,7 +78,7 @@ public:
 
 private:
   void *blas_handle;
-  const char *blas_type;
+  std::string blas_type;
   int original_num_threads;
 
   openblas_get_num_threads_func openblas_get_num_threads = nullptr;

@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <fr_matrix.h>
-
 using namespace arma;
 /**
  * @brief The Strata class is used to group individuals into strata based on specified covariates.

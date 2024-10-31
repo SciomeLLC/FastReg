@@ -1,7 +1,4 @@
 #include <config.h>
-#include <covariate.h>
-#include <iostream>
-#include <string>
 
 using namespace arma;
 
@@ -265,12 +262,10 @@ std::vector<std::string> Config::split(std::string val, std::string delim,
   size_t pos = 0;
   std::string token;
 
-  int count = 0;
   while ((pos = val.find(delim)) != std::string::npos) {
     token = val.substr(0, pos);
     split_result.push_back(token);
     val.erase(0, pos + delim.length());
-    count++;
   }
   split_result.push_back(val);
 

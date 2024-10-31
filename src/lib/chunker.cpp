@@ -1,15 +1,5 @@
 
 #include <chunker.h>
-#if defined(__APPLE__)
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#endif
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 void Chunker::get_num_threads() {
   num_available_threads = std::thread::hardware_concurrency();
@@ -95,9 +85,6 @@ void Chunker::estimate_chunks() {
 #endif
 
   if (os == "Darwin") {
-    Rcpp::warning("**********\n "
-                  "Mac detected - using 1 thread.\n"
-                  "**********");
     num_threads = 1;
   } else {
     num_threads = _max_threads;

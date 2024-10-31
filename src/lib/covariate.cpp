@@ -1,12 +1,5 @@
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
-#include <algorithm>
-#include <cmath>
 #include <covariate.h>
-#include <fr_matrix.h>
-#include <string>
 #include <utils.h>
-#include <vector>
 
 std::vector<std::string> Covariate::split(std::string &val, char delim) {
   // std::vector<std::string> split_result;

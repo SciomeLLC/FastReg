@@ -7,6 +7,17 @@
 #include <iostream>
 #include <thread>
 
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 struct ChunkConfig {
   int num_files;
   int num_poi;
@@ -35,9 +46,11 @@ public:
       _max_workers = num_available_workers;
     }
     get_num_threads();
+#if !defined(__APPLE__)
     Rcpp::Rcout << num_available_workers << " processors detected."
                 << std::endl;
     Rcpp::Rcout << num_available_threads << " threads detected." << std::endl;
+#endif
     Rcpp::Rcout << "Free memory: " << memfree / (1024 * 1024 * 1024) << "GB"
                 << std::endl;
     estimate_chunks();

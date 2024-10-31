@@ -55,10 +55,12 @@ void BLASLibraryManager::detect_lib() {
   Rcpp::Rcout << "Detected Apple Accelerate library.\n" << std::endl;
   // Apple Accelerate does not provide thread management API, assume 1 thread
   original_num_threads = 1;
+  return;
 #endif
   original_num_threads = 1;
   Rcpp::Rcout << "BLAS library is unknown or does not support thread detection."
               << std::endl;
+  return;
 }
 
 //////////////////////////////////////////////////
@@ -67,14 +69,18 @@ void BLASLibraryManager::detect_lib() {
 // @return integer count of BLAS threads
 //////////////////////////////////////////////////
 int BLASLibraryManager::get_num_threads() const {
-  if (blas_type == "OpenBLAS" && openblas_get_num_threads) {
+
+  #ifdef __APPLE__
+    return 1;
+  #endif
+  if (blas_type.compare("OpenBLAS") == 0 && openblas_get_num_threads) {
     return openblas_get_num_threads();
   }
-  if (blas_type == "Intel MKL" && mkl_get_max_threads) {
+  if (blas_type.compare("Intel MKL") == 0 && mkl_get_max_threads) {
     return mkl_get_max_threads();
   }
 
-  if (blas_type == "BLIS" && blis_get_num_threads) {
+  if (blas_type.compare("BLIS") == 0 && blis_get_num_threads) {
     return blis_get_num_threads();
   }
   return original_num_threads; // Default to 1
@@ -88,15 +94,16 @@ void BLASLibraryManager::set_num_threads(int num_threads) {
   if (num_threads <= 0) {
     return;
   }
-  if (blas_type == "OpenBLAS" && openblas_set_num_threads) {
-    openblas_set_num_threads(num_threads);
-    // Rcpp::Rcout << "OpenBLAS threads set to " << num_threads << "."
+  
+  #ifdef __APPLE__
+    return;
+  #endif
+  if (blas_type.compare("OpenBLAS") == 0 && openblas_set_num_threads) {
     //             << std::endl;
-  } else if (blas_type == "Intel MKL" && mkl_set_num_threads) {
     mkl_set_num_threads(num_threads);
     // Rcpp::Rcout << "MKL threads set to " << num_threads << "."
     //             << std::endl;
-  } else if (blas_type == "BLIS" && blis_set_num_threads) {
+  } else if (blas_type.compare("BLIS") == 0 && blis_set_num_threads) {
     blis_set_num_threads(num_threads);
     // Rcpp::Rcout << "BLIS threads set to" << num_threads << "."
     //             << std::endl;

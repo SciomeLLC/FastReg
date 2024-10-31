@@ -7,7 +7,6 @@
 #include <chrono>
 #include <chunker.h>
 #include <config.h>
-#include <covariate.h>
 #include <covariate_matrix.h>
 #include <ctime>
 #include <fr_matrix.h>
@@ -15,6 +14,8 @@
 #include <iostream>
 #include <iterator>
 #include <pheno_matrix.h>
+#include <poi_matrix.h>
+#include <reader.h>
 #include <regression.h>
 #include <sstream>
 #include <stdio.h>
@@ -23,14 +24,11 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
-
-#include <blas_library_manager.h>
-#include <poi_matrix.h>
-#include <reader.h>
 #include <utils.h>
 
 #if !defined(__APPLE__) && !defined(__MACH__)
 #include <omp.h>
+#include <blas_library_manager.h>
 #endif
 
 #ifdef _WIN32
@@ -250,6 +248,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   double file_writing_time = 0.0;
   double poi_reading_time = 0.0;
   double regression_time = 0.0;
+
   for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
     std::string outfile_suffix = stratums.ids[stratum];
     if (!config.split_by[0].empty()) {
@@ -264,7 +263,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       ct++;
     }
 
-    // Rcpp::Rcout << "Init matrices" << std::endl;
     // initialize matrices
     FRMatrix pheno_matrix = pheno_df; // check col names
 
@@ -281,7 +279,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
     std::vector<int> nan_idx;
     std::vector<std::string> ind_set_filtered;
 
-    // Rcpp::Rcout << "Identify missing" << std::endl;
     // identify missing values for covar, pheno matrix
     for (size_t i = 0; i < covar_matrix.data.n_rows; i++) {
       arma::uvec covar_nan_idx = arma::find_nonfinite(covar_matrix.data.row(i));
@@ -293,7 +290,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       }
     }
 
-    // Rcpp::Rcout << "Removing missing" << std::endl;
     // remove from covar, pheno
     covar_matrix.shed_rows(nan_idx, ind_set_filtered);
     pheno_matrix.shed_rows(nan_idx, ind_set_filtered);
@@ -322,7 +318,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
         end_chunk = num_poi;
       }
 
-      // Rcpp::Rcout << "Reading poi chunk" << std::endl;
       std::vector<std::string> poi_names_chunk(poi_names.begin() + start_chunk,
                                                poi_names.begin() + end_chunk);
 
@@ -392,7 +387,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       }
 
       filtered_pois += poi_matrix.data.n_cols;
-      // Rcpp::Rcout << "filtered pois" << std::endl;
       start_time = std::chrono::high_resolution_clock::now();
       FRMatrix beta_est;
       FRMatrix se_beta;
@@ -433,7 +427,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
       neglog10_pvl.col_names = beta_est.col_names;
       std::vector<std::string> srt_cols = poi_matrix.sort_map(false);
 
-      // Rcpp::Rcout << "Creating W2" << std::endl;
       arma::umat W2 = arma::umat(poi_matrix.data.n_rows, poi_matrix.data.n_cols,
                                  arma::fill::ones);
       for (arma::uword v = 0; v < poi_matrix.data.n_cols; v++) {
@@ -476,6 +469,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
           (double)std::chrono::duration_cast<std::chrono::milliseconds>(
               end_time - start_time)
               .count();
+
       start_time = std::chrono::high_resolution_clock::now();
       FRMatrix::write_results(beta_est, se_beta, neglog10_pvl, W2,
                               beta_rel_errs, beta_abs_errs, iters, srt_cols,
@@ -500,9 +494,6 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   }
 
   poi.close_all();
-
-  auto end =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   proc_res.timing_results[0] = poi_reading_time;
   proc_res.timing_results[1] = file_writing_time;
@@ -549,7 +540,9 @@ void FastRegCpp(
   if (dir_exists(config.output_dir)) {
     delete_dir(config.output_dir);
   }
+  fs::create_directory(config.output_dir);
   // Manage BLAS
+#if defined(_OPENMP) && !defined(__APPLE__) && !defined(__MACH__)
   BLASLibraryManager blas_mgr;
   blas_mgr.detect_lib();
   int cur_blas_threads = blas_mgr.get_num_threads();
@@ -558,6 +551,7 @@ void FastRegCpp(
     blas_mgr.set_num_threads(max_blas_threads);
     Rcpp::Rcout << "Set BLAS threads to: " << max_blas_threads << std::endl;
   }
+#endif
 
   // Read pheno and covariate files
   PhenoMatrix pheno_matrix(config.pheno_file, config.pheno_file_delim,
@@ -567,13 +561,10 @@ void FastRegCpp(
   CovariateMatrix cov_mat = CovariateMatrix(
       config.covar_file, config.covar_file_delim, config.covar_rowname_cols,
       config.covs, config.colinearity_rsq, config.no_intercept);
-
   FRMatrix covar_df = cov_mat.create_design_matrix();
-
   // Load the first POI file to calculate chunks
 
   std::string poi_file_path = config.poi_files[0];
-  // Rcpp::Rcout << "POI file path: " << poi_file_path << std::endl;
   POI poi(poi_file_path);
   poi.open(true);
   poi.get_values_dataset_id();
@@ -587,10 +578,10 @@ void FastRegCpp(
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
 
-  Rcout << intersected_ind.size()
-        << " common unique subjects in pheno.file, "
-           "covar.file, and POI.file"
-        << std::endl;
+  Rcpp::Rcout << intersected_ind.size()
+              << " common unique subjects in pheno.file, "
+                 "covar.file, and POI.file"
+              << std::endl;
   if (intersected_ind.empty()) {
     stop("No overlapping individuals found in POI, pheno, and covar files");
   }
@@ -616,15 +607,15 @@ void FastRegCpp(
   int parallel_chunk_size = chunker.get_chunk_size();
   int num_threads = chunker.get_openmp_threads();
   // Handle threads if OpenMP found
-#if defined(_OPENMP)  && !defined(__APPLE__) && !defined(__MACH__)
+#if defined(_OPENMP) && !defined(__APPLE__) && !defined(__MACH__)
   omp_set_dynamic(0);               // Explicitly disable dynamic teams
   omp_set_num_threads(num_threads); // Use num_threads for all
                                     // consecutive parallel regions
 #endif
-  const int timing_results_size = 4;
   double concatenation_time, compression_time = 0.0;
   ProcResult total_proc_res;
 
+  auto start_time = std::chrono::high_resolution_clock::now();
 #ifdef _WIN32
   for (int i = 0; i < num_poi_files; i++) {
     ProcResult proc_res;
@@ -667,8 +658,7 @@ void FastRegCpp(
         ProcResult proc_res;
         process_chunk(i, config, pheno_df, covar_df, poi_file_path,
                       parallel_chunk_size, num_threads, proc_res);
-        ssize_t res = write(pipe_file_descriptors[i * 2 + 1], &proc_res,
-                            sizeof(proc_res));
+        write(pipe_file_descriptors[i * 2 + 1], &proc_res, sizeof(proc_res));
         close(pipe_file_descriptors[i * 2 + 1]);
         _exit(EXIT_SUCCESS);
         return;
@@ -685,8 +675,7 @@ void FastRegCpp(
           has_completed[i] = true;
 
           ProcResult proc_res;
-          ssize_t res =
-              read(pipe_file_descriptors[i * 2], &proc_res, sizeof(proc_res));
+          read(pipe_file_descriptors[i * 2], &proc_res, sizeof(proc_res));
           close(pipe_file_descriptors[i * 2]);
           total_proc_res.accumulate(proc_res);
           num_processes_completed++;
@@ -695,13 +684,21 @@ void FastRegCpp(
     }
   }
 #endif
-  auto start_time = std::chrono::high_resolution_clock::now();
+
+  auto end_time = std::chrono::high_resolution_clock::now();
+  double multiprocess_time =
+      (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                    start_time)
+          .count();
+  Rcpp::Rcout << "Multiprocessing took: " << multiprocess_time << "ms"
+              << std::endl;
+  start_time = std::chrono::high_resolution_clock::now();
   FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
   FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
   if (config.POI_type == "genotype") {
     FRMatrix::concatenate_results(config.output_dir, "POI_Summary", "Full");
   }
-  auto end_time = std::chrono::high_resolution_clock::now();
+  end_time = std::chrono::high_resolution_clock::now();
   concatenation_time =
       (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
                                                                     start_time)
@@ -719,10 +716,17 @@ void FastRegCpp(
                 << std::endl;
   }
   total_proc_res.print_nonconvergence_summary();
+
+#if defined(_OPENMP) && !defined(__APPLE__) && !defined(__MACH__)
   total_proc_res.print_totals_summary(
       concatenation_time, compression_time, config.regression_type,
       intersected_ind.size(), num_poi * num_poi_files, num_threads,
       blas_mgr.get_num_threads());
+#else
+  total_proc_res.print_totals_summary(
+      concatenation_time, compression_time, config.regression_type,
+      intersected_ind.size(), num_poi * num_poi_files, num_threads, 1);
+#endif
 }
 
 Rcpp::DataFrame arma_2_df(const arma::fmat &mat,

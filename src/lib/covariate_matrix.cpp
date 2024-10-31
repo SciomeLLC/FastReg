@@ -6,13 +6,11 @@ FRMatrix CovariateMatrix::create_design_matrix() {
     design_matrix.row_names[reader.row_names[i]] = i;
     design_matrix.row_names_arr.at(i) = reader.row_names[i];
   }
-
   if (has_intercept) {
     design_matrix.data = arma::fmat(reader.row_names.size(), 1, fill::ones);
     design_matrix.col_names["Intercept"] = 0;
     design_matrix.col_names_arr.push_back("Intercept");
   }
-
   for (Covariate cov : covariates) {
     cov.create_matrix(reader.values, reader.row_names);
     FRMatrix cov_mat = cov.filter_colinear(design_matrix, colinearity_rsq);
