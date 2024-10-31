@@ -1,15 +1,5 @@
 
 #include <chunker.h>
-#if defined(__APPLE__)
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#endif
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 void Chunker::get_num_threads() {
   num_available_threads = std::thread::hardware_concurrency();
@@ -70,7 +60,7 @@ unsigned long long Chunker::getTotalSystemMemory() {
 
 double Chunker::get_data_size() {
   double matrix_size = std::exp(std::log(_num_poi) + std::log(_num_ind));
-  int max_num_matrix = 3;
+  int max_num_matrix = 6;
   int float_size = 8; // 8 bytes per number assuming 64-bit numbers
   double data_size = std::exp(std::log(matrix_size) + std::log(float_size) +
                               std::log(max_num_matrix)) +
@@ -95,9 +85,6 @@ void Chunker::estimate_chunks() {
 #endif
 
   if (os == "Darwin") {
-    Rcpp::warning("**********\n "
-                  "Mac detected - using 1 thread.\n"
-                  "**********");
     num_threads = 1;
   } else {
     num_threads = _max_threads;

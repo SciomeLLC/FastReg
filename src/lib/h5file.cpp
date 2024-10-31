@@ -220,6 +220,7 @@ FRMatrix POI::read_chunk(const std::vector<std::string> &rows,
   H5Sget_simple_extent_dims(values_dataspace_id, dims.data(), NULL);
   if (individuals.size() != dims[0] && individuals.size() == dims[1]) {
     transpose = true;
+    Rcpp::Rcout << "is transposed " << std::endl;
   }
 
   if (individuals.size() != dims[0] && individuals.size() != dims[1]) {
@@ -230,12 +231,24 @@ FRMatrix POI::read_chunk(const std::vector<std::string> &rows,
   }
 
   hsize_t hyperslab_dims[2] = {rows.size(), cols.size()};
-
   // Define the hyperslab for the entire range of columns needed
   hsize_t src_offset[2] = {0, col_indices[0]};
-  // if (values_type_class == H5T_INTEGER) {
-  //   load_int_data_chunk(G, hyperslab_dims, src_offset);
-  // } else
+  if (transpose) {
+    // Swap hyperslab dimensions
+    std::swap(hyperslab_dims[0], hyperslab_dims[1]);
+    // Swap src_offset
+    std::swap(src_offset[0], src_offset[1]);
+  }
+#if defined(_DEBUG)
+  Rcpp::Rcout << "Dataset dimensions: " << dims[0] << " x " << dims[1]
+              << std::endl;
+  Rcpp::Rcout << "src_offset: " << src_offset[0] << ", " << src_offset[1]
+              << std::endl;
+  Rcpp::Rcout << "hyperslab_dims: " << hyperslab_dims[0] << " x "
+              << hyperslab_dims[1] << std::endl;
+  Rcpp::Rcout << "Selection extends to: " << src_offset[0] + hyperslab_dims[0]
+              << " x " << src_offset[1] + hyperslab_dims[1] << std::endl;
+#endif
   if (values_type_class == H5T_FLOAT) {
     load_float_data_chunk(G, hyperslab_dims, src_offset);
   } else {
@@ -245,45 +258,18 @@ FRMatrix POI::read_chunk(const std::vector<std::string> &rows,
   return G;
 }
 
-void POI::load_int_data_chunk(FRMatrix &G, hsize_t *hyperslab_dims,
-                              hsize_t *src_offset) {
-  hsize_t memspace_dims[2] = {hyperslab_dims[0], hyperslab_dims[1]};
-  if (transpose) {
-    // Rcpp::Rcout << "transpose int data" << std::endl;
-    std::swap(hyperslab_dims[0], hyperslab_dims[1]);
-    std::swap(src_offset[0], src_offset[1]);
-  }
-  hsize_t dst_offset[2] = {0, 0};
-  // n x m
-  H5Sselect_hyperslab(values_dataspace_id, H5S_SELECT_SET, src_offset, NULL,
-                      hyperslab_dims, NULL);
-
-  memspace_id = H5Screate_simple(2, memspace_dims, NULL);
-  H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, dst_offset, NULL,
-                      memspace_dims, NULL);
-  arma::Mat<int32_t> tmp(memspace_dims[0], memspace_dims[1], arma::fill::zeros);
-  // Reading the data directly into the matrix
-  H5Dread(values_dataset_id, H5T_NATIVE_INT32, memspace_id, values_dataspace_id,
-          H5P_DEFAULT, tmp.memptr());
-
-  // Convert to arma::fmat
-  G.data = arma::conv_to<arma::fmat>::from(tmp);
-  G.data.replace(-2147483648, arma::datum::nan);
-
-  if (memspace_id > 0) {
-    H5Sclose(memspace_id);
-    memspace_id = -1;
-  }
-}
-
 void POI::load_float_data_chunk(FRMatrix &G, hsize_t *hyperslab_dims,
                                 hsize_t *src_offset) {
   hsize_t memspace_dims[2] = {hyperslab_dims[0], hyperslab_dims[1]};
-
-  G.data.set_size(memspace_dims[1], memspace_dims[0]);
-  if (transpose) {
-    G.data.set_size(hyperslab_dims[1], hyperslab_dims[0]);
-  }
+  G.data.resize(memspace_dims[1], memspace_dims[0]).fill(0.0);
+#if defined(_DEBUG)
+  Rcpp::Rcout << "G data size: " << G.data.n_cols << "x" << G.data.n_rows
+              << std::endl;
+  Rcpp::Rcout << "hyperslab dims: " << hyperslab_dims[0] << "x"
+              << hyperslab_dims[1] << std::endl;
+  Rcpp::Rcout << "memspace dims: " << memspace_dims[0] << "x"
+              << memspace_dims[1] << std::endl;
+#endif
   hsize_t dst_offset[2] = {0, 0};
   // n x m
   herr_t status = H5Sselect_hyperslab(values_dataspace_id, H5S_SELECT_SET,
@@ -306,10 +292,13 @@ void POI::load_float_data_chunk(FRMatrix &G, hsize_t *hyperslab_dims,
     Rcpp::stop("Error reading float data from values dataset.");
   }
 
-  if (!transpose) {
+  if (transpose) {
     arma::inplace_trans(G.data);
   }
-
+#if defined(_DEBUG)
+  Rcpp::Rcout << "Post read G data size: " << G.data.n_cols << "x"
+              << G.data.n_rows << std::endl;
+#endif
   if (memspace_id > 0) {
     H5Sclose(memspace_id);
     memspace_id = -1;

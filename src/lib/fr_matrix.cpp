@@ -1,28 +1,4 @@
-#include <algorithm>
-#include <chrono>
 #include <fr_matrix.h>
-#include <fstream>
-#include <iostream>
-#include <list>
-#include <regex>
-#include <sstream>
-#include <string>
-#include <sys/stat.h>
-#include <unordered_map>
-#include <utils.h>
-#include <vector>
-
-#ifndef __has_include
-static_assert(false, "__has_include not supported");
-#else
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-#include <filesystem>
-namespace fs = std::filesystem;
-#elif __has_include(<experimental/filesystem>)
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#endif
-#endif
 
 int FRMatrix::get_row_idx(const std::string &row_name) {
   bool exists = row_names.find(row_name) != row_names.end();
@@ -156,10 +132,8 @@ std::vector<std::string> FRMatrix::get_col_str(const std::string &col_name) {
   }
   int col_idx = col_names_str[col_name];
   std::vector<std::string> col_vals;
-  int count = 0;
   for (std::vector<std::string> row : str_data) {
     col_vals.push_back(row[col_idx]);
-    count++;
   }
 
   return col_vals;
@@ -174,10 +148,8 @@ std::vector<std::string> FRMatrix::sort_map(bool rows) {
   }
 
   std::vector<std::string> sorted_arr(temp.size());
-  int count = 0;
   for (auto item : temp) {
     sorted_arr[item.second] = item.first;
-    count++;
   }
   return sorted_arr;
 }

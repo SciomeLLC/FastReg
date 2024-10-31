@@ -4,7 +4,7 @@
 \alias{generate_values}
 \title{generate_values function to generate values for the test dataset}
 \usage{
-generate_values(num.ind, chunk.indices, poi.type, maf, miss.rate)
+generate_values(num.ind, num.poi, poi.type, maf, miss.rate)
 }
 \arguments{
 \item{num.ind}{an integer denoting number of individuals}

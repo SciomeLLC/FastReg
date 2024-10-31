@@ -13,16 +13,17 @@
 #include <Rmath.h>
 #include <covariate.h>
 #include <fr_matrix.h>
+#include <iostream>
 
 using namespace arma;
 /**
  * @brief The base class for all regression types.
  *
- * This class provides a virtual interface for running regressions with various data matrices.
- * It is meant to be extended by specific regression types such as `LogisticRegression` and `LinearRegression`.
+ * This class provides a virtual interface for running regressions with various
+ * data matrices. It is meant to be extended by specific regression types such
+ * as `LogisticRegression` and `LinearRegression`.
  */
-class RegressionBase
-{
+class RegressionBase {
 public:
   virtual ~RegressionBase() {}
   virtual void run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
@@ -38,10 +39,10 @@ public:
  * @brief Logistic regression implementation.
  *
  * This class inherits from `RegressionBase` and implements logistic regression
- * using various matrices including covariates, phenotype data, and predictors of interest.
+ * using various matrices including covariates, phenotype data, and predictors
+ * of interest.
  */
-class LogisticRegression : public RegressionBase
-{
+class LogisticRegression : public RegressionBase {
 
 public:
   LogisticRegression() {}
@@ -50,8 +51,8 @@ public:
    * @brief Runs logistic regression with the given data.
    *
    * This method performs logistic regression using covariates, phenotype data,
-   * predictors of interest, and interactions, storing the resulting beta estimates, errors,
-   * and p-values.
+   * predictors of interest, and interactions, storing the resulting beta
+   * estimates, errors, and p-values.
    *
    * @param cov Covariate matrix (independent variables).
    * @param pheno Phenotype matrix (dependent variable).
@@ -83,7 +84,8 @@ private:
   /**
    * @brief Runs logistic regression using BLAS operations.
    *
-   * Performs the core logistic regression computation using Basic Linear Algebra Subprograms (BLAS).
+   * Performs the core logistic regression computation using Basic Linear
+   * Algebra Subprograms (BLAS).
    *
    * @param Same parameters as in the `run` method.
    */
@@ -100,10 +102,10 @@ private:
  * @brief Linear regression implementation.
  *
  * This class inherits from `RegressionBase` and implements linear regression
- * using various matrices including covariates, phenotype data, and predictors of interest.
+ * using various matrices including covariates, phenotype data, and predictors
+ * of interest.
  */
-class LinearRegression : public RegressionBase
-{
+class LinearRegression : public RegressionBase {
 public:
   LinearRegression() {}
 
@@ -112,8 +114,8 @@ public:
    * @brief Runs linear regression with the given data.
    *
    * This method performs linear regression using covariates, phenotype data,
-   * predictors of interest, and interactions, storing the resulting beta estimates, errors,
-   * and p-values.
+   * predictors of interest, and interactions, storing the resulting beta
+   * estimates, errors, and p-values.
    *
    * @param cov Covariate matrix (independent variables).
    * @param pheno Phenotype matrix (dependent variable).

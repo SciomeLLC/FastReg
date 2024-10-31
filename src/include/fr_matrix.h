@@ -3,13 +3,32 @@
 #pragma once
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
+#include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <iostream>
+#include <list>
 #include <mutex>
 #include <names_map.h>
+#include <regex>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
 #include <unordered_map>
+#include <vector>
+
+#ifndef __has_include
+static_assert(false, "__has_include not supported");
+#else
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
+#include <filesystem>
+namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif
+#endif
 
 class FRMatrix {
 public:
@@ -35,7 +54,7 @@ public:
   int get_row_idx(const std::string &row_name);
   void shed_rows(std::vector<int> &idx,
                  std::vector<std::string> &new_row_names);
-      std::vector<std::string> get_col_str(const std::string &col_name);
+  std::vector<std::string> get_col_str(const std::string &col_name);
   void write_summary(std::string dir, std::string name, int stratum,
                      int process_id);
   bool file_exists(const std::string &name);

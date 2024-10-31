@@ -15,13 +15,4 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 "
   packageStartupMessage(msg)
-  if (Sys.info()[["sysname"]] == "Darwin") {
-    mac_warning <- "
-**********
-This installation of FastReg has detected a Mac which does not support OpenMP.
-It will only work in single-threaded mode.
-**********
-"
-    packageStartupMessage(mac_warning)
-  }
 }

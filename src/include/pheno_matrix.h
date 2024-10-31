@@ -3,7 +3,6 @@
 #pragma once
 #include <csv_reader.h>
 #include <fr_matrix.h>
-#include <utils.h>
 /**
  * @brief The PhenoMatrix class handles creating a matrix from phenotype data.
  *

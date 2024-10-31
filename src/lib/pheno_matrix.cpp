@@ -1,5 +1,5 @@
 #include <pheno_matrix.h>
-
+#include <utils.h>
 // Creates the phenotype matrix (FRMatrix) and assigns it to the class member
 // "mat"
 FRMatrix PhenoMatrix::create_matrix() {

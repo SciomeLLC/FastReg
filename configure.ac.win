@@ -1,0 +1,76 @@
+AC_INIT([FastReg], [1.1.1])
+AC_PROG_CXX
+
+# Step 1: Check for BLAS/LAPACK support
+FLOAT_SUPPORT=yes
+
+# Check for single-precision BLAS functions
+AC_CHECK_LIB([blas], [sgemv_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([blas], [ssyrk_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([blas], [sdot_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([lapack], [ssyevd_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([lapack], [ssyev_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([lapack], [sgesdd_], [], [FLOAT_SUPPORT=no])
+AC_CHECK_LIB([lapack], [sgesvd_], [], [FLOAT_SUPPORT=no])
+
+# Step 2: If single-precision BLAS functions are not found
+if test "$FLOAT_SUPPORT" = "no"; then
+  AC_MSG_NOTICE([Single-precision BLAS functions not found, extracting contained OpenBLAS...])
+
+  AC_MSG_NOTICE([Extracting OpenBLAS...])
+  which cmake
+  which gcc
+  mkdir -p src/OpenBLAS
+  unzip -o src/OpenBLAS.zip -d src/OpenBLAS
+  cp src/OpenBLAS/bin/libopenblas.dll src/OpenBLAS/lib/
+  AC_MSG_NOTICE([OpenBLAS successfully extracted])
+
+  # Step 2c: Generate Makevars for OpenBLAS
+  cat <<EOL > src/Makevars.win
+RHDF5_LIBS=\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
+RHDF5_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rhdf5lib","include"))')
+RCPP_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rcpp","include"))')
+ARMA_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="RcppArmadillo","include"))')
+
+PKG_CFLAGS=\$(RHDF5_CFLAGS) -I./lib -I./include/
+SHLIB_OPENMP_CXXFLAGS=-fopenmp
+PKG_CXXFLAGS=-I./lib -I./include/ \$(RCPP_CXXFLAGS) \$(ARMA_CXXFLAGS) \$(SHLIB_OPENMP_CXXFLAGS) \$(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
+PKG_LIBS=\$(SHLIB_OPENMP_CXXFLAGS) \$(FLIBS) -L./OpenBLAS/lib -l:libopenblas.a \$(RHDF5_LIBS)  -lstdc++fs -lgfortran -lquadmath -lstdc++
+
+MAIN=\$(wildcard *.cpp) \$(wildcard lib/*.cpp)
+OBJECTS=\$(MAIN:.cpp=.o)
+
+all: \$(SHLIB)
+
+clean:
+	@rm -f \$(OBJECTS)
+EOL
+
+else
+  # Step 3: If BLAS/LAPACK is found, generate Makevars with system BLAS
+  AC_MSG_NOTICE([Single-precision BLAS functions found, using system BLAS and LAPACK])
+
+  # Generate the Makevars file for Windows with system BLAS/LAPACK
+  cat <<EOL > src/Makevars.win
+RHDF5_LIBS=\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
+RHDF5_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rhdf5lib","include"))')
+RCPP_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rcpp","include"))')
+ARMA_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="RcppArmadillo","include"))')
+
+PKG_CFLAGS=\$(RHDF5_CFLAGS) -I./lib -I./include/
+SHLIB_OPENMP_CXXFLAGS=-fopenmp
+PKG_CXXFLAGS=-I./lib -I./include/ \$(RCPP_CXXFLAGS) \$(ARMA_CXXFLAGS) \$(SHLIB_OPENMP_CXXFLAGS) \$(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
+PKG_LIBS=\$(SHLIB_OPENMP_CXXFLAGS) \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS) \$(RHDF5_LIBS) -lstdc++fs -lgfortran -lquadmath -lstdc++
+
+MAIN=\$(wildcard *.cpp) \$(wildcard lib/*.cpp)
+OBJECTS=\$(MAIN:.cpp=.o)
+
+all: \$(SHLIB)
+
+clean:
+	@rm -f \$(OBJECTS)
+EOL
+fi
+
+# Done with configure
+AC_OUTPUT
