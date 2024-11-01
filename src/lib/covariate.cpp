@@ -2,19 +2,25 @@
 #include <utils.h>
 
 std::vector<std::string> Covariate::split(std::string &val, char delim) {
-  // std::vector<std::string> split_result;
+  std::vector<std::string> tokens;
   val.erase(std::remove_if(val.begin(), val.end(),
-                           [](char i) { return (i == '\r'); }),
-            val.end()); // remove the carriage return if it is there
-  std::vector<std::string> tokens(0);
+                            [](char i) { return (i == '\r'); }),
+             val.end()); // remove the carriage return if it is there
+
   std::stringstream stream(val);
   std::string temp;
+  // Loop over the stringstream until newline '\n' is hit
+  while (std::getline(stream, temp, delim)) {
+    // Remove leading and trailing whitespace
+    temp.erase(temp.begin(),
+               std::find_if(temp.begin(), temp.end(), [](unsigned char ch) {
+                 return !std::isspace(ch);
+               }));
+    temp.erase(std::find_if(temp.rbegin(), temp.rend(),
+                            [](unsigned char ch) { return !std::isspace(ch); })
+                   .base(),
+               temp.end());
 
-  // Loop over the stringstream until the end of the string
-  while (!stream.eof()) {
-    std::getline(stream, temp, delim);
-    temp.erase(std::remove_if(temp.begin(), temp.end(), ::isspace),
-               temp.end()); // remove all whitespace from the value
     tokens.push_back(temp);
   }
 
@@ -40,7 +46,7 @@ void Covariate::generate_levels(std::vector<std::string> col_vals) {
 FRMatrix Covariate::create_numeric_matrix(std::vector<std::string> col_vals) {
   FRMatrix candidate_mat;
   candidate_mat.data = arma::fmat(col_vals.size(), 1, arma::fill::zeros);
-  
+
   // fill col names
   candidate_mat.col_names[name] = 0;
   col_names_arr.push_back(name);
@@ -129,7 +135,7 @@ void Covariate::create_matrix(std::vector<std::vector<std::string>> values,
     }
     frmat = create_categorical_matrix(col_vals);
   }
-  
+
   // Standardize if required
   standardize_matrix(frmat);
 

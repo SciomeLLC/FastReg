@@ -51,7 +51,7 @@ public:
     Rcpp::Rcout << cov_levels << std::endl;
     levels = split(cov_levels, ',');
     for (auto& lev : levels) {
-      Rcpp::Rcout << lev << std::endl;
+      Rcpp::Rcout << "\""<<  lev <<"\""<<  std::endl;
     }
 
     if (levels.empty() && cov_type != "numeric") {
@@ -64,7 +64,7 @@ public:
     if (cov_type != "numeric" && !levels.empty()) {
       if (levels.end() ==
           std::find(levels.begin(), levels.end(), ref_level)) {
-            Rcpp::stop("Reference level %s not found in the list of covariate levels for %s", ref_level, name);
+            Rcpp::stop("Reference level '%s' not found in the list of covariate levels for %s", ref_level, name);
       }
     }
 
