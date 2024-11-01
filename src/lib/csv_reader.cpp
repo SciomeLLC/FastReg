@@ -11,25 +11,30 @@
  */
 std::vector<std::string> CSVReader::tokenize(std::string &line)
 {
-  std::vector<std::string> tokens(0);
-  line.erase(std::remove_if(line.begin(), line.end(),
-                            [](char i)
-                            { return (i == '\r'); }),
-             line.end()); // remove the carriage return if it is there
-  std::stringstream stream(line);
-  std::string temp;
-  // Loop over the stringstream until newline '\n' is hit
-  while (!stream.eof())
-  {
-    std::getline(stream, temp, delim_char);
-    temp.erase(std::remove_if(temp.begin(), temp.end(), ::isspace),
-               temp.end()); // remove all whitespace from the value
-    tokens.push_back(temp);
-  }
+    std::vector<std::string> tokens;
+    line.erase(std::remove_if(line.begin(), line.end(),
+                              [](char i)
+                              { return (i == '\r'); }),
+               line.end()); // remove the carriage return if it is there
 
-  return tokens;
+    std::stringstream stream(line);
+    std::string temp;
+    // Loop over the stringstream until newline '\n' is hit
+    while (std::getline(stream, temp, delim_char))
+    {
+        // Remove leading and trailing whitespace
+        temp.erase(temp.begin(), std::find_if(temp.begin(), temp.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+        temp.erase(std::find_if(temp.rbegin(), temp.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), temp.end());
+
+        tokens.push_back(temp);
+    }
+
+    return tokens;
 }
-
 /**
  * @brief Reads the entire CSV file and stores the values in memory.
  *
