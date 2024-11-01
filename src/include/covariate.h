@@ -50,6 +50,9 @@ public:
     standardize = cov_standardize;
     Rcpp::Rcout << cov_levels << std::endl;
     levels = split(cov_levels, ',');
+    for (auto& lev : levels) {
+      Rcpp::Rcout << lev << std::endl;
+    }
 
     if (levels.empty() && cov_type != "numeric") {
       Rcpp::warning("Warning: Covariate %s is categorical but levels aren't "
