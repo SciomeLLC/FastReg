@@ -48,6 +48,7 @@ public:
     cov_type = covar_type;
     ref_level = cov_ref_level;
     standardize = cov_standardize;
+    Rcpp::Rcout << cov_levels << std::endl;
     levels = split(cov_levels, ',');
 
     if (levels.empty() && cov_type != "numeric") {
@@ -56,7 +57,7 @@ public:
                     "the first row as reference.",
                     name);
     }
-
+    
     if (cov_type != "numeric" && !levels.empty()) {
       if (levels.end() ==
           std::find(levels.begin(), levels.end(), ref_level)) {
