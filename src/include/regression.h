@@ -25,26 +25,26 @@ public:
   ~LogisticRegression() {}
   void run_vla(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
                VLAResult &result, const int max_iter, bool is_t_dist,
-               double maf_thresh);
+               double maf_thresh, double epss);
   void run_vla(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
                VLAResultf &result, const int max_iter, bool is_t_dist,
-               double maf_thresh);
+               double maf_thresh, float epss);
   void run_vla_2(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
                  VLAResultf &result, const int max_iter, bool is_t_dist,
                  std::vector<int> &poi_2_idx, Eigen::MatrixXf &W2f,
-                 Eigen::MatrixXf &tphenoD);
+                 Eigen::MatrixXf &tphenoD, float epss);
   void run_vla_3(arma::fmat &cov, arma::fmat &pheno, arma::fmat &poi_data,
                  VLAResultf &result, const int max_iter, bool is_t_dist,
                  std::vector<int> &poi_3_idx, Eigen::MatrixXf &W2f,
-                 Eigen::MatrixXf &tphenoD);
+                 Eigen::MatrixXf &tphenoD, float epss);
   void run_vla_2(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
                  VLAResult &result, const int max_iter, bool is_t_dist,
                  std::vector<int> &poi_2_idx, Eigen::MatrixXd &W2f,
-                 Eigen::MatrixXd &tphenoD);
+                 Eigen::MatrixXd &tphenoD, double epss);
   void run_vla_3(arma::mat &cov, arma::mat &pheno, arma::mat &poi_data,
                  VLAResult &result, const int max_iter, bool is_t_dist,
                  std::vector<int> &poi_3_idx, Eigen::MatrixXd &W2f,
-                 Eigen::MatrixXd &tphenoD);
+                 Eigen::MatrixXd &tphenoD, double epss);
   void checkInterrupt() {
     if (R_ToplevelExec(chkIntFn, NULL) == FALSE) {
       Rcpp::stop("Received user interrupt. Stopping FastReg...");

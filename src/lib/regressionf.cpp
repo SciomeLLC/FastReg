@@ -28,7 +28,7 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
                                    const int max_iter, bool is_t_dist,
                                    std::vector<int> &poi_2_idx,
                                    Eigen::MatrixXf &W2f,
-                                   Eigen::MatrixXf &tphenoD) {
+                                   Eigen::MatrixXf &tphenoD, float epss) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, temp_eta, temp_eta2,
@@ -107,7 +107,7 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
     eta.noalias() = X * beta;
     p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
     ll1_rel_err = 1.0;
-    for (int iter = 0; iter < max_iter && ll1_rel_err > 1e-7; iter++) {
+    for (int iter = 0; iter < max_iter && ll1_rel_err > epss; iter++) {
       // Fit 1
       Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
       temp1.noalias() = (X.array().colwise() * W1.col(0).array()).matrix();
@@ -141,7 +141,7 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
     p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
     // Fit 2
     ll2_rel_err = 1.0;
-    for (int iter = 0; iter < max_iter && ll2_rel_err > 1e-7; iter++) {
+    for (int iter = 0; iter < max_iter && ll2_rel_err > epss; iter++) {
       Eigen::MatrixXf W1_2 = p2.array() * (1 - p2.array()) * w2_col2.array();
       temp1_2.noalias() = (X2.array().colwise() * W1_2.col(0).array()).matrix();
       A2.noalias() = temp1_2.transpose() * X2;
@@ -175,18 +175,21 @@ void LogisticRegression::run_vla_2(arma::fmat &cov, arma::fmat &pheno,
     result.lls.at(poi_col_idx, 10) = ll2_diff;
     result.lls.at(poi_col_idx, 11) = ll2_rel_err;
 
-    int df = w2_col.array().sum() - result.num_parms;
-    diag = A.inverse().diagonal().array().sqrt();
-
-    int df2 = w2_col.array().sum() - n_parms2;
-    diag2 = A2.inverse().diagonal().array().sqrt();
-
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
     int rank = lu_decomp.rank();
 
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp2(X);
     int rank1 = lu_decomp2.rank();
     result.lls.at(poi_col_idx, 12) = rank1;
+
+    
+    // int df = w2_col.array().sum() - result.num_parms;
+    int df = w2_col.array().sum() - rank1;
+    diag = A.inverse().diagonal().array().sqrt();
+
+    int df2 = w2_col.array().sum() - rank;
+    diag2 = A2.inverse().diagonal().array().sqrt();
+
 
     lrs = 2.0 * (ll2 - ll1);
     // lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
@@ -215,7 +218,7 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
                                    const int max_iter, bool is_t_dist,
                                    std::vector<int> &poi_3_idx,
                                    Eigen::MatrixXf &W2f,
-                                   Eigen::MatrixXf &tphenoD) {
+                                   Eigen::MatrixXf &tphenoD, float epss) {
   arma::fcolvec (*dist_func_r)(arma::fcolvec, int) =
       is_t_dist == true ? t_dist_r : norm_dist_r;
   Eigen::MatrixXf X, X2, A, A2, temp1, temp1_2, z, z2, temp_eta, temp_eta2,
@@ -276,7 +279,7 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
     eta.noalias() = X * beta;
     p = (1.0 / (1.0 + (-eta.array()).exp())).matrix();
     ll1_rel_err = 1.0;
-    for (int iter = 0; iter < max_iter && ll1_rel_err > 1e-7; iter++) {
+    for (int iter = 0; iter < max_iter && ll1_rel_err > epss; iter++) {
       Eigen::MatrixXf W1 = p.array() * (1 - p.array()) * w2_col.array();
       temp1.noalias() = (X.array().colwise() * W1.col(0).array()).matrix();
       A.noalias() = temp1.transpose() * X;
@@ -340,7 +343,7 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
     p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
     ll2_rel_err = 1.0;
     // Fit 2
-    for (int iter = 0; iter < max_iter && ll2_rel_err > 1e-7; iter++) {
+    for (int iter = 0; iter < max_iter && ll2_rel_err > epss; iter++) {
       // L1 cache
       Eigen::MatrixXf W1_2 = p2.array() * (1 - p2.array()) * w2_col2.array();
       temp1_2.noalias() = (X2.array().colwise() * W1_2.col(0).array()).matrix();
@@ -380,18 +383,18 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
     result.lls.at(poi_col_idx, 10) = ll2_diff;
     result.lls.at(poi_col_idx, 11) = ll2_rel_err;
 
-    int df = w2_col.array().sum() - result.num_parms;
-    diag = A.inverse().diagonal().array().sqrt();
-
-    int df2 = w2_col.array().sum() - n_parms2;
-    diag2 = A2.inverse().diagonal().array().sqrt();
-
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp(X2);
     int rank = lu_decomp.rank();
 
     Eigen::FullPivLU<Eigen::MatrixXf> lu_decomp2(X);
     int rank1 = lu_decomp2.rank();
     result.lls.at(poi_col_idx, 12) = rank1;
+
+    int df = w2_col.array().sum() - rank1;
+    diag = A.inverse().diagonal().array().sqrt();
+
+    int df2 = w2_col.array().sum() - rank;
+    diag2 = A2.inverse().diagonal().array().sqrt();
 
     lrs = 2.0 * (ll2 - ll1);
     // lrs_pval = std::abs(chisq(lrs, n_parms2 - result.num_parms));
@@ -417,7 +420,7 @@ void LogisticRegression::run_vla_3(arma::fmat &cov, arma::fmat &pheno,
 void LogisticRegression::run_vla(arma::fmat &cov, arma::fmat &pheno,
                                  arma::fmat &poi_data, VLAResultf &result,
                                  const int max_iter, bool is_t_dist,
-                                 double maf_thresh) {
+                                 double maf_thresh, float epss) {
   arma::fcolvec poi_col;
   std::vector<int> poi_2_idx;
   std::vector<int> poi_3_idx;
@@ -475,7 +478,7 @@ void LogisticRegression::run_vla(arma::fmat &cov, arma::fmat &pheno,
   // run regression on G with 2 values
 
   run_vla_2(cov, pheno, poi_data, result, max_iter, is_t_dist, poi_2_idx, W2f,
-            tphenoD);
+            tphenoD, epss);
   run_vla_3(cov, pheno, poi_data, result, max_iter, is_t_dist, poi_3_idx, W2f,
-            tphenoD);
+            tphenoD, epss);
 }

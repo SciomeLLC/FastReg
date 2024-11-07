@@ -29,7 +29,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // FastVLA_logisticf
-void FastVLA_logisticf(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const double epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca, const bool add_intercept);
+void FastVLA_logisticf(const arma::mat& Y, SEXP Gptr, const arma::ivec& v_index, const arma::ivec& i_index, const arma::mat& X, const int& chunk_size, const std::string& dir, const std::vector<std::string> cnames, const std::vector<std::string> vnames, const std::string suffix, const float epss, const double& mafthresh, const double& pca_var_explained, const int max_iter, const int max_threads, const int max_blas_threads, const bool do_pca, const bool add_intercept);
 RcppExport SEXP _FastVLA_FastVLA_logisticf(SEXP YSEXP, SEXP GptrSEXP, SEXP v_indexSEXP, SEXP i_indexSEXP, SEXP XSEXP, SEXP chunk_sizeSEXP, SEXP dirSEXP, SEXP cnamesSEXP, SEXP vnamesSEXP, SEXP suffixSEXP, SEXP epssSEXP, SEXP mafthreshSEXP, SEXP pca_var_explainedSEXP, SEXP max_iterSEXP, SEXP max_threadsSEXP, SEXP max_blas_threadsSEXP, SEXP do_pcaSEXP, SEXP add_interceptSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -43,7 +43,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const std::vector<std::string> >::type cnames(cnamesSEXP);
     Rcpp::traits::input_parameter< const std::vector<std::string> >::type vnames(vnamesSEXP);
     Rcpp::traits::input_parameter< const std::string >::type suffix(suffixSEXP);
-    Rcpp::traits::input_parameter< const double >::type epss(epssSEXP);
+    Rcpp::traits::input_parameter< const float >::type epss(epssSEXP);
     Rcpp::traits::input_parameter< const double& >::type mafthresh(mafthreshSEXP);
     Rcpp::traits::input_parameter< const double& >::type pca_var_explained(pca_var_explainedSEXP);
     Rcpp::traits::input_parameter< const int >::type max_iter(max_iterSEXP);

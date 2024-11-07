@@ -271,7 +271,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                        const int &chunk_size, const std::string &dir,
                        const std::vector<std::string> cnames,
                        const std::vector<std::string> vnames,
-                       const std::string suffix, const double epss = 1e-6,
+                       const std::string suffix, const float epss = 1e-7,
                        const double &mafthresh = 0.005,
                        const double &pca_var_explained = 0.95,
                        const int max_iter = 6, const int max_threads = 1,
@@ -368,7 +368,7 @@ void FastVLA_logisticf(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                      local_time);
 
       LogisticRegression regression;
-      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
+      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh, epss);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
       if (chunk == 0) {
         res.write_headers(dir, suffix, cnames[i], variant_names_chunk);
@@ -384,7 +384,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
                       const int &chunk_size, const std::string &dir,
                       const std::vector<std::string> cnames,
                       const std::vector<std::string> vnames,
-                      const std::string suffix, const double epss = 1e-6,
+                      const std::string suffix, const double epss = 1e-7,
                       const double &mafthresh = 0.005,
                       const double &pca_var_explained = 0.950,
                       const int max_iter = 6, const int max_threads = 1,
@@ -474,7 +474,7 @@ void FastVLA_logistic(const arma::mat &Y, SEXP Gptr, const arma::ivec &v_index,
       VLAResult res(cov, G, no_interactions, interactions, interactions_sqrd,
                     local_time);
       LogisticRegression regression;
-      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh);
+      regression.run_vla(cov, pheno, G, res, max_iter, true, mafthresh, epss);
       res.write_to_file(dir, suffix, cnames[i], variant_names_chunk);
       if (chunk == 0) {
         res.write_headers(dir, suffix, cnames[i], variant_names_chunk);
