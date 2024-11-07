@@ -139,6 +139,7 @@ void LogisticRegression::run_vla_2(arma::mat &cov, arma::mat &pheno,
     eta2.noalias() = X2 * beta2;
     p2 = (1.0 / (1.0 + (-eta2.array()).exp())).matrix();
     // Fit 2
+    ll2_rel_err = 1.0;
     for (int iter = 0;
          iter < max_iter && ll2_rel_err > epss;
          iter++) {
