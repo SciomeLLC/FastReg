@@ -101,7 +101,6 @@ arma::mat scanBEDMatrix(SEXP xptr, arma::ivec i, arma::ivec j) {
   int ni = i.n_rows;
   int nj = j.n_rows;
   arma::mat out(ni, nj);
-#pragma omp parallel for
   for (int cj = 0; cj < nj; cj++) {
     int jj = j[cj];
     for (int ci = 0; ci < ni; ci++) {
