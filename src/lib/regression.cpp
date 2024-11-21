@@ -331,7 +331,7 @@ void LinearRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
 
     se_beta.data.col(poi_col) = arma::sqrt(mse * arma::diagvec(AAinv));
     arma::fmat temp_se = se_beta.data.col(poi_col);
-    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se) * -1;
+    arma::fcolvec neg_abs_z = arma::abs(beta / temp_se);
     neglog10_pvl.data.col(poi_col) = (*dist_func)(neg_abs_z, df);
   }
 }
