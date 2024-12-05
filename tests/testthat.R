@@ -1,4 +1,4 @@
 library(testthat)
-library(FastReg)
+library(FastVLA)
 
-test_check("FastReg")
+test_check("FastVLA")
