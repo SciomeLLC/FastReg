@@ -1,1 +1,2 @@
 configure.ac text eol=lf
+tests/testthat/plinkfile.bed filter=lfs diff=lfs merge=lfs -text
