@@ -494,6 +494,8 @@ void FRMatrix::concatenate_results(std::string output_dir,
             std::string::npos) {
       // Extract stratum from filename
       std::string filename = entry.path().filename().stem().string();
+      
+      Rcpp::Rcout << "Finding file: " << filename << std::endl;
       std::vector<std::string> tokens;
       std::stringstream ss(filename);
       std::string token;
@@ -519,7 +521,6 @@ void FRMatrix::concatenate_results(std::string output_dir,
     std::string outputFile = output_dir + "/" + file_concatenation_prefix +
                              "_" + file_name_prefix + "_stratum_" +
                              std::to_string(stratum) + ".tsv";
-
     // Check if the output file already exists
     if (fs::exists(outputFile)) {
       Rcpp::Rcerr << "Output file already exists: " << outputFile
@@ -583,4 +584,17 @@ void FRMatrix::join(FRMatrix &fmat) {
     col_names.emplace(el.first, el.second + num_cols);
     col_names_arr.at(el.second + num_cols) = el.first;
   }
+}
+
+FRMatrix FRMatrix::get_submat_by_col_idx(const int col_idx) {
+  FRMatrix sub;
+  sub.data = data.col(col_idx);
+  sub.col_names_arr = {col_names_arr.at(col_idx)};
+  sub.col_names_str = col_names_str;
+  sub.col_name_str_arr = {col_names_arr.at(col_idx)};
+  sub.row_names_arr = row_names_arr;
+  sub.row_names = row_names;
+  sub.col_names = col_names;
+
+  return sub;
 }

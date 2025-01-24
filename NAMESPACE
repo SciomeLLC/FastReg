@@ -1,5 +1,6 @@
 useDynLib(FastReg, .registration=TRUE)
 export(FastReg)
+export(MultiY)
 export(TextToH5)
 export(H5_To_Bed)
 export(data)

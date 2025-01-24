@@ -15,6 +15,7 @@ public:
   std::string file_name;
   std::string id_col;
   std::string phenotype;
+  std::vector<std::string> phenotypes;
   int id_col_idx;
   CSVReader reader;
   FRMatrix mat;
@@ -37,7 +38,17 @@ public:
     reader = CSVReader(filename, delim, id);
     headers = reader.get_headers();
     id_col = id;
-    this->phenotype = phenotype;
+    this->phenotypes.push_back(phenotype);
+  }
+
+  PhenoMatrix(std::string &filename, std::string &delim, std::string &id,
+              std::vector<std::string> &phenotypes)
+  {
+    file_name = filename;
+    reader = CSVReader(filename, delim, id);
+    headers = reader.get_headers();
+    id_col = id;
+    this->phenotypes = phenotypes;
   }
   /**
    * @brief Creates the phenotype matrix.

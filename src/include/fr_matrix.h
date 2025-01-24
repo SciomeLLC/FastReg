@@ -49,6 +49,7 @@ public:
   FRMatrix
   get_submat_by_cols(const std::vector<int> &row_idx,
                      const std::unordered_map<std::string, int> &names);
+  FRMatrix get_submat_by_col_idx(const int col_idx);
   std::vector<std::string> split(const std::string &str_tokens, char delim);
   int get_col_idx(const std::string &col_name);
   int get_row_idx(const std::string &row_name);

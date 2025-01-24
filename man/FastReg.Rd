@@ -25,8 +25,6 @@ FastReg(
   covar.rowname.cols = "ind",
   covar.file.delim = "tab",
   POI.file.dir = "testdata/",
-  POI.file.delim = "tab",
-  POI.file.format = "h5",
   POI.type = "dosage",
   POI.effect.type = "additive",
   covariates = c("age", "sex", "eth", "treatment", "severity"),
@@ -84,10 +82,6 @@ FastReg(
 \item{covar.file.delim}{tab|space|comma. Default: tab. delimiter used in covariate file.}
 
 \item{POI.file.dir}{relative path to the directory with POI file(s).}
-
-\item{POI.file.delim}{tab|space|comma. Default: tab. delimiter used in POI file if POI.file.format != h5}
-
-\item{POI.file.format}{h5|txt. Default: h5. POI data file format.}
 
 \item{POI.type}{genotype|dosage. Default: dosage.}
 

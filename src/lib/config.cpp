@@ -206,15 +206,6 @@ void Config::set_default_values() {
 
 void Config::validate_args() {
   std::string empty_str = "";
-  if (!(POI_file_format == "txt" || POI_file_format == "plink" ||
-        POI_file_format == "h5" || POI_file_format == "bed")) {
-    Rcpp::stop("POI.file.format not supported");
-  }
-
-  if (POI_file_format == "txt" &&
-      !(POI_file_delim == "tab" || POI_file_delim == "comma")) {
-    Rcpp::stop("POI.file.delim not supported");
-  }
 
   if (!(POI_effect_type == "dosage" || POI_effect_type == "additive" ||
         POI_effect_type == "recessive" || POI_effect_type == "dominant")) {
@@ -278,13 +269,7 @@ std::vector<std::string> Config::split(std::string val, std::string delim,
 // get a list of poi files from the poi_file_dir directory with the
 // poi_file_type extension
 void Config::get_poi_files() {
-  std::string extension;
-  if (POI_file_format == "bed") {
-    extension = ".bed";
-  } else {
-    extension = ".h5";
-  }
-
+  std::string extension = ".h5";
   for (auto &entry : fs::directory_iterator(POI_file_dir)) {
     if (entry.path().extension() == extension) {
       poi_files.push_back(fs::absolute(entry.path()).string());
@@ -315,8 +300,6 @@ void Config::print() {
   Rcpp::Rcout << "covar_rowname_cols: " << covar_rowname_cols << std::endl;
   Rcpp::Rcout << "covar_file_delim: " << covar_file_delim << std::endl;
   Rcpp::Rcout << "poi_file_dir: " << POI_file_dir << std::endl;
-  Rcpp::Rcout << "poi_file_delim: " << POI_file_delim << std::endl;
-  Rcpp::Rcout << "poi_file_format: " << POI_file_format << std::endl;
   Rcpp::Rcout << "poi_type: " << POI_type << std::endl;
   Rcpp::Rcout << "poi_effect_type: " << POI_effect_type << std::endl;
   for (size_t i = 0; i < covs.size(); i++) {
