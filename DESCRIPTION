@@ -30,15 +30,33 @@ Depends: R (>= 4.0)
 URL: https://github.com/SciomeLLC/FastReg
 BugReports: https://github.com/SciomeLLC/FastReg/issues
 biocViews: Software
-Imports: rhdf5, Rcpp, RcppArmadillo, stats, utils, parallel, BEDMatrix, doParallel, foreach, data.table
-LinkingTo: Rcpp, RcppArmadillo, RcppEigen
-Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+Imports: 
+       rhdf5, 
+       Rcpp, 
+       RcppArmadillo, 
+       stats, 
+       utils, 
+       parallel, 
+       BEDMatrix, 
+       doParallel, 
+       foreach, 
+       data.table
+LinkingTo: 
+    cpp11,
+    Rcpp,
+    RcppArmadillo,
+    RcppEigen
+Suggests: 
+       testthat (>= 3.0.0), 
+       knitr, 
+       rmarkdown
 Config/testthat/edition: 3
 NeedsCompilation: yes
 VignetteBuilder: knitr
 RoxygenNote: 7.3.2
 Packaged: 2024-04-15 09:09:01 UTC; shail.choksi
-Author: Shail Choksi [aut, cre],
+Author: 
+  Shail Choksi [aut, cre],
   Matt Wheeler [aut],
   Deepak Mav [aut],
   John House [ctb],

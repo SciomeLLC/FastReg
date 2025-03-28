@@ -1,10 +1,10 @@
-AC_INIT([FastReg], [1.1.1])
-AC_PROG_CXX
+AC_INIT([FastReg], [1.1.1], [software.tools@sciome.com])
+AC_PREREQ([2.69])
+AC_CONFIG_SRCDIR([configure.ac])
 
-# Step 1: Check for BLAS/LAPACK support
+# Step 1: Check for BLAS/LAPACK single-precision support
 FLOAT_SUPPORT=yes
 
-# Check for single-precision BLAS functions
 AC_CHECK_LIB([blas], [sgemv_], [], [FLOAT_SUPPORT=no])
 AC_CHECK_LIB([blas], [ssyrk_], [], [FLOAT_SUPPORT=no])
 AC_CHECK_LIB([blas], [sdot_], [], [FLOAT_SUPPORT=no])
@@ -13,64 +13,96 @@ AC_CHECK_LIB([lapack], [ssyev_], [], [FLOAT_SUPPORT=no])
 AC_CHECK_LIB([lapack], [sgesdd_], [], [FLOAT_SUPPORT=no])
 AC_CHECK_LIB([lapack], [sgesvd_], [], [FLOAT_SUPPORT=no])
 
-# Step 2: If single-precision BLAS functions are not found
-if test "$FLOAT_SUPPORT" = "no"; then
-  AC_MSG_NOTICE([Single-precision BLAS functions not found, extracting contained OpenBLAS...])
+AC_MSG_NOTICE([BLAS/LAPACK single-precision support: $FLOAT_SUPPORT])
 
-  AC_MSG_NOTICE([Extracting OpenBLAS...])
-  which cmake
-  which gcc
-  mkdir -p src/OpenBLAS
-  unzip -o src/OpenBLAS.zip -d src/OpenBLAS
-  cp src/OpenBLAS/bin/libopenblas.dll src/OpenBLAS/lib/
-  AC_MSG_NOTICE([OpenBLAS successfully extracted])
-
-  # Step 2c: Generate Makevars for OpenBLAS
-  cat <<EOL > src/Makevars.win
-RHDF5_LIBS=\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
-RHDF5_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rhdf5lib","include"))')
-RCPP_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rcpp","include"))')
-ARMA_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="RcppArmadillo","include"))')
-
-PKG_CFLAGS=\$(RHDF5_CFLAGS) -I./lib -I./include/
-SHLIB_OPENMP_CXXFLAGS=-fopenmp
-PKG_CXXFLAGS=-I./lib -I./include/ \$(RCPP_CXXFLAGS) \$(ARMA_CXXFLAGS) \$(SHLIB_OPENMP_CXXFLAGS) \$(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
-PKG_LIBS=\$(SHLIB_OPENMP_CXXFLAGS) \$(FLIBS) -L./OpenBLAS/lib -l:libopenblas.a \$(RHDF5_LIBS)  -lstdc++fs -lgfortran -lquadmath -lstdc++
-
-MAIN=\$(wildcard *.cpp) \$(wildcard lib/*.cpp)
-OBJECTS=\$(MAIN:.cpp=.o)
-
-all: \$(SHLIB)
-
-clean:
-	@rm -f \$(OBJECTS)
-EOL
-
+# Set a flag for whether to install OpenBLAS.
+if test "x$FLOAT_SUPPORT" = "xyes"; then
+    AC_MSG_NOTICE([System BLAS/LAPACK provides single-precision support. Skipping OpenBLAS installation.])
+    INSTALL_OPENBLAS=no
 else
-  # Step 3: If BLAS/LAPACK is found, generate Makevars with system BLAS
-  AC_MSG_NOTICE([Single-precision BLAS functions found, using system BLAS and LAPACK])
-
-  # Generate the Makevars file for Windows with system BLAS/LAPACK
-  cat <<EOL > src/Makevars.win
-RHDF5_LIBS=\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'Rhdf5lib::pkgconfig("PKG_C_LIBS")')
-RHDF5_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rhdf5lib","include"))')
-RCPP_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="Rcpp","include"))')
-ARMA_CXXFLAGS=-I\$(shell "\${R_HOME}/bin\${R_ARCH_BIN}/Rscript" -e 'cat(system.file(package="RcppArmadillo","include"))')
-
-PKG_CFLAGS=\$(RHDF5_CFLAGS) -I./lib -I./include/
-SHLIB_OPENMP_CXXFLAGS=-fopenmp
-PKG_CXXFLAGS=-I./lib -I./include/ \$(RCPP_CXXFLAGS) \$(ARMA_CXXFLAGS) \$(SHLIB_OPENMP_CXXFLAGS) \$(RHDF5_CXXFLAGS) -DARMA_USE_HDF5 -DR_COMPILATION -DSTATS_ENABLE_ARMA_WRAPPERS -DARMA_64BIT_WORD -DARMA_WARN_LEVEL=0
-PKG_LIBS=\$(SHLIB_OPENMP_CXXFLAGS) \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS) \$(RHDF5_LIBS) -lstdc++fs -lgfortran -lquadmath -lstdc++
-
-MAIN=\$(wildcard *.cpp) \$(wildcard lib/*.cpp)
-OBJECTS=\$(MAIN:.cpp=.o)
-
-all: \$(SHLIB)
-
-clean:
-	@rm -f \$(OBJECTS)
-EOL
+    INSTALL_OPENBLAS=yes
 fi
 
-# Done with configure
+OS_FLAG=`uname`
+AC_MSG_NOTICE([host_os is $OS_FLAG])
+
+case "$OS_FLAG" in
+  MINGW*|MSYS*|CYGWIN*|*WIN*)
+    HOST_IS_WINDOWS=yes
+    ;;
+  *)
+    HOST_IS_WINDOWS=no
+    AC_MSG_NOTICE([Non-Windows system detected. Skipping OpenBLAS configuration.])
+    ;;
+esac
+
+if test "x$INSTALL_OPENBLAS" = "xyes" && test "x$HOST_IS_WINDOWS" = "xyes"; then
+    AC_MSG_NOTICE([Proceeding with OpenBLAS installation on Windows.])
+
+    # Ensure R_ARCH is set (R sets R_ARCH when running R CMD INSTALL)
+    if test -z "$R_ARCH"; then
+        AC_MSG_ERROR([R_ARCH is not set. Please run this package installation via 'R CMD INSTALL'.])
+    fi
+
+    # Choose the correct OpenBLAS URL based on architecture.
+    case "$R_ARCH" in
+      /x64)
+        OPENBLAS_URL="https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.29/OpenBLAS-0.3.29_x64.zip"
+        ;;
+      /i386)
+        OPENBLAS_URL="https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.29/OpenBLAS-0.3.29_x86.zip"
+        ;;
+      *)
+        AC_MSG_ERROR([Unknown R_ARCH value: $R_ARCH])
+        ;;
+    esac
+
+    # Look for a download tool: curl or wget.
+    AC_PATH_PROG([CURL], [curl])
+    AC_PATH_PROG([WGET], [wget])
+    
+    AC_MSG_NOTICE([Downloading OpenBLAS v0.3.29])
+    if test -n "$CURL"; then
+        DOWNLOAD_CMD="$CURL -L -k -o"
+    elif test -n "$WGET"; then
+        DOWNLOAD_CMD="$WGET -O"
+    else
+        AC_MSG_ERROR([Neither curl nor wget was found. Please install one to download OpenBLAS.])
+    fi
+
+    # Create a directory for OpenBLAS.
+    OPENBLAS_DIR="openblas"
+    if test ! -d "$OPENBLAS_DIR"; then
+        mkdir -p "$OPENBLAS_DIR" || AC_MSG_ERROR([Failed to create directory $OPENBLAS_DIR])
+    fi
+
+    ZIPFILE="$OPENBLAS_DIR/OpenBLAS.zip"
+    if test ! -f "$ZIPFILE"; then
+        AC_MSG_NOTICE([Downloading OpenBLAS...])
+        $DOWNLOAD_CMD "$ZIPFILE" "$OPENBLAS_URL" || AC_MSG_ERROR([Download failed.])
+    fi
+
+    AC_MSG_NOTICE([Extracting OpenBLAS...])
+    unzip -o "$ZIPFILE" -d "$OPENBLAS_DIR" || AC_MSG_ERROR([Extraction failed.])
+
+    DLL_PATH="$OPENBLAS_DIR/bin/libopenblas.dll"
+    if test -f "$DLL_PATH"; then
+        mkdir -p inst/libs || AC_MSG_ERROR([Failed to create inst/libs])
+        # Optionally, rename the DLL to openblas.dll for consistency.
+        cp "$DLL_PATH" inst/libs/openblas.dll || AC_MSG_ERROR([Failed to copy libopenblas.dll])
+        AC_MSG_NOTICE([Copied libopenblas.dll as openblas.dll to inst/libs/])
+    else
+        AC_MSG_ERROR([libopenblas.dll was not found in $OPENBLAS_DIR/bin])
+    fi
+
+    # Append linker flags to src/Makevars.win.
+    MAKEVARS="src/Makevars.win"
+    if test ! -f "$MAKEVARS"; then
+        touch "$MAKEVARS" || AC_MSG_ERROR([Failed to create $MAKEVARS])
+    fi
+    echo "PKG_LIBS += -L$(pwd)/inst/libs -lopenblas" >> "$MAKEVARS"
+    AC_MSG_NOTICE([Updated $MAKEVARS with OpenBLAS linker flags.])
+fi
+
+AC_CONFIG_FILES([src/Makevars.win:src/Makevars.win])
 AC_OUTPUT
