@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
 #ifdef WIN32
 #include <windows.h>
 #else

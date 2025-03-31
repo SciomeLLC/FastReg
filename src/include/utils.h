@@ -2,8 +2,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <covariate.h>
 #include <fr_matrix.h>

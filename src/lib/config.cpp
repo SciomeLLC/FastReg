@@ -5,12 +5,14 @@ using namespace arma;
 template <class T> T Config::get(const std::string &key) {
   auto it = values.find(key);
   if (it == values.end()) {
-    Rcpp::Rcerr << "Key not found in config file: " + key << std::endl;
+    cpp11::stop("Key not found in config file: {}", key);
+    // Rcpp::Rcerr << "Key not found in config file: " + key << std::endl;
   }
   T result;
   std::istringstream stream(it->second);
   if (!(stream >> result)) {
-    Rcpp::Rcerr << "Failed to parse value for key: " + key << std::endl;
+    cpp11::stop("Failed to parse value for key: {}", key);
+    // Rcpp::Rcerr << "Failed to parse value for key: " + key << std::endl;
   }
   return result;
 }
@@ -35,9 +37,10 @@ void Config::parse(std::string file_path, const char delim,
                    const char comment) {
   std::ifstream conf_file(file_path);
   if (!conf_file.is_open()) {
-    Rcpp::Rcerr << "Error: unable to open configuration file " << file_path
-                << std::endl;
-    return;
+    cpp11::stp("Unable to open configuration file {}", file_path);
+    // Rcpp::Rcerr << "Error: unable to open configuration file " << file_path
+    //             << std::endl;
+    // return;
   }
   std::string line;
   while (getline(conf_file, line)) {
@@ -69,8 +72,9 @@ void Config::validate_keys() {
 
   for (const auto &key : required_keys) {
     if (!has_key(key)) {
-      Rcpp::Rcerr << "Error: configuration file is missing required key '"
-                  << key << "'" << std::endl;
+      cpp11::stop("Configuration file is missing required key '{}'", key);
+      // Rcpp::Rcerr << "Error: configuration file is missing required key '"
+      //             << key << "'" << std::endl;
     }
   }
 }
@@ -117,15 +121,18 @@ void Config::validate_covariate_config(
                        return kv == "numeric" || kv == "categorical" ||
                               kv == "count";
                      })) {
-      Rcpp::stop("invalid covariate.type");
+      cpp11::stop("Invalid covariate.type");
+      // Rcpp::stop("invalid covariate.type");
     }
 
     if (covariate_type.size() != cov_size) {
-      Rcpp::stop("number of covariate.type != number of covariates.");
+      cpp11::stop("number of covariate.type != number of covariates.");
+      // Rcpp::stop("number of covariate.type != number of covariates.");
     }
 
     if (covariate_standardize.size() != cov_size) {
-      Rcpp::stop("number of covariate.standardize != number of covariates.");
+      cpp11::stop("number of covariate.standardize != number of covariates.");
+      // Rcpp::stop("number of covariate.standardize != number of covariates.");
     }
 
     if (covariate_levels.size() != cov_size) {
@@ -133,7 +140,8 @@ void Config::validate_covariate_config(
     }
 
     if (covariate_ref_level.size() != cov_size) {
-      Rcpp::stop("number of covariate.ref.level != number of covariates.");
+      cpp11::stop("number of covariate.ref.level != number of covariates.");
+      // Rcpp::stop("number of covariate.ref.level != number of covariates.");
     }
 
     for (unsigned int i = 0; i < cov_size; i++) {
@@ -150,16 +158,19 @@ void Config::validate_required_files() {
   //     POI_file};
 
   if (!fs::exists(pheno_file)) {
-    Rcpp::Rcerr << "Error: file does not exist: " << pheno_file
-                << "\nPlease check that the path is correct." << std::endl;
+    cpp11::stop("File not found: {}", pheno_file);
+    // Rcpp::Rcerr << "Error: file does not exist: " << pheno_file
+    //             << "\nPlease check that the path is correct." << std::endl;
   }
   if (!fs::exists(covar_file)) {
-    Rcpp::Rcerr << "Error: file does not exist: " << covar_file
-                << "\nPlease check that the path is correct." << std::endl;
+    cpp11::stop("File not found: {}", covar_file);
+    // Rcpp::Rcerr << "Error: file does not exist: " << covar_file
+    //             << "\nPlease check that the path is correct." << std::endl;
   }
   if (!fs::exists(POI_file_dir)) {
-    Rcpp::Rcerr << "Error: Directory does not exist - " << POI_file_dir
-                << "\nPlease check that the path is correct." << std::endl;
+    cpp11::stop("Directory does not exist {}.", POI_file_dir);
+    // Rcpp::Rcerr << "Error: Directory does not exist - " << POI_file_dir
+    //             << "\nPlease check that the path is correct." << std::endl;
   }
 }
 
@@ -208,49 +219,62 @@ void Config::validate_args() {
   std::string empty_str = "";
   if (!(POI_file_format == "txt" || POI_file_format == "plink" ||
         POI_file_format == "h5" || POI_file_format == "bed")) {
-    Rcpp::stop("POI.file.format not supported");
+    cpp11::stop("POI.file.format not supported");
+    // Rcpp::stop("POI.file.format not supported");
   }
 
   if (POI_file_format == "txt" &&
       !(POI_file_delim == "tab" || POI_file_delim == "comma")) {
-    Rcpp::stop("POI.file.delim not supported");
+    cpp11::stop("POI.file.delim not supported");
+    // Rcpp::stop("POI.file.delim not supported");
   }
 
   if (!(POI_effect_type == "dosage" || POI_effect_type == "additive" ||
         POI_effect_type == "recessive" || POI_effect_type == "dominant")) {
-    Rcpp::stop("invalid POI.effect.type");
+    cpp11::stop("invalid POI.effect.type");
+    // Rcpp::stop("invalid POI.effect.type");
   }
 
   if (!(regression_type == "logistic" || regression_type == "linear")) {
-    Rcpp::stop("invalid regression.type");
+    cpp11::stop("invalid regression.type");
+    // Rcpp::stop("invalid regression.type");
   }
 
   if (!(pheno_file_delim == "tab" || pheno_file_delim == "comma" ||
         pheno_file_delim == "semicolon")) {
-    Rcpp::stop("pheno.file.delim not supported. Valid values "
-               "are tab, comma and semicolon.");
+    cpp11::stop("pheno.file.delim not supported. Valid values "
+            "are tab, comma and semicolon.");    
+    // Rcpp::stop("pheno.file.delim not supported. Valid values "
+    //            "are tab, comma and semicolon.");
   }
 
   if (!(covar_file_delim == "tab" || covar_file_delim == "comma" ||
         covar_file_delim == "semicolon")) {
-    Rcpp::stop("cov.file.delim not supported. Valid values "
-               "are tab, comma and semicolon.");
+    
+    cpp11::stop("cov.file.delim not supported. Valid values "
+      "are tab, comma and semicolon.");
+    // Rcpp::stop("cov.file.delim not supported. Valid values "
+    //            "are tab, comma and semicolon.");
   }
 
   if (maf_threshold > 0.5 || maf_threshold < 0) {
-    Rcpp::stop("maf.threshold out of conventional bound");
+    cpp11::stop("maf.threshold out of conventional bound");
+    // Rcpp::stop("maf.threshold out of conventional bound");
   }
 
   if (hwe_threshold > 0.5 || hwe_threshold < 0) {
-    Rcpp::stop("hwe.threshold out of conventional bound");
+    cpp11::stop("hwe.threshold out of conventional bound");
+    // Rcpp::stop("hwe.threshold out of conventional bound");
   }
 
   if (colinearity_rsq < 0.8 || colinearity_rsq > 1) {
-    Rcpp::stop("colinearity.rsq out of conventional bound");
+    cpp11::stop("colinearity.rsq out of conventional bound");
+    // Rcpp::stop("colinearity.rsq out of conventional bound");
   }
 
   if (!(p_value_type == "t.dist" || p_value_type == "norm.dist")) {
-    Rcpp::stop("Pvalue.type must be t.dist or norm.dist");
+    cpp11::stop("Pvalue.type must be t.dist or norm.dist");
+    // Rcpp::stop("Pvalue.type must be t.dist or norm.dist");
   }
 }
 
@@ -293,40 +317,71 @@ void Config::get_poi_files() {
 }
 
 void Config::print() {
-  Rcpp::Rcout << "-----------------------------------------" << std::endl;
-  Rcpp::Rcout << "Running FastReg with configuration: " << std::endl;
-  Rcpp::Rcout << "phenotype: " << phenotype << std::endl;
-  Rcpp::Rcout << "regression_type: " << regression_type << std::endl;
-  Rcpp::Rcout << "pvalue_dist: " << p_value_type << std::endl;
-  Rcpp::Rcout << "output_exclude_covar: " << output_exclude_covar << std::endl;
-  Rcpp::Rcout << "maf_threshold: " << maf_threshold << std::endl;
-  Rcpp::Rcout << "hwe_threshold: " << hwe_threshold << std::endl;
-  Rcpp::Rcout << "no_intercept: " << no_intercept << std::endl;
-  Rcpp::Rcout << "colinearity_rsq: " << colinearity_rsq << std::endl;
-  Rcpp::Rcout << "poi_block_size: " << poi_block_size << std::endl;
-  Rcpp::Rcout << "max_iter: " << max_iter << std::endl;
-  Rcpp::Rcout << "rel_conv_tolerance: " << rel_conv_tolerance << std::endl;
-  Rcpp::Rcout << "abs_conv_tolerance: " << abs_conv_tolerance << std::endl;
-  Rcpp::Rcout << "max_openmp_threads: " << max_openmp_threads << std::endl;
-  Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
-  Rcpp::Rcout << "pheno_rowname_cols: " << pheno_rowname_cols << std::endl;
-  Rcpp::Rcout << "pheno_file_delim: " << pheno_file_delim << std::endl;
-  Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
-  Rcpp::Rcout << "covar_rowname_cols: " << covar_rowname_cols << std::endl;
-  Rcpp::Rcout << "covar_file_delim: " << covar_file_delim << std::endl;
-  Rcpp::Rcout << "poi_file_dir: " << POI_file_dir << std::endl;
-  Rcpp::Rcout << "poi_file_delim: " << POI_file_delim << std::endl;
-  Rcpp::Rcout << "poi_file_format: " << POI_file_format << std::endl;
-  Rcpp::Rcout << "poi_type: " << POI_type << std::endl;
-  Rcpp::Rcout << "poi_effect_type: " << POI_effect_type << std::endl;
+  cpp11::message("-----------------------------------------");
+  cpp11::message("Running FastReg with configuration: ");
+  cpp11::message("phenotype: {}", phenotype);
+  cpp11::message("regression_type: {}", regression_type);
+  cpp11::message("pvalue_dist: {}", p_value_type);
+  cpp11::message("output_exclude_covar: {}", output_exclude_covar);
+  cpp11::message("maf_threshold: {}", maf_threshold);
+  cpp11::message("hwe_threshold: {}", hwe_threshold);
+  cpp11::message("no_intercept: {}", no_intercept);
+  cpp11::message("colinearity_rsq: {}", colinearity_rsq);
+  cpp11::message("poi_block_size: {}", poi_block_size);
+  cpp11::message("max_iter: {}", max_iter);
+  cpp11::message("rel_conv_tolerance: {}", rel_conv_tolerance);
+  cpp11::message("abs_conv_tolerance: {}", abs_conv_tolerance);
+  cpp11::message("max_openmp_threads: {}", max_openmp_threads);
+  cpp11::message("pheno_rowname_cols: {}", pheno_rowname_cols);
+  cpp11::message("pheno_file_delim: {}", pheno_file_delim);
+  cpp11::message("covar_file: {}", covar_file);
+  cpp11::message("covar_rowname_cols: {}", covar_rowname_cols);
+  cpp11::message("covar_file_delim: {}", covar_file_delim );
+  cpp11::message("poi_file_dir: {}", POI_file_dir);
+  cpp11::message("poi_file_delim: {}", POI_file_delim);
+  cpp11::message("poi_file_format: {}", POI_file_format);
+  cpp11::message("poi_type: {}", POI_type);
+  cpp11::message("poi_effect_type: {}", POI_effect_type);
+  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  // Rcpp::Rcout << "Running FastReg with configuration: " << std::endl;
+  // Rcpp::Rcout << "phenotype: " << phenotype << std::endl;
+  // Rcpp::Rcout << "regression_type: " << regression_type << std::endl;
+  // Rcpp::Rcout << "pvalue_dist: " << p_value_type << std::endl;
+  // Rcpp::Rcout << "output_exclude_covar: " << output_exclude_covar << std::endl;
+  // Rcpp::Rcout << "maf_threshold: " << maf_threshold << std::endl;
+  // Rcpp::Rcout << "hwe_threshold: " << hwe_threshold << std::endl;
+  // Rcpp::Rcout << "no_intercept: " << no_intercept << std::endl;
+  // Rcpp::Rcout << "colinearity_rsq: " << colinearity_rsq << std::endl;
+  // Rcpp::Rcout << "poi_block_size: " << poi_block_size << std::endl;
+  // Rcpp::Rcout << "max_iter: " << max_iter << std::endl;
+  // Rcpp::Rcout << "rel_conv_tolerance: " << rel_conv_tolerance << std::endl;
+  // Rcpp::Rcout << "abs_conv_tolerance: " << abs_conv_tolerance << std::endl;
+  // Rcpp::Rcout << "max_openmp_threads: " << max_openmp_threads << std::endl;
+  // Rcpp::Rcout << "pheno_file: " << pheno_file << std::endl;
+  // Rcpp::Rcout << "pheno_rowname_cols: " << pheno_rowname_cols << std::endl;
+  // Rcpp::Rcout << "pheno_file_delim: " << pheno_file_delim << std::endl;
+  // Rcpp::Rcout << "covar_file: " << covar_file << std::endl;
+  // Rcpp::Rcout << "covar_rowname_cols: " << covar_rowname_cols << std::endl;
+  // Rcpp::Rcout << "covar_file_delim: " << covar_file_delim << std::endl;
+  // Rcpp::Rcout << "poi_file_dir: " << POI_file_dir << std::endl;
+  // Rcpp::Rcout << "poi_file_delim: " << POI_file_delim << std::endl;
+  // Rcpp::Rcout << "poi_file_format: " << POI_file_format << std::endl;
+  // Rcpp::Rcout << "poi_type: " << POI_type << std::endl;
+  // Rcpp::Rcout << "poi_effect_type: " << POI_effect_type << std::endl;
   for (size_t i = 0; i < covs.size(); i++) {
     covs[i].print();
   }
-  Rcpp::Rcout << "POI_covar_interactions_str: " << POI_covar_interactions_str
-              << std::endl;
-  Rcpp::Rcout << "split_by_str: " << split_by_str << std::endl;
-  Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
-  Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
-  Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
-  Rcpp::Rcout << "-----------------------------------------" << std::endl;
+  cpp11::message("POI_covar_interactions_str: {}", POI_covar_interactions_str);
+  cpp11::message("split_by_str: {}", split_by_str);
+  cpp11::message("output_dir: {}", output_dir);
+  cpp11::message("compress_results: {}", compress_results);
+  cpp11::message("max_workers: {}", max_workers);
+  cpp11::message("-----------------------------------------");
+  // Rcpp::Rcout << "POI_covar_interactions_str: " << POI_covar_interactions_str
+  //             << std::endl;
+  // Rcpp::Rcout << "split_by_str: " << split_by_str << std::endl;
+  // Rcpp::Rcout << "output_dir: " << output_dir << std::endl;
+  // Rcpp::Rcout << "compress_results: " << compress_results << std::endl;
+  // Rcpp::Rcout << "max_workers: " << max_workers << std::endl;
+  // Rcpp::Rcout << "-----------------------------------------" << std::endl;
 }

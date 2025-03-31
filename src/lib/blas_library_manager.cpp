@@ -8,7 +8,8 @@
 void BLASLibraryManager::detect_lib() {
   blas_handle = load_blas_library();
   if (!blas_handle) {
-    Rcpp::Rcout << "Failed to load the BLAS library!" << std::endl;
+    cpp11::message("Failed to load BLAS library!");
+    // Rcpp::Rcout << "Failed to load the BLAS library!" << std::endl;
     return;
   }
 
@@ -19,9 +20,10 @@ void BLASLibraryManager::detect_lib() {
       (openblas_set_num_threads_func)resolve_symbol("openblas_set_num_threads");
   if (openblas_get_num_threads && openblas_set_num_threads) {
     blas_type = "OpenBLAS";
-    Rcpp::Rcout << "Detected OpenBLAS/GotoBLAS library." << std::endl;
+    cpp11::message("Detected OpenBLAS/GotoBLAS library.");
+    // Rcpp::Rcout << "Detected OpenBLAS/GotoBLAS library." << std::endl;
     original_num_threads = openblas_get_num_threads();
-    return;
+    // return;
   }
 
   // Check for Intel MKL
@@ -34,7 +36,7 @@ void BLASLibraryManager::detect_lib() {
 
     Rcpp::Rcout << "Detected Intel MKL library." << std::endl;
     original_num_threads = mkl_get_max_threads();
-    return;
+    // return;
   }
 
   // Check for BLIS
@@ -46,20 +48,24 @@ void BLASLibraryManager::detect_lib() {
     blas_type = "BLIS";
     Rcpp::Rcout << "Detected BLIS library." << std::endl;
     original_num_threads = blis_get_num_threads();
-    return;
+    // return;
   }
 
 #ifdef __APPLE__
   // If on macOS, assume Apple's Accelerate
   blas_type = "Apple Accelerate";
-  Rcpp::Rcout << "Detected Apple Accelerate library.\n" << std::endl;
+  // Rcpp::Rcout << "Detected Apple Accelerate library.\n" << std::endl;
   // Apple Accelerate does not provide thread management API, assume 1 thread
   original_num_threads = 1;
-  return;
 #endif
+  if(blas_type) {
+    cpp11::message("Detected {} library.", blas_type);
+    return;
+  }
   original_num_threads = 1;
-  Rcpp::Rcout << "BLAS library is unknown or does not support thread detection."
-              << std::endl;
+  cpp11::message("Unable to determine BLAS library.");
+  // Rcpp::Rcout << "BLAS library is unknown or does not support thread detection."
+  //             << std::endl;
   return;
 }
 
@@ -108,9 +114,11 @@ void BLASLibraryManager::set_num_threads(int num_threads) {
     // Rcpp::Rcout << "BLIS threads set to" << num_threads << "."
     //             << std::endl;
   } else {
-    Rcpp::Rcout << "Cannot set threads: BLAS library is either unknown or does "
-                   "not support this operation."
-                << std::endl;
+    cpp11::message("Cannot set threads: BLAS library is either unknown or does "
+                   "not support this operation.");
+    // Rcpp::Rcout << "Cannot set threads: BLAS library is either unknown or does "
+    //                "not support this operation."
+    //             << std::endl;
   }
 }
 

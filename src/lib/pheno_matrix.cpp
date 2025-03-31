@@ -6,14 +6,16 @@ FRMatrix PhenoMatrix::create_matrix() {
   // Check for id column and get the index
   auto idx = std::find(headers.begin(), headers.end(), id_col);
   if (idx == headers.end()) {
-    Rcpp::stop("Could not find column name: %s in %s", id_col, file_name);
+    cpp11::stop("Could not find column name: {:s} in {:s}", id_col, file_name);
+    // Rcpp::stop("Could not find column name: %s in %s", id_col, file_name);
   }
   id_col_idx = idx - headers.begin();
 
   // Check for phenotype column and get the index
   idx = std::find(headers.begin(), headers.end(), phenotype);
   if (idx == headers.end()) {
-    Rcpp::stop("Could not find column name: %s in %s", phenotype, file_name);
+    cpp11::stop("Could not find column name: {:s} in {:s}", phenotype, file_name);
+    // Rcpp::stop("Could not find column name: %s in %s", phenotype, file_name);
   }
   int pheno_idx = idx - headers.begin();
 
@@ -40,8 +42,9 @@ FRMatrix PhenoMatrix::create_matrix() {
       if (isWhitespace(row[pheno_idx]) || row[pheno_idx].empty()) {
         mat.data(i - 1, 0) = NAN;
       } else {
-        Rcpp::stop("Expected numeric value in column: %s but found '%s'",
-                   phenotype, row[pheno_idx]);
+        cpp11::stop("Expected numeric value in column: {:s} but found '{:s}'", phenotype, row[pheno_idx]);
+        // Rcpp::stop("Expected numeric value in column: %s but found '%s'",
+        //            phenotype, row[pheno_idx]);
       }
     }
     i++;

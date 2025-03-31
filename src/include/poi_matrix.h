@@ -1,9 +1,7 @@
 #ifndef POIMATRIX_H
 #define POIMATRIX_H
 #pragma once
-
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <reader.h>
 #include <fr_matrix.h>

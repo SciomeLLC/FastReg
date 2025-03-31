@@ -28,8 +28,9 @@ int CovariateMatrix::find_col_idx(std::string col_name) {
       return i;
     }
   }
-  Rcpp::Rcout << "WARNING: column name: " << col_name << " not found in file "
-              << file_name << std::endl;
+  cpp11::warning("Column name {} not found in file {}", col_name, file_name);
+  // Rcpp::Rcout << "WARNING: column name: " << col_name << " not found in file "
+  //             << file_name << std::endl;
   return -1;
 }
 
@@ -41,8 +42,9 @@ void CovariateMatrix::set_cov_col_idx() {
       int index = std::distance(headers.begin(), idx);
       covariates.at(i).set_col_idx(index);
     } else {
-      Rcpp::stop("ERROR: Covariate column name '%s' not found in %s", cov_name,
-                 file_name);
+      cpp11::stop("Covariate column name {:s} not found in {:s}", cov_name, file_name);
+      // Rcpp::stop("ERROR: Covariate column name '%s' not found in %s", cov_name,
+      //            file_name);
     }
   }
 }

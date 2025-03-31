@@ -1,8 +1,7 @@
 #ifndef READER_H
 #define READER_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <fr_matrix.h>
 #include <fstream>

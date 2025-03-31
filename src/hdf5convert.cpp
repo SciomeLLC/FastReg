@@ -5,9 +5,9 @@
 #include <cstring>
 #include <hdf5.h>
 #include <zlib.h>
+#include <cpp11.hpp>
 
 using namespace std;
-using namespace Rcpp;
 
 // consolidates information derived from data file preprocessing
 struct preprocess_info {
@@ -159,7 +159,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
   i = 0;
   j = 0;
   k = 0;
-  Rcpp::Rcout << "Pre-processing input file..." << std::endl;
+  cpp11::message("Pre-processing input file...");
   // set column data set name based on matrix orientation
   if (par->transpose == 1) {
     pi->collabel = strdup("individuals");
@@ -175,9 +175,10 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
     nread = get_full_line(&pi->colline, &len, datafile, par->gz, gzdatafile);
     i++;
     if (nread == -1) {
-      Rprintf("Error: could not read specified header row from input file\n");
       free(line);
-      return (1);
+      cpp11::stop("Could not read specified header row from input file");
+      // Rprintf("Error: could not read specified header row from input file\n");
+      // return (1);
     }
     while (i < par->header_row) {
       free(pi->colline);
@@ -186,18 +187,22 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
       nread = get_full_line(&pi->colline, &len, datafile, par->gz, gzdatafile);
       i++;
       if (nread == -1) {
-        Rprintf("Error: could not read specified header row from input file\n");
         free(line);
-        return (1);
+        cpp11::stop("Could not read specified header row from input file");
+        // Rprintf("Error: could not read specified header row from input file\n");
+        // free(line);
+        // return (1);
       }
     }
   } else {
     nread = get_full_line(&pi->colline, &len, datafile, par->gz, gzdatafile);
     i++;
-    if (nread == -1) {
-      Rprintf("Error: could not read specified header row from input file\n");
+    if (nread == -1) {      
       free(line);
-      return (1);
+      cpp11::stop("Could not read specified header row from input file");
+      // Rprintf("Error: could not read specified header row from input file\n");
+      // free(line);
+      // return (1);
     }
     while (pi->colline[0] == '#' && pi->colline[1] == '#') {
       free(pi->colline);
@@ -206,9 +211,11 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
       nread = get_full_line(&pi->colline, &len, datafile, par->gz, gzdatafile);
       i++;
       if (nread == -1) {
-        Rprintf("Error: could not read specified header row from input file\n");
         free(line);
-        return (1);
+        cpp11::stop("Could not read specified header row from input file");
+        // Rprintf("Error: could not read specified header row from input file\n");
+        // free(line);
+        // return (1);
       }
     }
     par->header_row = i;
@@ -245,7 +252,7 @@ static int preprocess_datafile(FILE *datafile, gzFile gzdatafile,
     len = 0;
     nread = get_full_line(&line, &len, datafile, par->gz, gzdatafile);
   }
-  Rcpp::Rcout << "done.\n";
+  cpp11::message("done.");
   pi->dimensions[0] = i;
   free(line);
   return (0);
@@ -283,8 +290,10 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     if (remainder > 0) {
       filecount++;
     }
-    Rcpp::Rcout << "POI per H5 file: " << file_poi
-                << "\nH5 File Count: " << filecount << "\n";
+    cpp11::message("POI per H5 file: {}", file_poi);
+    cpp11::message("H5 File Count: {}", filecount);
+    // Rcpp::Rcout << "POI per H5 file: " << file_poi
+    //             << "\nH5 File Count: " << filecount << "\n";
     pre->row_dim = (par->data_buffer_max - filecount * sizeof(float **)) /
                    (1024 + sizeof(char *) + filecount * sizeof(float *) +
                     pre->dimensions[1] * sizeof(float));
@@ -297,18 +306,20 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                    pre->dimensions[1] * sizeof(float));
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      Rprintf("Warning: sub-optimal data buffer size selected. For best "
-              "performance specify\n    %.2f Gb or higher\n",
-              gb);
+      cpp11::warning("Sub-optimal data buffer size selected. For best performance specify {:.2f} Gb or higher", gb);
+      // Rprintf("Warning: sub-optimal data buffer size selected. For best "
+      //         "performance specify\n    %.2f Gb or higher\n",
+      //         gb);
     } else {
       bytes = 1024 + sizeof(char *) + filecount * sizeof(float **) +
               filecount * sizeof(float *) + pre->dimensions[1] * sizeof(float);
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      Rprintf("Error: selected data buffer size too small to retain a single "
-              "row. Select\n    %.2f Gb or higher\n",
-              gb);
-      return (-1);
+      cpp11::stop("Select data buffer size too smalll to retain a single row. Select {:.2f} Gb or higher");
+      // Rprintf("Error: selected data buffer size too small to retain a single "
+      //         "row. Select\n    %.2f Gb or higher\n",
+      //         gb);
+      // return (-1);
     }
     pre->growdim = 0;
     pre->fixdim = 1;
@@ -380,8 +391,10 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     if (remainder > 0) {
       filecount++;
     }
-    Rcpp::Rcout << "POI per H5 file: " << file_poi
-                << "\nH5 File Count: " << filecount << "\n";
+    cpp11::message("POI per H5 file: {}", file_poi);
+    cpp11::message("H5 File Count: {}", filecount);
+    // Rcpp::Rcout << "POI per H5 file: " << file_poi
+    //             << "\nH5 File Count: " << filecount << "\n";
     pre->row_dim = (par->data_buffer_max - sizeof(float **)) /
                    (1024 + sizeof(char *) + sizeof(float *) +
                     pre->dimensions[1] * sizeof(float));
@@ -393,18 +406,20 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                                  pre->dimensions[1] * sizeof(float));
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      Rprintf("Warning: sub-optimal data buffer size selected. For best "
-              "performance specify\n    %.2f Gb or higher\n",
-              gb);
+      cpp11::warning("Sub-optimal data buffer size selected. For best performance specify {:.2f} Gb or higher", gb);
+      // Rprintf("Warning: sub-optimal data buffer size selected. For best "
+      //         "performance specify\n    %.2f Gb or higher\n",
+      //         gb);
     } else {
       bytes = sizeof(float **) + 1024 + sizeof(char *) + sizeof(float *) +
               pre->dimensions[1] * sizeof(float);
       gb = ((float)bytes) / (1024 * 1024 * 1024);
       gb += 0.01;
-      Rprintf("Error: selected data buffer size too small to retain a single "
-              "row. Select\n    %.2f Gb or higher\n",
-              gb);
-      return (-1);
+      cpp11::stop("Select data buffer size too small to retain a single row. Select {:.2f} Gb or higher", gb);
+      // Rprintf("Error: selected data buffer size too small to retain a single "
+      //         "row. Select\n    %.2f Gb or higher\n",
+      //         gb);
+      // return (-1);
     }
     pre->growdim = 1;
     pre->fixdim = 0;
@@ -454,7 +469,8 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
     }
   }
   // create output HDF5 files
-  Rcpp::Rcout << "Initializing H5 files..." << std::endl;
+  cpp11::message("Initializing H5 files...");
+  // Rcpp::Rcout << "Initializing H5 files..." << std::endl;
   for (i = 0; (int)i < filecount; i++) {
     // create file
     int name_length = 2 * strlen(par->h5file_base) + 100;
@@ -466,7 +482,8 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
       snprintf(name, name_length, "%s.%03d.h5",
                par->h5file_base, (int)i);
     }
-    Rcpp::Rcout << "Creating file: " << name << std::endl;
+    cpp11::message("Creating file: {}", name);
+    // Rcpp::Rcout << "Creating file: " << name << std::endl;
     (*h5vars)[i].file =
         H5Fcreate(name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     free(name);
@@ -503,8 +520,9 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                  H5S_ALL, H5P_DEFAULT, &(pre->colnames[total * pre->fixdim]));
     total += (*dvars)[i].vals_dataspace_dims[pre->fixdim];
     if (status < 0) {
-      Rprintf("Error: unable to write column names to HDF5 file\n");
-      return (-1);
+      cpp11::stop("Unable to write column names to HDF5 file");
+      // Rprintf("Error: unable to write column names to HDF5 file\n");
+      // return (-1);
     }
     // create values dataset
     (*h5vars)[i].vals_prop_list = H5Pcreate(H5P_DATASET_CREATE);
@@ -522,7 +540,8 @@ initialize_dims_h5(struct dim_vars **dvars, struct hdf5_vars **h5vars,
                   (*h5vars)[i].vals_prop_list, H5P_DEFAULT);
     (*h5vars)[i].written = 0;
   }
-  Rcpp::Rcout << "done.\n";
+  cpp11::message("done.");
+  // Rcpp::Rcout << "done.\n";
   return (filecount);
 }
 
@@ -544,7 +563,8 @@ static int read_write_rownames_values(
   size_t fdummy = 0;
   herr_t status;
   int done = 0;
-  Rcpp::Rcout << "Writing H5 files..." << std::endl;
+  cpp11::message("Writing H5 files...");
+  // Rcpp::Rcout << "Writing H5 files..." << std::endl;
   // flip data buffer index variable if matrix is transposed
   if (par->transpose == 1) {
     indptr = &j;
@@ -719,8 +739,9 @@ static int read_write_rownames_values(
     // ensure each line contains the expect field count; fill remainder of
     // buffer with NAN
     if (j != 0) {
-      Rprintf("Warning: fields missing in input file line %zu\n",
-              iadj + i + skip);
+      cpp11::warning("Fields missing in input file line {:zu}", iadj + i + skip);
+      // Rprintf("Warning: fields missing in input file line %zu\n",
+      //         iadj + i + skip);
       i -= 1;
       while (j < dv[f].vals_memspace_dims[jdim]) {
         readbuff->val_buffer[*fptr][*indptr][*predptr] = NAN;
@@ -730,9 +751,10 @@ static int read_write_rownames_values(
       f++;
       i++;
     } else if (pch != NULL) {
-      Rprintf(
-          "Warning: more fields than expected found in input file line %zu\n",
-          iadj + i + skip);
+      cpp11::warning("More fields than expected found in input file line {:zu}", iadj + i + skip);
+      // Rprintf(
+      //     "Warning: more fields than expected found in input file line %zu\n",
+      //     iadj + i + skip);
     }
     // write to HDF5 file once buffer is full or current file/files are full
     if (i == pre->row_dim || x == dv[fmin].vals_dataspace_dims[idim]) {
@@ -749,10 +771,13 @@ static int read_write_rownames_values(
                           h5vars[k].vals_memspace, h5vars[k].vals_dataspace,
                           H5P_DEFAULT, dstarts[k]);
         if (status < 0) {
-          Rprintf("Error: unable to write data block to HDF5 file\n");
           free(dstarts);
           free(line);
-          return (1);
+          cpp11::stop("Unable to write data block to HDF5 file");
+          // Rprintf("Error: unable to write data block to HDF5 file\n");
+          // free(dstarts);
+          // free(line);
+          // return (1);
         }
         H5Sselect_hyperslab(h5vars[k].row_memspace, H5S_SELECT_SET,
                             &(position_zero[0]), NULL,
@@ -764,10 +789,13 @@ static int read_write_rownames_values(
                           h5vars[k].row_memspace, h5vars[k].row_dataspace,
                           H5P_DEFAULT, readbuff->row_buffer);
         if (status < 0) {
-          Rprintf("Error: unable to write row name block to HDF5 file\n");
           free(dstarts);
           free(line);
-          return (1);
+          cpp11::stop("Unable to write row name block to HDF5 file");
+          // Rprintf("Error: unable to write row name block to HDF5 file\n");
+          // free(dstarts);
+          // free(line);
+          // return (1);
         }
         dv[k].vals_hyperslab_pos[pre->growdim] += i;
       }
@@ -802,8 +830,9 @@ static int read_write_rownames_values(
       l += dv[k].vals_dataspace_dims[idim];
     }
     if (l != (x + skip)) {
-      Rprintf("Warning: fewer data entries found in input file than "
-              "expected,\n   contents may have changed during processing\n");
+      cpp11::warning("Fewer data entries found in input file than expected, contents may have changed during processing");
+      // Rprintf("Warning: fewer data entries found in input file than "
+      //         "expected,\n   contents may have changed during processing\n");
     }
     if (i > 0) {
       for (k = fmin; k < f; k++) {
@@ -823,10 +852,13 @@ static int read_write_rownames_values(
                           h5vars[k].vals_memspace, h5vars[k].vals_dataspace,
                           H5P_DEFAULT, dstarts[k]);
         if (status < 0) {
-          Rprintf("Error: unable to write data block to HDF5 file\n");
           free(dstarts);
           free(line);
-          return (1);
+          cpp11::stop("Unable to write data block to HDF5 file");
+          // Rprintf("Error: unable to write data block to HDF5 file\n");
+          // free(dstarts);
+          // free(line);
+          // return (1);
         }
         H5Sselect_hyperslab(h5vars[k].row_memspace, H5S_SELECT_SET,
                             &(position_zero[0]), NULL,
@@ -838,16 +870,20 @@ static int read_write_rownames_values(
                           h5vars[k].row_memspace, h5vars[k].row_dataspace,
                           H5P_DEFAULT, readbuff->row_buffer);
         if (status < 0) {
-          Rprintf("Error: unable to write row name block to HDF5 file\n");
           free(dstarts);
           free(line);
-          return (1);
+          cpp11::stop("Unable to write row name block to HDF5 file");
+          // Rprintf("Error: unable to write row name block to HDF5 file\n");
+          // free(dstarts);
+          // free(line);
+          // return (1);
         }
         dv[k].vals_hyperslab_pos[pre->growdim] += i;
       }
     }
   }
-  Rcpp::Rcout << "done." << std::endl;
+  cpp11::message("done.");
+  // Rcpp::Rcout << "done." << std::endl;
   free(line);
   free(dstarts);
   return (0);
@@ -897,7 +933,8 @@ static void final_cleanup(struct read_buffers *readbuff,
         snprintf(name, name_length, "%s/%s.%03d.h5", par->h5file_base,
                  par->h5file_base, (int)i);
       }
-      Rcpp::Rcout << name << std::endl;
+      cpp11::message("{}", name);
+      // Rcpp::Rcout << name << std::endl;
       remove(name);
       free(name);
     }
@@ -927,8 +964,9 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
   if (up->gz == 1) {
     gzinfile = gzopen(up->infile_name, "r");
     if (gzinfile == NULL) {
-      Rprintf("Error: cannot open input file \"%s\"\n", up->infile_name);
-      return (1);
+      cpp11::stop("Cannot open input file \"{:s}\"", up->infile_name);
+      // Rprintf("Error: cannot open input file \"%s\"\n", up->infile_name);
+      // return (1);
     }
     flag = preprocess_datafile(infile, gzinfile, up, &pre);
     if (flag == 1) {
@@ -940,8 +978,9 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
   } else {
     infile = fopen(up->infile_name, "r");
     if (infile == NULL) {
-      Rprintf("Error: cannot open input file \"%s\"\n", up->infile_name);
-      return (1);
+      cpp11::stop("Cannot open input file \"{:s}\"", up->infile_name);
+      // Rprintf("Error: cannot open input file \"%s\"\n", up->infile_name);
+      // return (1);
     }
     flag = preprocess_datafile(infile, gzinfile, up, &pre);
     if (flag == 1) {
@@ -972,7 +1011,7 @@ static int execute_fastR_hdf5convert(struct fastR_user_params *up) {
   return (0);
 }
 
-// [[Rcpp::export]]
+[[cpp11::register]]
 int FastRegImportCpp(std::string dataFile, std::string h5File, int headerRow,
                      int idCol, int dataCol, float buffSize, bool transpose,
                      int chunkEdge, bool vcf, std::string delim, bool gz,

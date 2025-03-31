@@ -229,8 +229,9 @@ void LogisticRegression::run(FRMatrix &cov, FRMatrix &pheno, FRMatrix &poi_data,
     }
     arma::fmat X = arma::join_rows(cov_w_mat, int_w_mat);
 #if defined(_DEBUG)
-    Rcpp::Rcout << "X size after join: " << X.n_rows << " x " << X.n_cols
-                << std::endl;
+    cpp11::message("X size after join: {} x {}", X.n_rows, X.n_cols);
+    // Rcpp::Rcout << "X size after join: " << X.n_rows << " x " << X.n_cols
+    //             << std::endl;
 #endif
     // arma::span col_1 = arma::span(0,0);
     float rel_errs = 1.0;

@@ -17,7 +17,8 @@ void checkInterrupt()
 {
   if (R_ToplevelExec(chkIntFn, NULL) == FALSE)
   {
-    Rcpp::stop("Received user interrupt. Stopping FastReg...");
+    cpp11::stop("Received user interrupt. Stopping FastReg...");
+    // Rcpp::stop("Received user interrupt. Stopping FastReg...");
   }
 };
 
@@ -44,11 +45,13 @@ void delete_dir(const std::string &path)
   if (fs::exists(directory) && fs::is_directory(directory))
   {
     fs::remove_all(directory);
-    Rcpp::Rcout << "Directory deleted: " << path << std::endl;
+    cpp11::message("Directory deleted: {}", path);
+    // Rcpp::Rcout << "Directory deleted: " << path << std::endl;
   }
   else
   {
-    Rcpp::Rcout << "Directory does not exist: " << path << std::endl;
+    cpp11::message("Directory does not exist: {}", path);
+    // Rcpp::Rcout << "Directory does not exist: " << path << std::endl;
   }
 };
 /**
@@ -224,7 +227,8 @@ void create_Z_matrix(FRMatrix &df,
 
   if (!interaction_cols.empty())
   {
-    Rcpp::Rcout << "Found poi covar interactions" << std::endl;
+    cpp11::message("Found poi covar interactions");
+    // Rcpp::Rcout << "Found poi covar interactions" << std::endl;
     std::vector<int> col_idx;
     int count = 0;
     for (const auto &col_name : interaction_cols)

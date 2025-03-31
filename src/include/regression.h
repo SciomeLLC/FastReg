@@ -1,15 +1,15 @@
 #ifndef REGRESSION_H
 #define REGRESSION_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <chrono>
 #include <iterator>
 #include <string>
 #include <vector>
 #define R_NO_REMAP
-#include <RcppEigen.h>
+#include <cpp11eigen.hpp>
 #include <Rmath.h>
 #include <covariate.h>
 #include <fr_matrix.h>

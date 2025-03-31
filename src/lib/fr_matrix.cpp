@@ -127,8 +127,9 @@ std::vector<std::string> FRMatrix::get_col_str(const std::string &col_name) {
 
   bool exists = col_names_str.find(col_name) != col_names_str.end();
   if (!exists) {
-    Rcpp::stop("Column name " + col_name +
-               " doesn't match any non-numeric columns.");
+    cpp11::stop("Column name {} doesn't match any non-numeric columns.", col_name);
+    // Rcpp::stop("Column name " + col_name +
+    //            " doesn't match any non-numeric columns.");
   }
   int col_idx = col_names_str[col_name];
   std::vector<std::string> col_vals;
@@ -197,12 +198,14 @@ void FRMatrix::print() {
   std::vector<std::string> sort_cols = sort_map(false);
   std::vector<std::string> sort_rows = sort_map(true);
   for (auto &col : sort_cols) {
-    Rcpp::Rcout << col << "\t";
+    cpp11::message("{}\t", col);
+    // Rcpp::Rcout << col << "\t";
   }
-  Rcpp::Rcout << std::endl;
+  // Rcpp::Rcout << std::endl;
 
   for (size_t i = 0; i < data.n_rows; i++) {
-    Rcpp::Rcout << sort_rows[i] << "\t";
+    cpp11::message("{}\t", sort_rows[i]);
+    // Rcpp::Rcout << sort_rows[i] << "\t";
     data.row(i).print();
   }
 }
@@ -221,9 +224,10 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
   fs::create_directory(dir);
   // Rcpp::Rcout << "Dir created or already exists" << std::endl;
   if (poi_names.size() != beta.data.n_cols) {
-    Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
-                   "columns in the beta matrix."
-                << std::endl;
+    cpp11::warning("The size of poi_names does not match the number of columns in the beta matrix");
+    // Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
+    //                "columns in the beta matrix."
+    //             << std::endl;
     // return;
   }
 
@@ -236,8 +240,9 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     // Rcpp::Rcout << "File already exists and opened for writing/appending." <<
@@ -245,8 +250,9 @@ void FRMatrix::write_results(FRMatrix &beta, FRMatrix &se_beta,
   } else {
     outfile.open(result_file);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     outfile
@@ -305,9 +311,10 @@ void FRMatrix::write_vla_results(
   fs::create_directory(dir);
   // Rcpp::Rcout << "Dir created or already exists" << std::endl;
   if (poi_names.size() != beta.data.n_cols) {
-    Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
-                   "columns in the beta matrix."
-                << std::endl;
+    cpp11::warning("The size of poi_names does not match the number of columns in the beta matrix");
+    // Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
+    //                "columns in the beta matrix."
+    //             << std::endl;
     // return;
   }
 
@@ -320,8 +327,9 @@ void FRMatrix::write_vla_results(
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     // Rcpp::Rcout << "File already exists and opened for writing/appending." <<
@@ -329,8 +337,9 @@ void FRMatrix::write_vla_results(
   } else {
     outfile.open(result_file);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     outfile
@@ -418,9 +427,10 @@ void FRMatrix::write_convergence_results(FRMatrix &beta,
   fs::create_directory(dir);
   // Rcpp::Rcout << "Dir created or already exists" << std::endl;
   if (poi_names.size() != beta.data.n_cols) {
-    Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
-                   "columns in the beta matrix."
-                << std::endl;
+    cpp11::warning("The size of poi_names does not match the number of columns in the beta matrix");
+    // Rcpp::Rcout << "Error: The size of poi_names does not match the number of "
+    //                "columns in the beta matrix."
+    //             << std::endl;
     // return;
   }
 
@@ -433,8 +443,9 @@ void FRMatrix::write_convergence_results(FRMatrix &beta,
   if (fs::exists(result_file)) {
     outfile.open(result_file, std::ios::app);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     // Rcpp::Rcout << "File already exists and opened for writing/appending." <<
@@ -442,8 +453,9 @@ void FRMatrix::write_convergence_results(FRMatrix &beta,
   } else {
     outfile.open(result_file);
     if (!outfile.is_open()) {
-      Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
-                  << std::endl;
+      cpp11::warning("Unable to open file for writing: {}", result_file);
+      // Rcpp::Rcout << "Error: Unable to open file for writing: " << result_file
+      //             << std::endl;
       return;
     }
     outfile << "POI\tAbs Err\tRel Err" << std::endl;
@@ -467,15 +479,16 @@ void FRMatrix::write_convergence_results(FRMatrix &beta,
 }
 
 void FRMatrix::zip_results(std::string output_dir) {
-  Rcpp::Environment utils_env("package:utils");
-  Rcpp::Function zip = utils_env["zip"];
+  cpp11::Rcpp::Environment utils_env("package:utils");
+  cpp11::Rcpp::Function zip = utils_env["zip"];
   if (fs::exists(output_dir)) {
     std::string parent_path = fs::path(output_dir).parent_path().string();
     const auto time_now = std::chrono::system_clock::now();
     const auto time_secs = std::chrono::duration_cast<std::chrono::seconds>(
                                time_now.time_since_epoch())
                                .count();
-    Rcpp::Rcout << parent_path << std::endl;
+    cpp11::message("{}", parent_path);
+    // Rcpp::Rcout << parent_path << std::endl;
 
     std::string archive_name =
         parent_path + "/results_" + std::to_string(time_secs) + ".zip";
@@ -507,8 +520,9 @@ void FRMatrix::concatenate_results(std::string output_dir,
           stratums.insert(stratum);
           stratum_files[stratum].insert(filename);
         } catch (const std::invalid_argument &ex) {
-          Rcpp::Rcerr << "Invalid stratum found in filename: " << filename
-                      << std::endl;
+          cpp11::stop("Invalid stratum found in filename: {}", filename);
+          // Rcpp::Rcerr << "Invalid stratum found in filename: " << filename
+          //             << std::endl;
         }
       }
     }
@@ -522,15 +536,17 @@ void FRMatrix::concatenate_results(std::string output_dir,
 
     // Check if the output file already exists
     if (fs::exists(outputFile)) {
-      Rcpp::Rcerr << "Output file already exists: " << outputFile
-                  << ". It will be overwritten.\n";
+      cpp11::warning("Output file already exists: {}. It will be overwritten.", outputFile);
+      // Rcpp::Rcerr << "Output file already exists: " << outputFile
+      //             << ". It will be overwritten.\n";
     }
 
     std::ofstream out(outputFile);
 
     if (!out.is_open()) {
-      Rcpp::Rcerr << "Failed to open the output file: " << outputFile
-                  << std::endl;
+      cpp11::warning("Failed to open the output file: {}", outputFile);
+      // Rcpp::Rcerr << "Failed to open the output file: " << outputFile
+      //             << std::endl;
       continue;
     }
     bool header_written = false;
@@ -539,7 +555,8 @@ void FRMatrix::concatenate_results(std::string output_dir,
       std::ifstream in(file_path.string());
 
       if (!in.is_open()) {
-        Rcpp::Rcerr << "Failed to open " << file_path << std::endl;
+        cpp11::warning("Failed to open {}", file_path);
+        // Rcpp::Rcerr << "Failed to open " << file_path << std::endl;
         continue;
       }
       // Skip header line if it has already been written
@@ -570,8 +587,10 @@ void FRMatrix::join(FRMatrix &fmat) {
   }
 
   if (fmat.data.n_rows != data.n_rows) {
-    Rcpp::Rcout << fmat.data.n_rows << " vs " << data.n_rows << std::endl;
-    Rcpp::stop("Error: cannot join_horiz matrices with different row counts.");
+    cpp11::message("{} vs {}", fmat.data.n_rows, data.n_rows);
+    // Rcpp::Rcout << fmat.data.n_rows << " vs " << data.n_rows << std::endl;
+    cpp11::stop("Cannot join_horiz matrices with different row counts.");
+    // Rcpp::stop("Error: cannot join_horiz matrices with different row counts.");
   }
   // join the matrices
   data = arma::join_horiz(data, fmat.data);

@@ -1,8 +1,8 @@
 #ifndef CSVREADER_H
 #define CSVREADER_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11.hpp>
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -22,7 +22,6 @@ namespace fs = std::experimental::filesystem;
 #endif
 #endif
 
-using namespace Rcpp;
 /**
  * @brief The CSVReader class reads and processes CSV files.
  *
@@ -51,7 +50,8 @@ public:
     fs::path file_path = filename;
     if (!fs::exists(file_path))
     {
-      Rcpp::stop("Covariate file: %s does not exist.", filename);
+      cpp11::stop("Covariate file: {:s} does not exist.", filename);
+      // Rcpp::stop("Covariate file: %s does not exist.", filename);
     }
     if (delim == "tab")
     {
@@ -67,9 +67,13 @@ public:
     }
     else
     {
-      Rcpp::stop(
-          "Invalid delim! delim for %s must be 'tab', 'comma', or 'semicolon'",
-          filename);
+      
+      cpp11::stop(
+        "Invalid delim! delim for {:s} must be 'tab', 'comma', or 'semicolon'",
+        filename);
+      // Rcpp::stop(
+      //     "Invalid delim! delim for %s must be 'tab', 'comma', or 'semicolon'",
+      //     filename);
     }
 
     file_name = std::move(filename);

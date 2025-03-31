@@ -1,8 +1,8 @@
 #ifndef FRMATRIX_H
 #define FRMATRIX_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <chrono>
 #include <fstream>

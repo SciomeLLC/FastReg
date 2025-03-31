@@ -1,8 +1,8 @@
 #ifndef COVARIATE_H
 #define COVARIATE_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11.hpp>
+#include <cpp11armadillo.hpp>
 #include <algorithm>
 #include <cmath>
 #include <fr_matrix.h>
@@ -51,21 +51,28 @@ public:
     levels = split(cov_levels, ',');
 
     if (levels.empty() && cov_type != "numeric") {
-      Rcpp::warning("Warning: Covariate %s is categorical but levels aren't "
-                    "specified. FastReg will generate the levels and select "
-                    "the first row as reference.",
-                    name);
+      cpp11::warning("Warning: Covariate {:s} is categorical but levels aren't "
+        "specified. FastReg will generate the levels and select "
+        "the first row as reference.",
+        name);
+      // Rcpp::warning("Warning: Covariate %s is categorical but levels aren't "
+      //               "specified. FastReg will generate the levels and select "
+      //               "the first row as reference.",
+      //               name);
     }
 
     if (cov_type != "numeric" && !levels.empty()) {
       if (levels.end() ==
           std::find(levels.begin(), levels.end(), ref_level)) {
-            Rcpp::stop("Reference level %s not found in the list of covariate levels for %s", ref_level, name);
+            cpp11::stop("Reference level {:s} not found in the list of covariate levels for {:s}", ref_level, name);
+            // Rcpp::stop("Reference level %s not found in the list of covariate levels for %s", ref_level, name);
       }
     }
 
     if (standardize && cov_type != "numeric") {
-      Rcpp::stop("Standardization of non-numeric variable not permitted");
+      
+      cpp11::stop("Standardization of non-numeric variable not permitted");
+      // Rcpp::stop("Standardization of non-numeric variable not permitted");
     }
   }
   /**

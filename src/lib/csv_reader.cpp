@@ -63,7 +63,8 @@ std::vector<std::string> CSVReader::get_headers() const
 {
   if (values.size() == 0)
   {
-    Rcpp::stop("Unable to read file: %s", file_name);
+    cpp11::stop("Unable to read file {:s}", file_name);
+    // Rcpp::stop("Unable to read file: %s", file_name);
   }
   // return the values first row of the file
   return values.at(0);
@@ -82,7 +83,8 @@ void CSVReader::set_row_names(const std::string &rowname_id)
   auto idx = std::find(headers.begin(), headers.end(), rowname_id);
   if (idx == headers.end())
   {
-    Rcpp::stop("Column name %s not found in %s.", rowname_id, file_name);
+    cpp11::stop("Column name {:s} not found in {:s}", rowname_id, file_name);
+    // Rcpp::stop("Column name %s not found in %s.", rowname_id, file_name);
   }
   int col_idx = idx - headers.begin();
   for (size_t i = 1; i < values.size(); i++)
@@ -105,8 +107,9 @@ std::vector<std::string> CSVReader::get_col(const int col_idx) const
   std::vector<std::string> column;
   if (col_idx > (int)headers.size() || col_idx < 0)
   {
-    Rcpp::stop("Column index %d is greater than the number of columns in %s.",
-               col_idx, file_name);
+    cpp11::stop("Column index {:d} is greater than the number of columns in {:s}", cold_idx, file_name);
+    // Rcpp::stop("Column index %d is greater than the number of columns in %s.",
+    //            col_idx, file_name);
   }
   for (size_t i = 1; i < values.size(); i++)
   {
@@ -131,7 +134,8 @@ std::vector<std::string> CSVReader::get_col(const std::string &col_name) const
   auto idx = std::find(headers.begin(), headers.end(), col_name);
   if (idx == headers.end())
   {
-    Rcpp::stop("Column name %s not found in %s.", col_name, file_name);
+    cpp11::stop("Column name {:s} not found in {:s}", col_name, file_name);
+    // Rcpp::stop("Column name %s not found in %s.", col_name, file_name);
   }
 
   int col_idx = idx - headers.begin();

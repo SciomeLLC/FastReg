@@ -32,8 +32,8 @@ BugReports: https://github.com/SciomeLLC/FastReg/issues
 biocViews: Software
 Imports: 
        rhdf5, 
-       Rcpp, 
-       RcppArmadillo, 
+       cpp11, 
+       cpp11armadillo, 
        stats, 
        utils, 
        parallel, 
@@ -43,9 +43,8 @@ Imports:
        data.table
 LinkingTo: 
     cpp11,
-    Rcpp,
-    RcppArmadillo,
-    RcppEigen
+    cpp11armadillo,
+    cpp11eigen
 Suggests: 
        testthat (>= 3.0.0), 
        knitr, 

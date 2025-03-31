@@ -53,9 +53,10 @@ FRMatrix Covariate::create_numeric_matrix(std::vector<std::string> col_vals) {
       if (isWhitespace(col_vals[row]) || col_vals[row].empty()) {
         candidate_mat.data(row, 0) = NAN;
       } else {
-        Rcpp::stop("Expected numeric value in column: %s but found invalid "
-                   "string '%s'",
-                   name, col_vals[row]);
+        cpp11::stop("Expected numeric value in column: {:s} but found invalid string '{:s}'", name, col_vals[row]);
+        // Rcpp::stop("Expected numeric value in column: %s but found invalid "
+        //            "string '%s'",
+        //            name, col_vals[row]);
       }
     }
   }
@@ -190,12 +191,14 @@ FRMatrix Covariate::filter_colinear(FRMatrix &design_mat,
       full_Z.insert_cols(full_Z.n_cols, col_vec);
       cols_to_keep.push_back(i);
     } else {
-      Rcpp::Rcout << "SSE: " << sse << " rsquared: " << rsquared
-                  << " ssa: " << ssa << std::endl;
-      Rcpp::Rcout
-          << "Covariate column " << colname
-          << " was not added to design matrix due to potential of colinearity."
-          << std::endl;
+      cpp11::message("SSE: {}, rsquare: {}, ssa: {}", sse, rsquared, ssa);
+      // Rcpp::Rcout << "SSE: " << sse << " rsquared: " << rsquared
+      //             << " ssa: " << ssa << std::endl;
+      cpp11::message("Covariate column {} was not added to design matrix due to potential of colinearlity.", colname);
+      // Rcpp::Rcout
+      //     << "Covariate column " << colname
+      //     << " was not added to design matrix due to potential of colinearity."
+      //     << std::endl;
     }
   }
 
@@ -220,7 +223,8 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
   int num_cols = X_mat.data.n_cols;
   std::vector<std::string> temp_col_names;
   if (cov_idx == -1) {
-    Rcpp::stop("Covariate %s not found in covariate data file", name);
+    cpp11::stop("Covariate {:s} not found in covariate data file", name);
+    // Rcpp::stop("Covariate %s not found in covariate data file", name);
   }
 
   // Get levels and reference level if not specified
@@ -246,8 +250,9 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
     temp_col_names.push_back(name);
   } else {
     if (std::find(levels.begin(), levels.end(), ref_level) == levels.end()) {
-      Rcpp::stop("covariate.ref.level must be one of unique value of "
-                 "covariate.levels.");
+      cpp11::stop("covariage.ref.level must be one of unique value of covariate.levles");
+      // Rcpp::stop("covariate.ref.level must be one of unique value of "
+      //            "covariate.levels.");
     }
     levels.erase(std::find(levels.begin(), levels.end(), ref_level));
     if (X_mat.data.n_cols == 0) {
@@ -339,10 +344,11 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
       retained_cols.push_back(can_col_name);
       temp_col_count++;
     } else {
-      Rcpp::Rcout
-          << "Candidate column " << can_col_name
-          << " was not added to design matrix due to potential of colinearity"
-          << std::endl;
+      cpp11::message("Candidate column {} was not added due to potential of colinearlity", can_col_name);
+      // Rcpp::Rcout
+      //     << "Candidate column " << can_col_name
+      //     << " was not added to design matrix due to potential of colinearity"
+      //     << std::endl;
     }
   }
 
@@ -355,13 +361,17 @@ void Covariate::add_to_matrix(FRMatrix &df, FRMatrix &X_mat,
 }
 
 void Covariate::print() {
-  Rcpp::Rcout << "covariate: " << name << " type: " << cov_type;
+  cpp11::message("CovariateName: {}, Type: {}, Standardize: {}", name, cov_type, standardize);
+  // Rcpp::Rcout << "covariate: " << name << " type: " << cov_type;
   if (levels.size() > 0 && !levels[0].empty()) {
-    Rcpp::Rcout << " levels: ";
+    cpp11::message("\tlevels: ");
+    // Rcpp::Rcout << " levels: ";
     for (size_t i = 0; i < levels.size(); i++) {
-      Rcpp::Rcout << levels.at(i) << ",";
+      cpp11::message("\t\t{},", levels.at(i));
+      // Rcpp::Rcout << levels.at(i) << ",";
     }
-    Rcpp::Rcout << " ref_level: " << ref_level;
+    cpp11::message("\tref_level: {}", ref_level);
+    // Rcpp::Rcout << " ref_level: " << ref_level;
   }
-  Rcpp::Rcout << ", standardize: " << standardize << std::endl;
+  // Rcpp::Rcout << ", standardize: " << standardize << std::endl;
 }

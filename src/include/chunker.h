@@ -1,8 +1,7 @@
 #ifndef CHUNKER_H
 #define CHUNKER_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
 #include <cmath>
 #include <iostream>
 #include <thread>
@@ -47,12 +46,15 @@ public:
     }
     get_num_threads();
 #if !defined(__APPLE__)
-    Rcpp::Rcout << num_available_workers << " processors detected."
-                << std::endl;
-    Rcpp::Rcout << num_available_threads << " threads detected." << std::endl;
-#endif
-    Rcpp::Rcout << "Free memory: " << memfree / (1024 * 1024 * 1024) << "GB"
-                << std::endl;
+    cpp11::message("{} processors detected.", num_available_workers);
+    cpp11::message("{} threads detected.", num_available_threads);
+    cpp11::message("Free memory: {}GB", memfree / (1024 * 1024 * 1024));
+//     Rcpp::Rcout << num_available_workers << " processors detected."
+//                 << std::endl;
+//     Rcpp::Rcout << num_available_threads << " threads detected." << std::endl;
+// #endif
+//     Rcpp::Rcout << "Free memory: " << memfree / (1024 * 1024 * 1024) << "GB"
+//                 << std::endl;
     estimate_chunks();
   }
   unsigned long long getTotalSystemMemory();

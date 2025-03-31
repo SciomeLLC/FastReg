@@ -2,8 +2,8 @@
 #ifndef STRATA_H
 #define STRATA_H
 #pragma once
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+
+#include <cpp11armadillo.hpp>
 #include <unordered_map>
 #include <string>
 #include <vector>

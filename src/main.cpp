@@ -1,7 +1,6 @@
 #define ARMA_WARN_LEVEL 0
-
-// [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
+#include <cpp11armadillo.hpp>
+#include <fmt/format.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -37,7 +36,6 @@
 #include <sys/wait.h>
 #endif
 
-using namespace Rcpp;
 using namespace arma;
 
 #ifndef __has_include
@@ -52,7 +50,7 @@ namespace fs = std::experimental::filesystem;
 #endif
 #endif
 
-#include <RcppEigen.h>
+#include <cpp11eigen.hpp>
 
 struct ProcResult {
   int timing_results[4] = {0, 0, 0, 0};
@@ -74,68 +72,92 @@ struct ProcResult {
     double noncovergence_percent =
         (nonconvergence_status / filtered_pois) * 100;
     if (noncovergence_percent > 0.0) {
-      Rcpp::Rcout << nonconvergence_status << " out of " << filtered_pois
-                  << " (" << std::setprecision(2) << std::fixed
-                  << noncovergence_percent
-                  << "%) POIs did not meet relative and absolute convergence "
-                     "threshold."
-                  << std::endl;
+      cpp11::message("{} out of {} ({:.2f}%) POIs did not meet relative and absolute convergence threshold.", nonconvergence_status, filtered_pois, noncovergence_percent);
+      // Rcpp::Rcout << nonconvergence_status << " out of " << filtered_pois
+      //             << " (" << std::setprecision(2) << std::fixed
+      //             << noncovergence_percent
+      //             << "%) POIs did not meet relative and absolute convergence "
+      //                "threshold."
+      //             << std::endl;
     }
   }
   void print_nonconvergence_summary() {
     double noncovergence_percent =
         (process_nonconvergence_status / process_total_filtered_pois) * 100;
-    Rcpp::Rcout << process_nonconvergence_status << " out of "
-                << process_total_filtered_pois << " (" << std::setprecision(2)
-                << std::fixed << noncovergence_percent
-                << "%) POIs did not meet relative and absolute convergence "
-                   "threshold."
-                << std::endl;
+    cpp11::message("{} out of {} ({:.2f}%) POIs did not meet relative and absolute convergence threshold", process_nonconvergence_status, process_total_filtered_pois, noncovergence_percent);
+    // Rcpp::Rcout << process_nonconvergence_status << " out of "
+    //             << process_total_filtered_pois << " (" << std::setprecision(2)
+    //             << std::fixed << noncovergence_percent
+    //             << "%) POIs did not meet relative and absolute convergence "
+    //                "threshold."
+    //             << std::endl;
   }
   void print_timing_summary(int process_id) {
     auto end =
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    Rcpp::Rcout << "Timing Summary for process: " << process_id + 1
-                << std::endl;
-    Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Writing results: " << timing_results[1] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Memory allocation: " << timing_results[2] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Regression: " << timing_results[3] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Completed process " << process_id + 1
-                << " at: " << std::ctime(&end) << std::endl;
+    cpp11::message("Timing Summary for process: {}", process_id + 1);
+    // Rcpp::Rcout << "Timing Summary for process: " << process_id + 1
+    //             << std::endl;
+    cpp11::message("Reading HDF5: {}s", timing_results[0] / 1000.0 );
+    // Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
+    //             << std::endl;
+    cpp11::message("Writing results: {}s", timing_results[1] / 1000.0);
+    // Rcpp::Rcout << "Writing results: " << timing_results[1] / 1000.0 << "s"
+    //             << std::endl;
+    
+    cpp11::message("Memory allocation: {}s", timing_results[2] / 1000.0);
+    // Rcpp::Rcout << "Memory allocation: " << timing_results[2] / 1000.0 << "s"
+    //             << std::endl;
+    
+    cpp11::message("Regression: {}s", timing_results[3] / 1000.0);
+    // Rcpp::Rcout << "Regression: " << timing_results[3] / 1000.0 << "s"
+    //             << std::endl;
+    
+    cpp11::message("Completed process {} at: {}", process_id + 1, std::ctime(&end));
+    // Rcpp::Rcout << "Completed process " << process_id + 1
+    //             << " at: " << std::ctime(&end) << std::endl;
   }
 
   void print_totals_summary(double concatenation_time, double compression_time,
                             std::string regression_type, size_t individuals,
                             int num_pois, int num_threads,
                             int num_blas_threads) {
-    Rcpp::Rcout << "-----------------------------------------" << std::endl;
-    Rcpp::Rcout << "Timing Summary: " << std::endl;
-    Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Writing results: " << timing_results[1] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Memory allocation: " << timing_results[2] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Regression: " << timing_results[3] / 1000.0 << "s"
-                << std::endl;
-    Rcpp::Rcout << "Results concatenation: " << concatenation_time / 1000.0
-                << "s" << std::endl;
+    cpp11::message("-----------------------------------------");
+    cpp11::message("Reading HDF5: {}s", timing_results[0] / 1000.0);
+    cpp11::message("Writing results: {}s", timing_results[1] / 1000.0);
+    cpp11::message("Memory allocation: {}s", timing_results[2] / 1000.0);
+    cpp11::message("Regression: {}s", timing_results[3] / 1000.0);
+    cpp11::message("Results concatenation: {}s", concatenation_time / 1000.0);
+    // Rcpp::Rcout << "-----------------------------------------" << std::endl;
+    // Rcpp::Rcout << "Timing Summary: " << std::endl;
+    // Rcpp::Rcout << "Reading HDF5: " << timing_results[0] / 1000.0 << "s"
+    //             << std::endl;
+    // Rcpp::Rcout << "Writing results: " << timing_results[1] / 1000.0 << "s"
+    //             << std::endl;
+    // Rcpp::Rcout << "Memory allocation: " << timing_results[2] / 1000.0 << "s"
+    //             << std::endl;
+    // Rcpp::Rcout << "Regression: " << timing_results[3] / 1000.0 << "s"
+    //             << std::endl;
+    // Rcpp::Rcout << "Results concatenation: " << concatenation_time / 1000.0
+    //             << "s" << std::endl;
 
     auto end =
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    Rcpp::Rcout << "Completed " << regression_type << " regression -"
-                << std::endl;
-    Rcpp::Rcout << "\t\tnum individuals: " << individuals << std::endl;
-    Rcpp::Rcout << "\t\t~num pois: " << num_pois << std::endl;
-    Rcpp::Rcout << "\t\twith openmp thread(s): " << num_threads << std::endl;
-    Rcpp::Rcout << "\t\twith BLAS thread(s): " << num_threads << std::endl;
-    Rcpp::Rcout << "at: " << std::ctime(&end) << std::endl;
-    Rcpp::Rcout << "-----------------------------------------" << std::endl;
+    cpp11::message("Completed {} regress -", regression_type);
+    cpp11::message("\t\tnum individuals: {}", individuals);
+    cpp11::message("\t\t~num pois: {}", num_pois);
+    cpp11::message("\t\twith openmp thread(s): {}", num_threads);
+    cpp11::message("\t\twith BLAS thread(s): {}", num_threads);
+    cpp11::message("at: {}", std::ctime(&end));
+    cpp11::message("-----------------------------------------");
+    // Rcpp::Rcout << "Completed " << regression_type << " regression -"
+    //             << std::endl;
+    // Rcpp::Rcout << "\t\tnum individuals: " << individuals << std::endl;
+    // Rcpp::Rcout << "\t\t~num pois: " << num_pois << std::endl;
+    // Rcpp::Rcout << "\t\twith openmp thread(s): " << num_threads << std::endl;
+    // Rcpp::Rcout << "\t\twith BLAS thread(s): " << num_threads << std::endl;
+    // Rcpp::Rcout << "at: " << std::ctime(&end) << std::endl;
+    // Rcpp::Rcout << "-----------------------------------------" << std::endl;
   }
 };
 
@@ -226,7 +248,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
   if (intersected_ind.empty()) {
-    stop("No overlapping individuals found in POI, pheno, and covar files");
+    cpp11::stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
   // if (!config.POI_subset_file.empty()) {
@@ -239,7 +261,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
   int num_poi = poi_names.size();
   if (num_poi == 0) {
-    stop("No overlapping individuals found in POI, pheno, covar files");
+    cpp11::stop("No overlapping individuals found in POI, pheno, covar files");
   }
   // Stratify data
   Strata stratums;
@@ -252,8 +274,9 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   for (int stratum = 0; stratum < stratums.nstrata; ++stratum) {
     std::string outfile_suffix = stratums.ids[stratum];
     if (!config.split_by[0].empty()) {
-      Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
-                  << std::endl;
+      cpp11::message("Processing stratum: {}", outfile_suffix.substr(1));
+      // Rcpp::Rcout << "Processing stratum: " << outfile_suffix.substr(1)
+      //             << std::endl;
     }
     std::vector<std::string> ind_set = stratums.index_list[outfile_suffix];
     int ct = 0;
@@ -354,7 +377,8 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
 
         if (filtered.data.n_cols == 0 ||
             filtered_col.n_elem == poi_matrix.data.n_cols) {
-          Rcpp::Rcout << "no POI passed filtering" << std::endl;
+          cpp11::warning("no POI passed filtering!");
+          // Rcpp::Rcout << "no POI passed filtering" << std::endl;
           return;
         }
 
@@ -502,7 +526,7 @@ void process_chunk(int process_id, Config &config, FRMatrix &pheno_df,
   proc_res.print_timing_summary(process_id);
 }
 
-// [[Rcpp::export]]
+[[cpp11::register]]
 void FastRegCpp(
     const std::string phenotype, const std::string regression_type,
     const std::string pvalue_dist, bool output_exclude_covar,
@@ -546,10 +570,12 @@ void FastRegCpp(
   BLASLibraryManager blas_mgr;
   blas_mgr.detect_lib();
   int cur_blas_threads = blas_mgr.get_num_threads();
-  Rcpp::Rcout << "Detected BLAS threads: " << cur_blas_threads << std::endl;
+  cpp11::message("Detected BLAS threads: {}", cur_blas_threads);
+  // Rcpp::Rcout << "Detected BLAS threads: " << cur_blas_threads << std::endl;
   if (max_blas_threads > 0) {
     blas_mgr.set_num_threads(max_blas_threads);
-    Rcpp::Rcout << "Set BLAS threads to: " << max_blas_threads << std::endl;
+    cpp11::message("Set BLAS threads to: {}", max_blas_threads);
+    // Rcpp::Rcout << "Set BLAS threads to: " << max_blas_threads << std::endl;
   }
 #endif
 
@@ -577,18 +603,18 @@ void FastRegCpp(
       intersect_row_names(pheno_df.sort_map(true), covar_df.sort_map(true));
   std::vector<std::string> intersected_ind =
       intersect_row_names(common_ind, poi.individuals);
-
-  Rcpp::Rcout << intersected_ind.size()
-              << " common unique subjects in pheno.file, "
-                 "covar.file, and POI.file"
-              << std::endl;
+  cpp11::message("{} unique subjects in pheno.file, covar.file and POI.file");
+  // Rcpp::Rcout << intersected_ind.size()
+  //             << " common unique subjects in pheno.file, "
+  //                "covar.file, and POI.file"
+  //             << std::endl;
   if (intersected_ind.empty()) {
-    stop("No overlapping individuals found in POI, pheno, and covar files");
+    cpp11::stop("No overlapping individuals found in POI, pheno, and covar files");
   }
 
   int num_poi = poi_names.size();
   if (num_poi == 0) {
-    stop("No overlapping individuals found in POI, pheno, covar files");
+    cpp11::stop("No overlapping individuals found in POI, pheno, covar files");
   }
 
   // Stratify data
@@ -690,8 +716,9 @@ void FastRegCpp(
       (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
                                                                     start_time)
           .count();
-  Rcpp::Rcout << "Multiprocessing took: " << multiprocess_time << "ms"
-              << std::endl;
+  cpp11::message("Multiprocessing took: {}ms", multiprocess_time);
+  // Rcpp::Rcout << "Multiprocessing took: " << multiprocess_time << "ms"
+  //             << std::endl;
   start_time = std::chrono::high_resolution_clock::now();
   FRMatrix::concatenate_results(config.output_dir, "Results", "Full");
   FRMatrix::concatenate_results(config.output_dir, "Convergence", "Full");
@@ -712,8 +739,9 @@ void FastRegCpp(
         (double)std::chrono::duration_cast<std::chrono::milliseconds>(
             end_time - start_time)
             .count();
-    Rcpp::Rcout << "Results compression: " << compression_time / 1000.0 << "s"
-                << std::endl;
+    cpp11::message("Results compression: {}s", compression_time / 1000.0);
+    // Rcpp::Rcout << "Results compression: " << compression_time / 1000.0 << "s"
+    //             << std::endl;
   }
   total_proc_res.print_nonconvergence_summary();
 
@@ -736,24 +764,24 @@ Rcpp::DataFrame arma_2_df(const arma::fmat &mat,
   int n_cols = mat.n_cols;
 
   if (col_names.size() != static_cast<size_t>(n_cols)) {
-    Rcpp::stop("Number of column names does not match number of columns in "
-               "matrix. n_cols: %s, col_names: %s",
+    cpp11::stop("Number of column names does not match number of columns in "
+               "matrix. n_cols: {}, col_names: {}",
                n_cols, col_names.size());
   }
 
   if (row_names.size() != static_cast<size_t>(n_rows)) {
-    Rcpp::stop("Number of row names does not match number of rows in matrix.");
+    cpp11::stop("Number of row names does not match number of rows in matrix.");
   }
 
   for (size_t i = 0; i < col_names.size(); ++i) {
     if (col_names[i].empty()) {
-      Rcpp::stop("Column name at position %d is empty.", i);
+      cpp11::stop("Column name at position %d is empty.", i);
     }
   }
 
   for (size_t i = 0; i < row_names.size(); ++i) {
     if (row_names[i].empty()) {
-      Rcpp::stop("Row name at position %d is empty.", i);
+      cpp11::stop("Row name at position %d is empty.", i);
     }
   }
   Rcpp::List df_cols;
